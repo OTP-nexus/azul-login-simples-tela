@@ -11,6 +11,7 @@ import { ArrowLeft, Truck, User, Plus, X, ArrowRight, CheckCircle, MapPin, Setti
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useEstados, useCidades } from '@/hooks/useIBGE';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Collaborator {
@@ -103,6 +104,12 @@ const FreightAggregationForm = () => {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [loadingCollaborators, setLoadingCollaborators] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
+  
+  // Estados e cidades IBGE
+  const { estados, loading: loadingEstados } = useEstados();
+  const origemCidades = useCidades(formData.origem_estado);
+  const [destinoCidades, setDestinoCidades] = useState<{[key: string]: any}>({});
+
   const [formData, setFormData] = useState<FreightFormData>({
     collaborator_ids: [],
     origem_cidade: '',
@@ -175,6 +182,22 @@ const FreightAggregationForm = () => {
     fetchCollaborators();
   }, [user]);
 
+  // Buscar cidades quando a UF de um destino for alterada
+  const fetchCidadesForDestino = async (uf: string, destinoId: string) => {
+    if (!uf) return;
+    
+    try {
+      const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`);
+      const cidades = await response.json();
+      setDestinoCidades(prev => ({
+        ...prev,
+        [destinoId]: cidades
+      }));
+    } catch (error) {
+      console.error('Erro ao buscar cidades:', error);
+    }
+  };
+
   const handleBack = () => {
     navigate('/freight-request');
   };
@@ -216,6 +239,12 @@ const FreightAggregationForm = () => {
       ...prev,
       destinos: prev.destinos.filter(dest => dest.id !== id)
     }));
+    // Remove cidades do cache também
+    setDestinoCidades(prev => {
+      const newState = { ...prev };
+      delete newState[id];
+      return newState;
+    });
   };
 
   const updateDestination = (id: string, field: 'state' | 'city', value: string) => {
@@ -225,6 +254,17 @@ const FreightAggregationForm = () => {
         dest.id === id ? { ...dest, [field]: value } : dest
       )
     }));
+
+    // Se mudou o estado, buscar as cidades e limpar a cidade selecionada
+    if (field === 'state') {
+      fetchCidadesForDestino(value, id);
+      setFormData(prev => ({
+        ...prev,
+        destinos: prev.destinos.map(dest =>
+          dest.id === id ? { ...dest, city: '' } : dest
+        )
+      }));
+    }
   };
 
   const toggleVehicleType = (id: string) => {
@@ -404,15 +444,15 @@ const FreightAggregationForm = () => {
         tipo_frete: 'agregamento',
         origem_estado: formData.origem_estado,
         origem_cidade: formData.origem_cidade,
-        destinos: formData.destinos,
+        destinos: JSON.stringify(formData.destinos),
         tipo_mercadoria: formData.tipo_mercadoria,
         peso_carga: formData.peso_carga ? parseFloat(formData.peso_carga) : null,
         valor_carga: formData.valor_carga ? parseFloat(formData.valor_carga) : null,
-        tipos_veiculos: formData.tipos_veiculos.filter(v => v.selected),
-        tipos_carrocerias: formData.tipos_carrocerias.filter(b => b.selected),
-        tabelas_preco: formData.tabelas_preco,
-        regras_agendamento: formData.regras_agendamento,
-        beneficios: formData.beneficios,
+        tipos_veiculos: JSON.stringify(formData.tipos_veiculos.filter(v => v.selected)),
+        tipos_carrocerias: JSON.stringify(formData.tipos_carrocerias.filter(b => b.selected)),
+        tabelas_preco: JSON.stringify(formData.tabelas_preco),
+        regras_agendamento: JSON.stringify(formData.regras_agendamento),
+        beneficios: JSON.stringify(formData.beneficios),
         horario_carregamento: formData.horario_carregamento || null,
         precisa_ajudante: formData.precisa_ajudante,
         precisa_rastreador: formData.precisa_rastreador,
@@ -706,30 +746,56 @@ const FreightAggregationForm = () => {
                   <Label className="text-lg font-medium text-gray-800">Origem</Label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="origem_cidade" className="text-sm font-medium text-gray-700">
-                        Cidade de Origem *
-                      </Label>
-                      <Input
-                        id="origem_cidade"
-                        type="text"
-                        value={formData.origem_cidade}
-                        onChange={(e) => handleInputChange('origem_cidade', e.target.value)}
-                        placeholder="Ex: São Paulo"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
                       <Label htmlFor="origem_estado" className="text-sm font-medium text-gray-700">
                         Estado de Origem *
                       </Label>
-                      <Input
-                        id="origem_estado"
-                        type="text"
-                        value={formData.origem_estado}
-                        onChange={(e) => handleInputChange('origem_estado', e.target.value)}
-                        placeholder="Ex: SP"
-                        required
-                      />
+                      <Select 
+                        value={formData.origem_estado} 
+                        onValueChange={(value) => {
+                          handleInputChange('origem_estado', value);
+                          handleInputChange('origem_cidade', ''); // Limpar cidade quando mudar estado
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {loadingEstados ? (
+                            <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                          ) : (
+                            estados.map((estado) => (
+                              <SelectItem key={estado.id} value={estado.sigla}>
+                                {estado.nome} ({estado.sigla})
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="origem_cidade" className="text-sm font-medium text-gray-700">
+                        Cidade de Origem *
+                      </Label>
+                      <Select 
+                        value={formData.origem_cidade} 
+                        onValueChange={(value) => handleInputChange('origem_cidade', value)}
+                        disabled={!formData.origem_estado}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a cidade" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {origemCidades.loading ? (
+                            <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                          ) : (
+                            origemCidades.cidades.map((cidade) => (
+                              <SelectItem key={cidade.id} value={cidade.nome}>
+                                {cidade.nome}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
@@ -761,16 +827,51 @@ const FreightAggregationForm = () => {
                   {formData.destinos.map((destino) => (
                     <div key={destino.id} className="flex items-center space-x-3 p-4 border rounded-lg">
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                          placeholder="Cidade"
-                          value={destino.city}
-                          onChange={(e) => updateDestination(destino.id, 'city', e.target.value)}
-                        />
-                        <Input
-                          placeholder="Estado"
-                          value={destino.state}
-                          onChange={(e) => updateDestination(destino.id, 'state', e.target.value)}
-                        />
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-gray-700">Estado</Label>
+                          <Select 
+                            value={destino.state} 
+                            onValueChange={(value) => updateDestination(destino.id, 'state', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o estado" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {loadingEstados ? (
+                                <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                              ) : (
+                                estados.map((estado) => (
+                                  <SelectItem key={estado.id} value={estado.sigla}>
+                                    {estado.nome} ({estado.sigla})
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-gray-700">Cidade</Label>
+                          <Select 
+                            value={destino.city} 
+                            onValueChange={(value) => updateDestination(destino.id, 'city', value)}
+                            disabled={!destino.state}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a cidade" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {destinoCidades[destino.id] ? (
+                                destinoCidades[destino.id].map((cidade: any) => (
+                                  <SelectItem key={cidade.id} value={cidade.nome}>
+                                    {cidade.nome}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="loading" disabled>Selecione um estado primeiro</SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                       <Button
                         type="button"
