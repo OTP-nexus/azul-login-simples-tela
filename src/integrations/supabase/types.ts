@@ -314,7 +314,6 @@ export type Database = {
       fretes: {
         Row: {
           beneficios: Json | null
-          codigo_agregamento: string | null
           collaborator_ids: string[]
           company_id: string
           created_at: string
@@ -344,7 +343,6 @@ export type Database = {
         }
         Insert: {
           beneficios?: Json | null
-          codigo_agregamento?: string | null
           collaborator_ids: string[]
           company_id: string
           created_at?: string
@@ -374,7 +372,6 @@ export type Database = {
         }
         Update: {
           beneficios?: Json | null
-          codigo_agregamento?: string | null
           collaborator_ids?: string[]
           company_id?: string
           created_at?: string
@@ -473,10 +470,6 @@ export type Database = {
       check_email_exists: {
         Args: { email_param: string }
         Returns: boolean
-      }
-      generate_aggregation_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
       }
     }
     Enums: {

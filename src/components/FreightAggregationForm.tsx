@@ -13,8 +13,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useEstados, useCidades } from '@/hooks/useIBGE';
 import { supabase } from '@/integrations/supabase/client';
-import FreightVerificationDialog from './FreightVerificationDialog';
-import FreightSuccessDialog from './FreightSuccessDialog';
 
 interface Collaborator {
   id: string;
@@ -133,9 +131,6 @@ const FreightAggregationForm = () => {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [loadingCollaborators, setLoadingCollaborators] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
-  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState('');
   
   const [formData, setFormData] = useState<FreightFormData>({
     collaborator_ids: [],
@@ -492,7 +487,9 @@ const FreightAggregationForm = () => {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     setLoading(true);
     
     try {
@@ -564,12 +561,11 @@ const FreightAggregationForm = () => {
         }
       }
 
-      // Definir o código gerado e mostrar dialog de sucesso
-      setGeneratedCode(freteData.codigo_agregamento);
-      setShowVerificationDialog(false);
-      setShowSuccessDialog(true);
+      toast({
+        title: "Sucesso!",
+        description: `Frete de agregamento criado com ${formData.collaborator_ids.length} colaborador(es) responsável(is)`
+      });
 
-      // Resetar formulário
       setFormData({
         collaborator_ids: [],
         origem_cidade: '',
@@ -602,24 +598,6 @@ const FreightAggregationForm = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleVerifyAndSubmit = () => {
-    setShowVerificationDialog(true);
-  };
-
-  const handleEditFromVerification = () => {
-    setShowVerificationDialog(false);
-  };
-
-  const handleGoToDashboard = () => {
-    setShowSuccessDialog(false);
-    navigate('/company-dashboard');
-  };
-
-  const handleCreateNewFreight = () => {
-    setShowSuccessDialog(false);
-    // Form já foi resetado no handleSubmit
   };
 
   if (loadingCollaborators) {
@@ -1266,7 +1244,7 @@ const FreightAggregationForm = () => {
             )}
 
             {currentStep === 4 && (
-              <form onSubmit={(e) => { e.preventDefault(); handleVerifyAndSubmit(); }} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Resumo dos colaboradores */}
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <Label className="text-sm font-medium text-green-800 mb-2 block">
@@ -1462,8 +1440,14 @@ const FreightAggregationForm = () => {
                     disabled={loading}
                     className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
                   >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Verificar Pedido
+                    {loading ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    ) : (
+                      <>
+                        <Truck className="w-4 h-4 mr-2" />
+                        Solicitar Frete
+                      </>
+                    )}
                   </Button>
                 </div>
               </form>
@@ -1471,25 +1455,6 @@ const FreightAggregationForm = () => {
           </CardContent>
         </Card>
       </main>
-
-      {/* Dialogs */}
-      <FreightVerificationDialog
-        open={showVerificationDialog}
-        onOpenChange={setShowVerificationDialog}
-        formData={formData}
-        collaborators={collaborators}
-        onConfirm={handleSubmit}
-        onEdit={handleEditFromVerification}
-        loading={loading}
-      />
-
-      <FreightSuccessDialog
-        open={showSuccessDialog}
-        onOpenChange={setShowSuccessDialog}
-        codigoAgregamento={generatedCode}
-        onGoToDashboard={handleGoToDashboard}
-        onCreateNew={handleCreateNewFreight}
-      />
     </div>
   );
 };
