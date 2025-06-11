@@ -14,6 +14,7 @@ import DriverRegistration from "./pages/DriverRegistration";
 import DocumentVerification from "./pages/DocumentVerification";
 import DriverDocumentVerification from "./pages/DriverDocumentVerification";
 import CompanyDashboard from "./pages/CompanyDashboard";
+import FreightRequest from "./pages/FreightRequest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/document-verification" element={<DocumentVerification />} />
             <Route path="/driver-document-verification" element={<DriverDocumentVerification />} />
             <Route path="/company-dashboard" element={<CompanyDashboard />} />
+            <Route path="/freight-request" element={<FreightRequest />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

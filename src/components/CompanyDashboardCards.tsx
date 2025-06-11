@@ -57,6 +57,12 @@ const CompanyDashboardCards = () => {
 
   const handleCardClick = (cardType: string) => {
     console.log(`Clicked on ${cardType} card`);
+    
+    if (cardType === 'SOLICITAR FRETE') {
+      navigate('/freight-request');
+      return;
+    }
+    
     toast({
       title: "Em breve",
       description: `Funcionalidade "${cardType}" será implementada em breve!`,
