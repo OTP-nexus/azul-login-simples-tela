@@ -63,6 +63,11 @@ const CompanyDashboardCards = () => {
       return;
     }
     
+    if (cardType === 'CADASTRAR COLABORADOR') {
+      navigate('/collaborator-registration');
+      return;
+    }
+    
     toast({
       title: "Em breve",
       description: `Funcionalidade "${cardType}" será implementada em breve!`,
