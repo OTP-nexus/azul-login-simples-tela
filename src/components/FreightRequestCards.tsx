@@ -12,6 +12,12 @@ const FreightRequestCards = () => {
 
   const handleCardClick = (freightType: string) => {
     console.log(`Clicked on ${freightType} freight`);
+    
+    if (freightType === 'AGREGAMENTO') {
+      navigate('/freight-aggregation');
+      return;
+    }
+    
     toast({
       title: "Em breve",
       description: `Funcionalidade "${freightType}" será implementada em breve!`,
