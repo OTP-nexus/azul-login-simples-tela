@@ -1,10 +1,10 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Eye, EyeOff, Mail, Lock, User, Phone, FileText, Building2, ArrowLeft, ArrowRight, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,8 +20,6 @@ const CompanyRegistrationForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoadingCep, setIsLoadingCep] = useState(false);
-  const [otpValue, setOtpValue] = useState("");
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [formData, setFormData] = useState({
     companyName: '',
     contactName: '',
@@ -39,7 +37,7 @@ const CompanyRegistrationForm = () => {
     confirmPassword: ''
   });
 
-  const totalSteps = 4;
+  const totalSteps = 3;
   const progressPercentage = (currentStep / totalSteps) * 100;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,29 +45,6 @@ const CompanyRegistrationForm = () => {
       ...formData,
       [e.target.name]: e.target.value
     });
-  };
-
-  const sendOtpCode = async () => {
-    console.log('Enviando código OTP para:', formData.phone);
-    // Aqui você implementaria o envio real do SMS
-    // Por enquanto, apenas simularemos o envio
-  };
-
-  const verifyOtpCode = async () => {
-    if (otpValue.length !== 6) return;
-    
-    setIsVerifyingOtp(true);
-    try {
-      console.log('Verificando código OTP:', otpValue);
-      // Aqui você implementaria a verificação real do código
-      // Por enquanto, vamos simular uma verificação (aceita qualquer código de 6 dígitos)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      handleNextStep();
-    } catch (error) {
-      console.error('Erro ao verificar OTP:', error);
-    } finally {
-      setIsVerifyingOtp(false);
-    }
   };
 
   const fetchAddressByCep = async (cep: string) => {
@@ -109,11 +84,6 @@ const CompanyRegistrationForm = () => {
   };
 
   const handleNextStep = () => {
-    if (currentStep === 1) {
-      // Ao sair da primeira etapa, enviar o código OTP
-      sendOtpCode();
-    }
-    
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     }
@@ -134,9 +104,8 @@ const CompanyRegistrationForm = () => {
   const getStepTitle = () => {
     switch (currentStep) {
       case 1: return 'Dados da Empresa';
-      case 2: return 'Confirmar Telefone';
-      case 3: return 'Endereço';
-      case 4: return 'Acesso';
+      case 2: return 'Endereço';
+      case 3: return 'Acesso';
       default: return 'Cadastro';
     }
   };
@@ -241,69 +210,6 @@ const CompanyRegistrationForm = () => {
   );
 
   const renderStep2 = () => (
-    <div className="space-y-6 text-center">
-      <div className="space-y-2">
-        <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-          <Phone className="w-8 h-8 text-blue-600" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-800">
-          Confirme seu telefone
-        </h3>
-        <p className="text-gray-600 text-sm">
-          Enviamos um código de 6 dígitos para<br />
-          <span className="font-medium">{formData.phone}</span>
-        </p>
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex justify-center">
-          <InputOTP
-            maxLength={6}
-            value={otpValue}
-            onChange={(value) => setOtpValue(value)}
-          >
-            <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
-              <InputOTPSlot index={4} />
-              <InputOTPSlot index={5} />
-            </InputOTPGroup>
-          </InputOTP>
-        </div>
-
-        <Button
-          type="button"
-          onClick={verifyOtpCode}
-          disabled={otpValue.length !== 6 || isVerifyingOtp}
-          className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] shadow-lg disabled:opacity-50 disabled:transform-none"
-        >
-          {isVerifyingOtp ? (
-            <div className="flex items-center gap-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              Verificando...
-            </div>
-          ) : (
-            'Verificar código'
-          )}
-        </Button>
-
-        <div className="text-center">
-          <span className="text-gray-600 text-sm">Não recebeu o código? </span>
-          <button
-            type="button"
-            onClick={sendOtpCode}
-            className="text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors"
-          >
-            Reenviar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderStep3 = () => (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="cep" className="text-sm font-medium text-gray-700">
@@ -432,7 +338,7 @@ const CompanyRegistrationForm = () => {
     </div>
   );
 
-  const renderStep4 = () => (
+  const renderStep3 = () => (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="password" className="text-sm font-medium text-gray-700">
@@ -513,41 +419,38 @@ const CompanyRegistrationForm = () => {
               {currentStep === 1 && renderStep1()}
               {currentStep === 2 && renderStep2()}
               {currentStep === 3 && renderStep3()}
-              {currentStep === 4 && renderStep4()}
               
-              {currentStep !== 2 && (
-                <div className="flex justify-between gap-4">
-                  {currentStep > 1 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handlePrevStep}
-                      className="flex-1 h-12 border-gray-300 text-gray-700 hover:bg-gray-50"
-                    >
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Voltar
-                    </Button>
-                  )}
-                  
-                  {currentStep < totalSteps ? (
-                    <Button
-                      type="button"
-                      onClick={handleNextStep}
-                      className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] shadow-lg"
-                    >
-                      Próximo
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  ) : (
-                    <Button
-                      type="submit"
-                      className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] shadow-lg"
-                    >
-                      Criar conta
-                    </Button>
-                  )}
-                </div>
-              )}
+              <div className="flex justify-between gap-4">
+                {currentStep > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handlePrevStep}
+                    className="flex-1 h-12 border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Voltar
+                  </Button>
+                )}
+                
+                {currentStep < totalSteps ? (
+                  <Button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] shadow-lg"
+                  >
+                    Próximo
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] shadow-lg"
+                  >
+                    Criar conta
+                  </Button>
+                )}
+              </div>
             </form>
             
             <div className="text-center">
