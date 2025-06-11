@@ -74,6 +74,16 @@ const CompanyRegistrationForm = () => {
     }
   };
 
+  const handleConfirmPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cleanValue = cleanFormatting(e.target.value);
+    setFormData(prev => ({ ...prev, confirmPhone: cleanValue }));
+    
+    // Clear validation error when user starts typing
+    if (validationErrors.confirmPhone) {
+      setValidationErrors(prev => ({ ...prev, confirmPhone: '' }));
+    }
+  };
+
   const fetchAddressByCep = async (cep: string) => {
     const cleanCep = cleanFormatting(cep);
     if (cleanCep.length !== 8) return;
@@ -132,7 +142,13 @@ const CompanyRegistrationForm = () => {
       if (!formData.confirmPhone) errors.confirmPhone = 'Confirmação de telefone é obrigatória';
       if (!formData.cnpj) errors.cnpj = 'CNPJ é obrigatório';
 
-      if (formData.phone !== formData.confirmPhone) {
+      // Comparar telefones sem formatação
+      const cleanPhone = cleanFormatting(formData.phone);
+      const cleanConfirmPhone = cleanFormatting(formData.confirmPhone);
+      
+      console.log('Phone validation:', { cleanPhone, cleanConfirmPhone, areEqual: cleanPhone === cleanConfirmPhone });
+      
+      if (cleanPhone !== cleanConfirmPhone) {
         errors.confirmPhone = 'Telefones não conferem';
       }
     }
@@ -323,7 +339,7 @@ const CompanyRegistrationForm = () => {
             type="tel"
             placeholder="(11) 99999-9999"
             value={formatPhone(formData.confirmPhone)}
-            onChange={(e) => setFormData(prev => ({ ...prev, confirmPhone: cleanFormatting(e.target.value) }))}
+            onChange={handleConfirmPhoneChange}
             className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             required
           />
