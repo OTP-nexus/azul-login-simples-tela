@@ -4,42 +4,66 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Truck, User, Activity, LogOut, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useDocumentStatus } from '@/hooks/useDocumentStatus';
+import { useToast } from '@/hooks/use-toast';
 
 const CompanyDashboardCards = () => {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { documentStatus, loading } = useDocumentStatus();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Verifica se a empresa tem acesso ao dashboard
-    const documentStatus = localStorage.getItem('documentStatus');
-    
-    if (documentStatus !== 'approved') {
-      console.log('Access denied - documents not approved');
-      // Redireciona para a tela apropriada baseada no status
-      if (documentStatus === 'pending') {
+    if (!loading && user && documentStatus) {
+      // Verificar se todos os documentos da empresa estão aprovados
+      const isCompanyFullyApproved = 
+        documentStatus.address_proof_status === 'approved' &&
+        documentStatus.cnpj_card_status === 'approved' &&
+        documentStatus.responsible_document_status === 'approved';
+      
+      if (!isCompanyFullyApproved) {
+        console.log('Access denied - documents not fully approved');
         navigate('/document-verification');
-      } else {
-        navigate('/login');
+        return;
       }
-      return;
+      
+      console.log('Access granted - all documents approved');
+      setIsLoading(false);
+    } else if (!loading && (!user || !documentStatus)) {
+      console.log('No user or document status, redirecting to login');
+      navigate('/login');
     }
-    
-    setIsLoading(false);
-  }, [navigate]);
+  }, [user, documentStatus, loading, navigate]);
 
-  const handleLogout = () => {
-    console.log('Logging out...');
-    localStorage.removeItem('documentStatus');
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso",
+      });
+      navigate('/login');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      toast({
+        title: "Erro no logout",
+        description: "Não foi possível desconectar. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleCardClick = (cardType: string) => {
     console.log(`Clicked on ${cardType} card`);
-    // Aqui serão implementadas as navegações futuras
-    alert(`Funcionalidade "${cardType}" será implementada em breve!`);
+    toast({
+      title: "Em breve",
+      description: `Funcionalidade "${cardType}" será implementada em breve!`,
+    });
   };
 
-  if (isLoading) {
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center">
         <div className="text-center">
