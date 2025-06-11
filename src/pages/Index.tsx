@@ -2,7 +2,12 @@
 import LoginForm from "@/components/LoginForm";
 
 const Index = () => {
-  return <LoginForm />;
+  console.log('Index page is rendering');
+  return (
+    <div className="min-h-screen">
+      <LoginForm />
+    </div>
+  );
 };
 
 export default Index;

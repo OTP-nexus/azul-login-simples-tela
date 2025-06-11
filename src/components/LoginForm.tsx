@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const LoginForm = () => {
+  console.log('LoginForm component is rendering');
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
@@ -26,6 +29,11 @@ const LoginForm = () => {
     e.preventDefault();
     console.log('Form submitted:', formData);
     // Aqui você implementaria a lógica de autenticação
+  };
+
+  const handleRegisterRedirect = () => {
+    console.log('Redirecting to register page');
+    navigate('/register');
   };
 
   return (
@@ -185,7 +193,7 @@ const LoginForm = () => {
               </span>
               <button
                 type="button"
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={handleRegisterRedirect}
                 className="ml-1 text-blue-600 hover:text-blue-800 font-medium transition-colors"
               >
                 {isLogin ? 'Criar conta' : 'Fazer login'}
