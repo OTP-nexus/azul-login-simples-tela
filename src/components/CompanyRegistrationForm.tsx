@@ -11,6 +11,7 @@ import { useValidation } from '@/hooks/useValidation';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCNPJ, formatPhone, formatCEP, cleanFormatting } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AddressData {
   logradouro: string;
@@ -202,23 +203,63 @@ const CompanyRegistrationForm = () => {
         role: 'company'
       };
 
-      const { error } = await signUp(formData.email, formData.password, userData);
+      const { data: authData, error: authError } = await signUp(formData.email, formData.password, userData);
       
-      if (error) {
-        console.error('Erro no cadastro:', error);
+      if (authError) {
+        console.error('Erro no cadastro:', authError);
         toast({
           title: "Erro no cadastro",
-          description: error.message || "Tente novamente",
+          description: authError.message || "Tente novamente",
           variant: "destructive"
         });
         return;
       }
 
-      // Limpar o tipo da empresa do localStorage após o cadastro
+      // Aguardar um pouco para garantir que o usuário foi criado
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Buscar o usuário criado para obter o ID
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('Usuário não encontrado após cadastro');
+      }
+
+      // Salvar dados da empresa
+      const { error: companyError } = await supabase
+        .from('companies')
+        .insert({
+          user_id: user.id,
+          company_name: formData.companyName,
+          contact_name: formData.contactName,
+          phone: cleanFormatting(formData.phone),
+          confirm_phone: cleanFormatting(formData.confirmPhone),
+          cnpj: cleanFormatting(formData.cnpj),
+          cep: cleanFormatting(formData.cep),
+          street: formData.street,
+          number: formData.number,
+          complement: formData.complement,
+          neighborhood: formData.neighborhood,
+          city: formData.city,
+          state: formData.state,
+          is_transporter: isTransporter
+        });
+
+      if (companyError) {
+        console.error('Erro ao salvar dados da empresa:', companyError);
+        toast({
+          title: "Erro ao salvar dados",
+          description: "Dados de autenticação criados, mas houve erro ao salvar informações da empresa",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Limpar o tipo da empresa do localStorage após o cadastro bem-sucedido
       localStorage.removeItem('companyType');
 
       toast({
-        title: "Cadastro realizado!",
+        title: "Cadastro realizado com sucesso!",
         description: "Redirecionando para verificação de documentos...",
       });
       
