@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +5,9 @@ import { Progress } from "@/components/ui/progress";
 import { Upload, FileText, CheckCircle, AlertCircle, Building2, ArrowLeft, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDocumentStatus } from '@/hooks/useDocumentStatus';
+import { useAuth } from '@/hooks/useAuth';
+import { uploadDocument } from '@/utils/fileUpload';
+import { useToast } from '@/hooks/use-toast';
 
 interface UploadedFiles {
   addressProof: File | null;
@@ -15,7 +17,9 @@ interface UploadedFiles {
 
 const DocumentUploadForm = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { documentStatus, loading, updateDocumentStatus } = useDocumentStatus();
+  const { toast } = useToast();
   
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({
     addressProof: null,
@@ -24,6 +28,7 @@ const DocumentUploadForm = () => {
   });
 
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null);
 
   // Verificar se o usuário já enviou documentos
   const hasSubmittedDocuments = documentStatus && (
@@ -32,32 +37,104 @@ const DocumentUploadForm = () => {
     documentStatus.responsible_document_status !== 'not_submitted'
   );
 
-  const handleFileUpload = (file: File, documentType: keyof UploadedFiles) => {
+  const handleFileUpload = async (file: File, documentType: keyof UploadedFiles) => {
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Só permite upload se não tiver documentos pendentes
     if (hasSubmittedDocuments) {
       console.log('Upload blocked - documents already pending verification');
+      toast({
+        title: "Upload bloqueado",
+        description: "Documentos já foram enviados e estão em análise",
+        variant: "destructive"
+      });
       return;
     }
 
     // Validar tipo de arquivo
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
-      alert('Por favor, envie apenas arquivos PDF, JPG ou PNG');
+      toast({
+        title: "Tipo de arquivo inválido",
+        description: "Por favor, envie apenas arquivos PDF, JPG ou PNG",
+        variant: "destructive"
+      });
       return;
     }
 
     // Validar tamanho (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-      alert('O arquivo deve ter no máximo 5MB');
+      toast({
+        title: "Arquivo muito grande",
+        description: "O arquivo deve ter no máximo 5MB",
+        variant: "destructive"
+      });
       return;
     }
 
-    setUploadedFiles(prev => ({
-      ...prev,
-      [documentType]: file
-    }));
+    setUploading(documentType);
 
-    console.log(`Arquivo ${documentType} enviado:`, file.name);
+    try {
+      // Upload do arquivo para o Supabase Storage
+      const { url, error } = await uploadDocument(file, user.id, documentType);
+
+      if (error) {
+        throw error;
+      }
+
+      // Atualizar arquivo local
+      setUploadedFiles(prev => ({
+        ...prev,
+        [documentType]: file
+      }));
+
+      // Atualizar status no banco de dados
+      const statusField = documentType === 'addressProof' ? 'address_proof_status' : 
+                         documentType === 'cnpjCard' ? 'cnpj_card_status' : 
+                         'responsible_document_status';
+      const urlField = documentType === 'addressProof' ? 'address_proof_url' : 
+                      documentType === 'cnpjCard' ? 'cnpj_card_url' : 
+                      'responsible_document_url';
+
+      const updateData: any = {};
+      updateData[statusField] = 'pending';
+      updateData[urlField] = url;
+
+      const { error: updateError } = await updateDocumentStatus(updateData);
+
+      if (updateError) {
+        console.error('Error updating document status:', updateError);
+        toast({
+          title: "Erro ao salvar",
+          description: "Erro ao salvar status do documento",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Documento enviado",
+        description: `${file.name} foi enviado com sucesso!`,
+      });
+
+      console.log(`Arquivo ${documentType} enviado:`, file.name, 'URL:', url);
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Erro no upload",
+        description: error.message || "Erro ao enviar arquivo",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(null);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent, documentType: string) => {
@@ -136,8 +213,11 @@ const DocumentUploadForm = () => {
   };
 
   const documentsUploaded = hasSubmittedDocuments 
-    ? 3 
+    ? (documentStatus?.address_proof_status !== 'not_submitted' ? 1 : 0) +
+      (documentStatus?.cnpj_card_status !== 'not_submitted' ? 1 : 0) +
+      (documentStatus?.responsible_document_status !== 'not_submitted' ? 1 : 0)
     : Object.values(uploadedFiles).filter(file => file !== null).length;
+  
   const progressPercentage = (documentsUploaded / 3) * 100;
 
   const canFinish = hasSubmittedDocuments 
@@ -150,20 +230,21 @@ const DocumentUploadForm = () => {
       return;
     }
 
-    try {
-      // Atualizar status dos documentos para 'pending'
-      await updateDocumentStatus({
-        address_proof_status: 'pending',
-        cnpj_card_status: 'pending',
-        responsible_document_status: 'pending'
+    if (!canFinish) {
+      toast({
+        title: "Documentos incompletos",
+        description: "Por favor, envie todos os documentos obrigatórios",
+        variant: "destructive"
       });
-
-      console.log('Verificação de documentos finalizada');
-      alert('Documentos enviados com sucesso! Você receberá um email quando a verificação for concluída.');
-    } catch (error) {
-      console.error('Erro ao finalizar verificação:', error);
-      alert('Erro ao enviar documentos. Tente novamente.');
+      return;
     }
+
+    toast({
+      title: "Documentos enviados!",
+      description: "Seus documentos foram enviados com sucesso! Você receberá um email quando a verificação for concluída.",
+    });
+
+    console.log('Verificação de documentos finalizada');
   };
 
   const renderUploadArea = (
@@ -172,6 +253,7 @@ const DocumentUploadForm = () => {
     description: string
   ) => {
     const status = getDocumentStatus(documentType);
+    const isUploading = uploading === documentType;
     
     return (
       <Card className="h-full">
@@ -187,17 +269,29 @@ const DocumentUploadForm = () => {
             className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
               hasSubmittedDocuments
                 ? 'border-amber-300 bg-amber-50'
+                : isUploading
+                ? 'border-blue-400 bg-blue-50'
                 : dragOver === documentType
                 ? 'border-blue-400 bg-blue-50'
                 : uploadedFiles[documentType]
                 ? 'border-green-400 bg-green-50'
                 : 'border-gray-300 hover:border-gray-400'
             }`}
-            onDragOver={(e) => !hasSubmittedDocuments && handleDragOver(e, documentType)}
-            onDragLeave={!hasSubmittedDocuments ? handleDragLeave : undefined}
-            onDrop={(e) => !hasSubmittedDocuments && handleDrop(e, documentType)}
+            onDragOver={(e) => !hasSubmittedDocuments && !isUploading && handleDragOver(e, documentType)}
+            onDragLeave={!hasSubmittedDocuments && !isUploading ? handleDragLeave : undefined}
+            onDrop={(e) => !hasSubmittedDocuments && !isUploading && handleDrop(e, documentType)}
           >
-            {hasSubmittedDocuments ? (
+            {isUploading ? (
+              <div className="space-y-2">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="font-medium text-blue-700">
+                  Enviando documento...
+                </p>
+                <p className="text-sm text-blue-600">
+                  Por favor, aguarde
+                </p>
+              </div>
+            ) : hasSubmittedDocuments || status === 'pending' ? (
               <div className="space-y-2">
                 <Clock className="w-12 h-12 text-amber-500 mx-auto" />
                 <p className="font-medium text-amber-700">
@@ -217,7 +311,7 @@ const DocumentUploadForm = () => {
                   {uploadedFiles[documentType]!.name}
                 </p>
                 <p className={`text-sm ${getStatusColor(status)}`}>
-                  {getStatusText(status)}
+                  Pronto para envio
                 </p>
                 <Button
                   variant="outline"
@@ -247,7 +341,7 @@ const DocumentUploadForm = () => {
               </div>
             )}
             
-            {!hasSubmittedDocuments && (
+            {!hasSubmittedDocuments && !isUploading && (
               <input
                 id={`file-${documentType}`}
                 type="file"
@@ -365,7 +459,7 @@ const DocumentUploadForm = () => {
                 className="h-12 px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {hasSubmittedDocuments 
-                  ? 'Aguardar verificação'
+                  ? 'Voltar ao login'
                   : canFinish 
                   ? 'Finalizar verificação' 
                   : `Envie ${3 - documentsUploaded} documento(s) restante(s)`
