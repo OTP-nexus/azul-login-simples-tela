@@ -25,10 +25,34 @@ const LoginForm = () => {
     });
   };
 
+  const checkDocumentStatus = () => {
+    // Simula verificação do status dos documentos do usuário
+    // Em um app real, isso viria de uma API
+    const documentStatus = localStorage.getItem('documentStatus') || 'not_submitted';
+    return documentStatus;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Form submitted:', formData);
-    // Aqui você implementaria a lógica de autenticação
+    
+    // Simula autenticação bem-sucedida
+    if (formData.email && formData.password) {
+      console.log('Login successful, checking document status...');
+      
+      // Verifica status dos documentos
+      const docStatus = checkDocumentStatus();
+      console.log('Document status:', docStatus);
+      
+      if (docStatus === 'pending' || docStatus === 'not_submitted') {
+        console.log('Redirecting to document verification...');
+        navigate('/document-verification');
+      } else if (docStatus === 'approved') {
+        console.log('Documents approved, redirecting to dashboard...');
+        // Redireciona para dashboard principal (quando implementado)
+        alert('Login realizado com sucesso! Documentos aprovados.');
+      }
+    }
   };
 
   const handleRegisterRedirect = () => {

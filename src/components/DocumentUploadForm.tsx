@@ -1,15 +1,14 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileText, CheckCircle, AlertCircle, Building2, ArrowLeft } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Building2, ArrowLeft, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface DocumentStatus {
-  addressProof: 'pending' | 'uploaded' | 'approved';
-  cnpjCard: 'pending' | 'uploaded' | 'approved';
-  responsibleDocument: 'pending' | 'uploaded' | 'approved';
+  addressProof: 'not_submitted' | 'pending' | 'approved';
+  cnpjCard: 'not_submitted' | 'pending' | 'approved';
+  responsibleDocument: 'not_submitted' | 'pending' | 'approved';
 }
 
 interface UploadedFiles {
@@ -20,10 +19,11 @@ interface UploadedFiles {
 
 const DocumentUploadForm = () => {
   const navigate = useNavigate();
+  const [isReturningUser, setIsReturningUser] = useState(false);
   const [documentStatus, setDocumentStatus] = useState<DocumentStatus>({
-    addressProof: 'pending',
-    cnpjCard: 'pending',
-    responsibleDocument: 'pending'
+    addressProof: 'not_submitted',
+    cnpjCard: 'not_submitted',
+    responsibleDocument: 'not_submitted'
   });
   
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({
@@ -34,7 +34,27 @@ const DocumentUploadForm = () => {
 
   const [dragOver, setDragOver] = useState<string | null>(null);
 
+  useEffect(() => {
+    // Verifica se o usuário já enviou documentos anteriormente
+    const savedStatus = localStorage.getItem('documentStatus');
+    if (savedStatus === 'pending') {
+      setIsReturningUser(true);
+      setDocumentStatus({
+        addressProof: 'pending',
+        cnpjCard: 'pending',
+        responsibleDocument: 'pending'
+      });
+      console.log('User returning with pending documents');
+    }
+  }, []);
+
   const handleFileUpload = (file: File, documentType: keyof UploadedFiles) => {
+    // Só permite upload se não for usuário com documentos pendentes
+    if (isReturningUser) {
+      console.log('Upload blocked - documents already pending verification');
+      return;
+    }
+
     // Validar tipo de arquivo
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
@@ -55,7 +75,7 @@ const DocumentUploadForm = () => {
 
     setDocumentStatus(prev => ({
       ...prev,
-      [documentType]: 'uploaded'
+      [documentType]: 'pending'
     }));
 
     console.log(`Arquivo ${documentType} enviado:`, file.name);
@@ -90,19 +110,19 @@ const DocumentUploadForm = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'uploaded':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case 'pending':
+        return <Clock className="w-5 h-5 text-amber-500" />;
       case 'approved':
         return <CheckCircle className="w-5 h-5 text-green-600" />;
       default:
-        return <AlertCircle className="w-5 h-5 text-amber-500" />;
+        return <AlertCircle className="w-5 h-5 text-gray-400" />;
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'uploaded':
-        return 'Enviado - Em análise';
+      case 'pending':
+        return 'Enviado - Aguardando verificação';
       case 'approved':
         return 'Aprovado';
       default:
@@ -112,23 +132,30 @@ const DocumentUploadForm = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'uploaded':
-        return 'text-green-600';
+      case 'pending':
+        return 'text-amber-600';
       case 'approved':
         return 'text-green-700';
       default:
-        return 'text-amber-600';
+        return 'text-gray-600';
     }
   };
 
-  const documentsUploaded = Object.values(uploadedFiles).filter(file => file !== null).length;
+  const documentsUploaded = isReturningUser ? 3 : Object.values(uploadedFiles).filter(file => file !== null).length;
   const progressPercentage = (documentsUploaded / 3) * 100;
 
-  const canFinish = Object.values(documentStatus).every(status => status !== 'pending');
+  const canFinish = isReturningUser ? false : Object.values(documentStatus).every(status => status !== 'not_submitted');
 
   const handleFinish = () => {
+    if (isReturningUser) {
+      console.log('Documents already submitted, user is waiting for verification');
+      return;
+    }
+
     console.log('Verificação de documentos finalizada');
-    // Aqui você implementaria o envio final dos documentos
+    // Salva o status como pendente
+    localStorage.setItem('documentStatus', 'pending');
+    setIsReturningUser(true);
     alert('Documentos enviados com sucesso! Você receberá um email quando a verificação for concluída.');
   };
 
@@ -148,17 +175,32 @@ const DocumentUploadForm = () => {
       <CardContent>
         <div
           className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-            dragOver === documentType
+            isReturningUser
+              ? 'border-amber-300 bg-amber-50'
+              : dragOver === documentType
               ? 'border-blue-400 bg-blue-50'
               : uploadedFiles[documentType]
               ? 'border-green-400 bg-green-50'
               : 'border-gray-300 hover:border-gray-400'
           }`}
-          onDragOver={(e) => handleDragOver(e, documentType)}
-          onDragLeave={handleDragLeave}
-          onDrop={(e) => handleDrop(e, documentType)}
+          onDragOver={(e) => !isReturningUser && handleDragOver(e, documentType)}
+          onDragLeave={!isReturningUser ? handleDragLeave : undefined}
+          onDrop={(e) => !isReturningUser && handleDrop(e, documentType)}
         >
-          {uploadedFiles[documentType] ? (
+          {isReturningUser ? (
+            <div className="space-y-2">
+              <Clock className="w-12 h-12 text-amber-500 mx-auto" />
+              <p className="font-medium text-amber-700">
+                Documento enviado
+              </p>
+              <p className="text-sm text-amber-600">
+                Aguardando verificação
+              </p>
+              <p className="text-xs text-gray-500 mt-2">
+                Prazo de análise: até 24 horas úteis
+              </p>
+            </div>
+          ) : uploadedFiles[documentType] ? (
             <div className="space-y-2">
               <FileText className="w-12 h-12 text-green-500 mx-auto" />
               <p className="font-medium text-green-700">
@@ -195,13 +237,15 @@ const DocumentUploadForm = () => {
             </div>
           )}
           
-          <input
-            id={`file-${documentType}`}
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => handleInputChange(e, documentType)}
-            className="hidden"
-          />
+          {!isReturningUser && (
+            <input
+              id={`file-${documentType}`}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={(e) => handleInputChange(e, documentType)}
+              className="hidden"
+            />
+          )}
         </div>
       </CardContent>
     </Card>
@@ -212,11 +256,11 @@ const DocumentUploadForm = () => {
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <button
-            onClick={() => navigate('/register/company')}
+            onClick={() => navigate('/login')}
             className="flex items-center text-gray-600 hover:text-gray-800 transition-colors mb-4"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
-            Voltar ao cadastro
+            {isReturningUser ? 'Voltar ao login' : 'Voltar ao cadastro'}
           </button>
           
           <div className="text-center">
@@ -227,7 +271,10 @@ const DocumentUploadForm = () => {
               Verificação de Documentos
             </h1>
             <p className="text-gray-600 mb-6">
-              Envie os documentos obrigatórios para verificar sua empresa
+              {isReturningUser 
+                ? 'Seus documentos estão em análise. Aguarde a confirmação por email.'
+                : 'Envie os documentos obrigatórios para verificar sua empresa'
+              }
             </p>
             
             <div className="max-w-md mx-auto">
@@ -239,6 +286,23 @@ const DocumentUploadForm = () => {
             </div>
           </div>
         </div>
+
+        {isReturningUser && (
+          <Card className="mb-6 bg-amber-50 border-amber-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-3">
+                <Clock className="w-6 h-6 text-amber-600" />
+                <div>
+                  <h3 className="font-semibold text-amber-800">Documentos em análise</h3>
+                  <p className="text-sm text-amber-600">
+                    Seus documentos foram enviados e estão sendo verificados pela nossa equipe. 
+                    Você receberá um email com o resultado em até 24 horas úteis.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {renderUploadArea(
@@ -264,19 +328,26 @@ const DocumentUploadForm = () => {
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
               <h3 className="text-lg font-semibold text-gray-800">
-                Próximos passos
+                {isReturningUser ? 'Status da verificação' : 'Próximos passos'}
               </h3>
               <p className="text-gray-600">
-                Após o envio dos documentos, nossa equipe analisará em até 24 horas úteis.
-                Você receberá um email com o resultado da verificação.
+                {isReturningUser 
+                  ? 'Nossa equipe está analisando seus documentos. Você pode acompanhar o status por email ou fazer login novamente para verificar.'
+                  : 'Após o envio dos documentos, nossa equipe analisará em até 24 horas úteis. Você receberá um email com o resultado da verificação.'
+                }
               </p>
               
               <Button
-                onClick={handleFinish}
-                disabled={!canFinish}
+                onClick={isReturningUser ? () => navigate('/login') : handleFinish}
+                disabled={!canFinish && !isReturningUser}
                 className="h-12 px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {canFinish ? 'Finalizar Verificação' : `Envie ${3 - documentsUploaded} documento(s) restante(s)`}
+                {isReturningUser 
+                  ? 'Aguardar verificação'
+                  : canFinish 
+                  ? 'Finalizar verificação' 
+                  : `Envie ${3 - documentsUploaded} documento(s) restante(s)`
+                }
               </Button>
             </div>
           </CardContent>
