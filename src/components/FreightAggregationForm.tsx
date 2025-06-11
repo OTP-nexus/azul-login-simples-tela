@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Truck, User, Plus } from 'lucide-react';
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Truck, User, Plus, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,7 +21,7 @@ interface Collaborator {
 }
 
 interface FreightFormData {
-  collaborator_id: string;
+  collaborator_ids: string[];
   origin_city: string;
   origin_state: string;
   destination_city: string;
@@ -42,7 +42,7 @@ const FreightAggregationForm = () => {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [loadingCollaborators, setLoadingCollaborators] = useState(true);
   const [formData, setFormData] = useState<FreightFormData>({
-    collaborator_id: '',
+    collaborator_ids: [],
     origin_city: '',
     origin_state: '',
     destination_city: '',
@@ -106,18 +106,33 @@ const FreightAggregationForm = () => {
     fetchCollaborators();
   }, [user]);
 
-  const handleInputChange = (field: keyof FreightFormData, value: string) => {
+  const handleInputChange = (field: keyof FreightFormData, value: string | string[]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
+  const handleCollaboratorToggle = (collaboratorId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      collaborator_ids: prev.collaborator_ids.includes(collaboratorId)
+        ? prev.collaborator_ids.filter(id => id !== collaboratorId)
+        : [...prev.collaborator_ids, collaboratorId]
+    }));
+  };
+
+  const getSelectedCollaborators = () => {
+    return collaborators.filter(collaborator => 
+      formData.collaborator_ids.includes(collaborator.id)
+    );
+  };
+
   const validateForm = () => {
-    if (!formData.collaborator_id) {
+    if (formData.collaborator_ids.length === 0) {
       toast({
         title: "Erro de validação",
-        description: "Selecione um colaborador responsável",
+        description: "Selecione pelo menos um colaborador responsável",
         variant: "destructive"
       });
       return false;
@@ -175,12 +190,12 @@ const FreightAggregationForm = () => {
       
       toast({
         title: "Sucesso!",
-        description: "Solicitação de frete de agregamento criada com sucesso"
+        description: `Solicitação de frete criada com ${formData.collaborator_ids.length} colaborador(es) responsável(is)`
       });
 
       // Limpar formulário
       setFormData({
-        collaborator_id: '',
+        collaborator_ids: [],
         origin_city: '',
         origin_state: '',
         destination_city: '',
@@ -254,7 +269,7 @@ const FreightAggregationForm = () => {
               </p>
               <div className="flex gap-4 justify-center">
                 <Button
-                  onClick={() => navigate('/collaborators')}
+                  onClick={() => navigate('/collaborator-registration')}
                   className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -273,6 +288,8 @@ const FreightAggregationForm = () => {
       </div>
     );
   }
+
+  const selectedCollaborators = getSelectedCollaborators();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
@@ -309,33 +326,68 @@ const FreightAggregationForm = () => {
               </div>
               <div>
                 <CardTitle className="text-xl text-gray-800">Nova Solicitação de Frete</CardTitle>
-                <CardDescription>Preencha as informações para solicitar um frete de agregamento</CardDescription>
+                <CardDescription>Selecione os colaboradores responsáveis e preencha as informações do frete</CardDescription>
               </div>
             </div>
           </CardHeader>
           
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Colaborador Responsável */}
-              <div className="space-y-2">
-                <Label htmlFor="collaborator" className="text-sm font-medium text-gray-700">
-                  Colaborador Responsável *
+              {/* Seleção de Colaboradores */}
+              <div className="space-y-4">
+                <Label className="text-sm font-medium text-gray-700">
+                  Colaboradores Responsáveis *
                 </Label>
-                <Select
-                  value={formData.collaborator_id}
-                  onValueChange={(value) => handleInputChange('collaborator_id', value)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione o colaborador responsável" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {collaborators.map((collaborator) => (
-                      <SelectItem key={collaborator.id} value={collaborator.id}>
-                        {collaborator.name} - {collaborator.sector}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <p className="text-sm text-gray-600">
+                  Selecione um ou mais colaboradores que serão responsáveis por este pedido de frete.
+                </p>
+                
+                {/* Lista de colaboradores para seleção */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto border rounded-lg p-4">
+                  {collaborators.map((collaborator) => (
+                    <div key={collaborator.id} className="flex items-center space-x-3 p-2 border rounded-lg hover:bg-gray-50">
+                      <Checkbox
+                        id={collaborator.id}
+                        checked={formData.collaborator_ids.includes(collaborator.id)}
+                        onCheckedChange={() => handleCollaboratorToggle(collaborator.id)}
+                      />
+                      <label
+                        htmlFor={collaborator.id}
+                        className="flex-1 cursor-pointer"
+                      >
+                        <div className="font-medium text-gray-800">{collaborator.name}</div>
+                        <div className="text-sm text-gray-600">{collaborator.sector}</div>
+                        <div className="text-xs text-gray-500">{collaborator.phone}</div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Colaboradores selecionados */}
+                {selectedCollaborators.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-green-700">
+                      Colaboradores Selecionados ({selectedCollaborators.length})
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedCollaborators.map((collaborator) => (
+                        <div
+                          key={collaborator.id}
+                          className="flex items-center space-x-2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm"
+                        >
+                          <span>{collaborator.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCollaboratorToggle(collaborator.id)}
+                            className="hover:bg-green-200 rounded-full p-1"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Origem */}
