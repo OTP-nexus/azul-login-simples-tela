@@ -2,10 +2,14 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, Car, ArrowLeft } from 'lucide-react';
+import { Truck, Building2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const UserTypeSelection = () => {
+interface CompanyTypeSelectionProps {
+  onSelect: (isTransporter: boolean) => void;
+}
+
+const CompanyTypeSelection: React.FC<CompanyTypeSelectionProps> = ({ onSelect }) => {
   const navigate = useNavigate();
 
   return (
@@ -14,7 +18,7 @@ const UserTypeSelection = () => {
         <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="space-y-4 text-center pb-6">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/register')}
               className="absolute left-6 top-6 text-gray-600 hover:text-gray-800 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -23,11 +27,11 @@ const UserTypeSelection = () => {
             <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-blue-700 rounded-full flex items-center justify-center shadow-lg">
               <Building2 className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-3xl font-bold text-gray-800">
-              Escolha o tipo de cadastro
+            <CardTitle className="text-2xl font-bold text-gray-800">
+              Tipo de Empresa
             </CardTitle>
             <CardDescription className="text-gray-600">
-              Selecione como você deseja se cadastrar
+              Selecione o tipo da sua empresa
             </CardDescription>
           </CardHeader>
           
@@ -35,34 +39,34 @@ const UserTypeSelection = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card 
                 className="cursor-pointer border-2 border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all duration-200 group"
-                onClick={() => navigate('/register/company')}
+                onClick={() => onSelect(true)}
               >
                 <CardContent className="p-6 text-center">
-                  <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200">
-                    <Building2 className="w-8 h-8 text-white" />
+                  <div className="mx-auto w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200">
+                    <Truck className="w-8 h-8 text-white" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                    Empresa
+                    Transportadora
                   </h3>
                   <p className="text-gray-600 text-sm">
-                    Cadastre sua empresa para contratar ou oferecer serviços de transporte
+                    Empresa que oferece serviços de transporte e logística
                   </p>
                 </CardContent>
               </Card>
 
               <Card 
                 className="cursor-pointer border-2 border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all duration-200 group"
-                onClick={() => navigate('/register/driver')}
+                onClick={() => onSelect(false)}
               >
                 <CardContent className="p-6 text-center">
-                  <div className="mx-auto w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200">
-                    <Car className="w-8 h-8 text-white" />
+                  <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200">
+                    <Building2 className="w-8 h-8 text-white" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                    Motorista
+                    Empresa Cliente
                   </h3>
                   <p className="text-gray-600 text-sm">
-                    Cadastre-se como motorista para oferecer seus serviços de transporte
+                    Empresa que contrata serviços de transporte
                   </p>
                 </CardContent>
               </Card>
@@ -87,4 +91,4 @@ const UserTypeSelection = () => {
   );
 };
 
-export default UserTypeSelection;
+export default CompanyTypeSelection;

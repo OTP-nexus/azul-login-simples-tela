@@ -20,6 +20,7 @@ export type Database = {
           contact_name: string
           created_at: string | null
           id: string
+          is_transporter: boolean
           neighborhood: string
           number: string
           phone: string
@@ -38,6 +39,7 @@ export type Database = {
           contact_name: string
           created_at?: string | null
           id?: string
+          is_transporter?: boolean
           neighborhood: string
           number: string
           phone: string
@@ -56,6 +58,7 @@ export type Database = {
           contact_name?: string
           created_at?: string | null
           id?: string
+          is_transporter?: boolean
           neighborhood?: string
           number?: string
           phone?: string

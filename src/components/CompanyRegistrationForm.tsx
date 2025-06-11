@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +29,7 @@ const CompanyRegistrationForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoadingCep, setIsLoadingCep] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTransporter, setIsTransporter] = useState(false);
   
   const [formData, setFormData] = useState({
     companyName: '',
@@ -50,6 +50,16 @@ const CompanyRegistrationForm = () => {
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  // Verificar se o tipo da empresa foi selecionado
+  useEffect(() => {
+    const companyType = localStorage.getItem('companyType');
+    if (companyType === null) {
+      navigate('/register/company');
+      return;
+    }
+    setIsTransporter(companyType === 'true');
+  }, [navigate]);
 
   const totalSteps = 3;
   const progressPercentage = (currentStep / totalSteps) * 100;
@@ -188,6 +198,9 @@ const CompanyRegistrationForm = () => {
         return;
       }
 
+      // Limpar o tipo da empresa do localStorage após o cadastro
+      localStorage.removeItem('companyType');
+
       toast({
         title: "Cadastro realizado!",
         description: "Redirecionando para verificação de documentos...",
@@ -213,6 +226,10 @@ const CompanyRegistrationForm = () => {
       case 3: return 'Acesso';
       default: return 'Cadastro';
     }
+  };
+
+  const getCompanyTypeDisplay = () => {
+    return isTransporter ? 'Transportadora' : 'Empresa Cliente';
   };
 
   const renderStep1 = () => (
@@ -542,7 +559,7 @@ const CompanyRegistrationForm = () => {
         <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="space-y-4 text-center pb-6">
             <button
-              onClick={() => navigate('/register')}
+              onClick={() => navigate('/register/company')}
               className="absolute left-6 top-6 text-gray-600 hover:text-gray-800 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -555,7 +572,7 @@ const CompanyRegistrationForm = () => {
               {getStepTitle()}
             </CardTitle>
             <CardDescription className="text-gray-600">
-              Etapa {currentStep} de {totalSteps}
+              {getCompanyTypeDisplay()} - Etapa {currentStep} de {totalSteps}
             </CardDescription>
             
             <div className="w-full px-4">
