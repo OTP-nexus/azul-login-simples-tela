@@ -25,6 +25,7 @@ const CompanyRegistrationForm = () => {
     contactName: '',
     email: '',
     phone: '',
+    confirmPhone: '',
     cnpj: '',
     cep: '',
     street: '',
@@ -181,6 +182,25 @@ const CompanyRegistrationForm = () => {
             type="tel"
             placeholder="(11) 99999-9999"
             value={formData.phone}
+            onChange={handleInputChange}
+            className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+            required
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="confirmPhone" className="text-sm font-medium text-gray-700">
+          Confirmar telefone
+        </Label>
+        <div className="relative">
+          <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <Input
+            id="confirmPhone"
+            name="confirmPhone"
+            type="tel"
+            placeholder="(11) 99999-9999"
+            value={formData.confirmPhone}
             onChange={handleInputChange}
             className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             required
