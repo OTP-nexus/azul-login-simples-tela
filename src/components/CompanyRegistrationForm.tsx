@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,7 +204,7 @@ const CompanyRegistrationForm = () => {
         role: 'company'
       };
 
-      const { data: authData, error: authError } = await signUp(formData.email, formData.password, userData);
+      const { error: authError } = await signUp(formData.email, formData.password, userData);
       
       if (authError) {
         console.error('Erro no cadastro:', authError);
