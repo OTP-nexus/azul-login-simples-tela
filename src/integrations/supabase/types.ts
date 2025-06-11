@@ -264,11 +264,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_cnh_exists: {
+        Args: { cnh_param: string }
+        Returns: boolean
+      }
+      check_cnpj_exists: {
+        Args: { cnpj_param: string }
+        Returns: boolean
+      }
+      check_company_phone_exists: {
+        Args: { phone_param: string }
+        Returns: boolean
+      }
+      check_cpf_exists: {
+        Args: { cpf_param: string }
+        Returns: boolean
+      }
       check_documents_complete: {
         Args: {
           user_role_param: Database["public"]["Enums"]["user_role"]
           verification_record: Database["public"]["Tables"]["document_verifications"]["Row"]
         }
+        Returns: boolean
+      }
+      check_email_exists: {
+        Args: { email_param: string }
         Returns: boolean
       }
     }

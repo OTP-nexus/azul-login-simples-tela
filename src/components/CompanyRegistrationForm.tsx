@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Eye, EyeOff, Mail, Lock, User, Phone, FileText, Building2, ArrowLeft, ArrowRight, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ValidatedInput } from './ValidatedInput';
+import { useValidation } from '@/hooks/useValidation';
+import { useAuth } from '@/hooks/useAuth';
+import { formatCNPJ, formatPhone, formatCEP, cleanFormatting } from '@/utils/formatters';
+import { useToast } from '@/hooks/use-toast';
 
 interface AddressData {
   logradouro: string;
@@ -16,9 +22,15 @@ interface AddressData {
 
 const CompanyRegistrationForm = () => {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
+  const { validateEmail, validateCNPJ, validateCompanyPhone } = useValidation();
+  const { toast } = useToast();
+  
   const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoadingCep, setIsLoadingCep] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const [formData, setFormData] = useState({
     companyName: '',
     contactName: '',
@@ -37,26 +49,36 @@ const CompanyRegistrationForm = () => {
     confirmPassword: ''
   });
 
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
   const totalSteps = 3;
   const progressPercentage = (currentStep / totalSteps) * 100;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear validation error when user starts typing
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const fetchAddressByCep = async (cep: string) => {
-    if (cep.length !== 8) return;
+    const cleanCep = cleanFormatting(cep);
+    if (cleanCep.length !== 8) return;
     
     setIsLoadingCep(true);
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
       const data: AddressData = await response.json();
       
       if (!data.logradouro) {
-        console.error('CEP não encontrado');
+        toast({
+          title: "CEP não encontrado",
+          description: "Verifique o CEP digitado",
+          variant: "destructive"
+        });
         return;
       }
       
@@ -69,22 +91,67 @@ const CompanyRegistrationForm = () => {
       }));
     } catch (error) {
       console.error('Erro ao buscar CEP:', error);
+      toast({
+        title: "Erro ao buscar CEP",
+        description: "Tente novamente",
+        variant: "destructive"
+      });
     } finally {
       setIsLoadingCep(false);
     }
   };
 
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const cep = e.target.value.replace(/\D/g, '');
-    setFormData(prev => ({ ...prev, cep }));
+    const formattedCep = formatCEP(e.target.value);
+    setFormData(prev => ({ ...prev, cep: formattedCep }));
     
-    if (cep.length === 8) {
-      fetchAddressByCep(cep);
+    const cleanCep = cleanFormatting(formattedCep);
+    if (cleanCep.length === 8) {
+      fetchAddressByCep(formattedCep);
     }
   };
 
-  const handleNextStep = () => {
-    if (currentStep < totalSteps) {
+  const validateStep = async (step: number): Promise<boolean> => {
+    const errors: Record<string, string> = {};
+
+    if (step === 1) {
+      if (!formData.companyName) errors.companyName = 'Nome da empresa é obrigatório';
+      if (!formData.contactName) errors.contactName = 'Nome do responsável é obrigatório';
+      if (!formData.email) errors.email = 'Email é obrigatório';
+      if (!formData.phone) errors.phone = 'Telefone é obrigatório';
+      if (!formData.confirmPhone) errors.confirmPhone = 'Confirmação de telefone é obrigatória';
+      if (!formData.cnpj) errors.cnpj = 'CNPJ é obrigatório';
+
+      if (formData.phone !== formData.confirmPhone) {
+        errors.confirmPhone = 'Telefones não conferem';
+      }
+    }
+
+    if (step === 2) {
+      if (!formData.cep) errors.cep = 'CEP é obrigatório';
+      if (!formData.street) errors.street = 'Rua é obrigatória';
+      if (!formData.number) errors.number = 'Número é obrigatório';
+      if (!formData.neighborhood) errors.neighborhood = 'Bairro é obrigatório';
+      if (!formData.city) errors.city = 'Cidade é obrigatória';
+      if (!formData.state) errors.state = 'Estado é obrigatório';
+    }
+
+    if (step === 3) {
+      if (!formData.password) errors.password = 'Senha é obrigatória';
+      if (formData.password.length < 6) errors.password = 'Senha deve ter pelo menos 6 caracteres';
+      if (!formData.confirmPassword) errors.confirmPassword = 'Confirmação de senha é obrigatória';
+      if (formData.password !== formData.confirmPassword) {
+        errors.confirmPassword = 'Senhas não conferem';
+      }
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleNextStep = async () => {
+    const isValid = await validateStep(currentStep);
+    if (isValid && currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -95,13 +162,48 @@ const CompanyRegistrationForm = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Company registration:', formData);
-    // Simular cadastro bem-sucedido
-    alert('Cadastro realizado com sucesso! Redirecionando para verificação de documentos...');
-    // Redirecionar para a tela de verificação de documentos
-    navigate('/document-verification');
+    
+    const isValid = await validateStep(3);
+    if (!isValid) return;
+
+    setIsSubmitting(true);
+    
+    try {
+      const userData = {
+        full_name: formData.contactName,
+        role: 'company'
+      };
+
+      const { error } = await signUp(formData.email, formData.password, userData);
+      
+      if (error) {
+        console.error('Erro no cadastro:', error);
+        toast({
+          title: "Erro no cadastro",
+          description: error.message || "Tente novamente",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Cadastro realizado!",
+        description: "Redirecionando para verificação de documentos...",
+      });
+      
+      navigate('/document-verification');
+    } catch (error) {
+      console.error('Erro no cadastro:', error);
+      toast({
+        title: "Erro no cadastro",
+        description: "Tente novamente",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getStepTitle = () => {
@@ -117,7 +219,7 @@ const CompanyRegistrationForm = () => {
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="companyName" className="text-sm font-medium text-gray-700">
-          Nome da empresa
+          Nome da empresa *
         </Label>
         <div className="relative">
           <Building2 className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -132,11 +234,14 @@ const CompanyRegistrationForm = () => {
             required
           />
         </div>
+        {validationErrors.companyName && (
+          <p className="text-sm text-red-600">{validationErrors.companyName}</p>
+        )}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="contactName" className="text-sm font-medium text-gray-700">
-          Nome do responsável
+          Nome do responsável *
         </Label>
         <div className="relative">
           <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -151,49 +256,47 @@ const CompanyRegistrationForm = () => {
             required
           />
         </div>
+        {validationErrors.contactName && (
+          <p className="text-sm text-red-600">{validationErrors.contactName}</p>
+        )}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-          Email corporativo
-        </Label>
-        <div className="relative">
-          <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            placeholder="Digite o email da empresa"
-            value={formData.email}
-            onChange={handleInputChange}
-            className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-      </div>
+      <ValidatedInput
+        id="email"
+        name="email"
+        type="email"
+        label="Email corporativo"
+        value={formData.email}
+        onChange={handleInputChange}
+        onValidate={validateEmail}
+        placeholder="Digite o email da empresa"
+        required
+        icon={<Mail className="h-4 w-4" />}
+      />
+      {validationErrors.email && (
+        <p className="text-sm text-red-600">{validationErrors.email}</p>
+      )}
 
-      <div className="space-y-2">
-        <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
-          Telefone
-        </Label>
-        <div className="relative">
-          <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            id="phone"
-            name="phone"
-            type="tel"
-            placeholder="(11) 99999-9999"
-            value={formData.phone}
-            onChange={handleInputChange}
-            className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-      </div>
+      <ValidatedInput
+        id="phone"
+        name="phone"
+        type="tel"
+        label="Telefone"
+        value={formData.phone}
+        onChange={handleInputChange}
+        onValidate={validateCompanyPhone}
+        formatter={formatPhone}
+        placeholder="(11) 99999-9999"
+        required
+        icon={<Phone className="h-4 w-4" />}
+      />
+      {validationErrors.phone && (
+        <p className="text-sm text-red-600">{validationErrors.phone}</p>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="confirmPhone" className="text-sm font-medium text-gray-700">
-          Confirmar telefone
+          Confirmar telefone *
         </Label>
         <div className="relative">
           <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -202,32 +305,32 @@ const CompanyRegistrationForm = () => {
             name="confirmPhone"
             type="tel"
             placeholder="(11) 99999-9999"
-            value={formData.confirmPhone}
-            onChange={handleInputChange}
+            value={formatPhone(formData.confirmPhone)}
+            onChange={(e) => setFormData(prev => ({ ...prev, confirmPhone: cleanFormatting(e.target.value) }))}
             className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             required
           />
         </div>
+        {validationErrors.confirmPhone && (
+          <p className="text-sm text-red-600">{validationErrors.confirmPhone}</p>
+        )}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="cnpj" className="text-sm font-medium text-gray-700">
-          CNPJ
-        </Label>
-        <div className="relative">
-          <FileText className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            id="cnpj"
-            name="cnpj"
-            type="text"
-            placeholder="00.000.000/0000-00"
-            value={formData.cnpj}
-            onChange={handleInputChange}
-            className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-      </div>
+      <ValidatedInput
+        id="cnpj"
+        name="cnpj"
+        label="CNPJ"
+        value={formData.cnpj}
+        onChange={handleInputChange}
+        onValidate={validateCNPJ}
+        formatter={formatCNPJ}
+        placeholder="00.000.000/0000-00"
+        required
+        icon={<FileText className="h-4 w-4" />}
+      />
+      {validationErrors.cnpj && (
+        <p className="text-sm text-red-600">{validationErrors.cnpj}</p>
+      )}
     </div>
   );
 
@@ -235,7 +338,7 @@ const CompanyRegistrationForm = () => {
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="cep" className="text-sm font-medium text-gray-700">
-          CEP
+          CEP *
         </Label>
         <div className="relative">
           <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -247,7 +350,7 @@ const CompanyRegistrationForm = () => {
             value={formData.cep}
             onChange={handleCepChange}
             className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            maxLength={8}
+            maxLength={9}
             required
           />
           {isLoadingCep && (
@@ -256,11 +359,14 @@ const CompanyRegistrationForm = () => {
             </div>
           )}
         </div>
+        {validationErrors.cep && (
+          <p className="text-sm text-red-600">{validationErrors.cep}</p>
+        )}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="street" className="text-sm font-medium text-gray-700">
-          Rua
+          Rua *
         </Label>
         <Input
           id="street"
@@ -272,12 +378,15 @@ const CompanyRegistrationForm = () => {
           className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
           required
         />
+        {validationErrors.street && (
+          <p className="text-sm text-red-600">{validationErrors.street}</p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="number" className="text-sm font-medium text-gray-700">
-            Número
+            Número *
           </Label>
           <Input
             id="number"
@@ -289,6 +398,9 @@ const CompanyRegistrationForm = () => {
             className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             required
           />
+          {validationErrors.number && (
+            <p className="text-sm text-red-600">{validationErrors.number}</p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -309,7 +421,7 @@ const CompanyRegistrationForm = () => {
 
       <div className="space-y-2">
         <Label htmlFor="neighborhood" className="text-sm font-medium text-gray-700">
-          Bairro
+          Bairro *
         </Label>
         <Input
           id="neighborhood"
@@ -321,12 +433,15 @@ const CompanyRegistrationForm = () => {
           className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
           required
         />
+        {validationErrors.neighborhood && (
+          <p className="text-sm text-red-600">{validationErrors.neighborhood}</p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="city" className="text-sm font-medium text-gray-700">
-            Cidade
+            Cidade *
           </Label>
           <Input
             id="city"
@@ -338,11 +453,14 @@ const CompanyRegistrationForm = () => {
             className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             required
           />
+          {validationErrors.city && (
+            <p className="text-sm text-red-600">{validationErrors.city}</p>
+          )}
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="state" className="text-sm font-medium text-gray-700">
-            Estado
+            Estado *
           </Label>
           <Input
             id="state"
@@ -355,6 +473,9 @@ const CompanyRegistrationForm = () => {
             maxLength={2}
             required
           />
+          {validationErrors.state && (
+            <p className="text-sm text-red-600">{validationErrors.state}</p>
+          )}
         </div>
       </div>
     </div>
@@ -364,7 +485,7 @@ const CompanyRegistrationForm = () => {
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-          Senha
+          Senha *
         </Label>
         <div className="relative">
           <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -386,11 +507,14 @@ const CompanyRegistrationForm = () => {
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
+        {validationErrors.password && (
+          <p className="text-sm text-red-600">{validationErrors.password}</p>
+        )}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
-          Confirmar senha
+          Confirmar senha *
         </Label>
         <div className="relative">
           <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -405,6 +529,9 @@ const CompanyRegistrationForm = () => {
             required
           />
         </div>
+        {validationErrors.confirmPassword && (
+          <p className="text-sm text-red-600">{validationErrors.confirmPassword}</p>
+        )}
       </div>
     </div>
   );
@@ -449,6 +576,7 @@ const CompanyRegistrationForm = () => {
                     variant="outline"
                     onClick={handlePrevStep}
                     className="flex-1 h-12 border-gray-300 text-gray-700 hover:bg-gray-50"
+                    disabled={isSubmitting}
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Voltar
@@ -460,6 +588,7 @@ const CompanyRegistrationForm = () => {
                     type="button"
                     onClick={handleNextStep}
                     className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] shadow-lg"
+                    disabled={isSubmitting}
                   >
                     Próximo
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -468,8 +597,9 @@ const CompanyRegistrationForm = () => {
                   <Button
                     type="submit"
                     className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] shadow-lg"
+                    disabled={isSubmitting}
                   >
-                    Criar conta
+                    {isSubmitting ? 'Criando conta...' : 'Criar conta'}
                   </Button>
                 )}
               </div>
