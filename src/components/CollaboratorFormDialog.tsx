@@ -163,22 +163,22 @@ const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess }: CollaboratorForm
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] w-[95%] max-w-[95%] sm:w-full mx-auto">
         <DialogHeader>
-          <div className="mx-auto w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg mb-4">
-            <User className="w-6 h-6 text-white" />
+          <div className="mx-auto w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg mb-3 sm:mb-4">
+            <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
-          <DialogTitle className="text-xl font-bold text-gray-800 text-center">
+          <DialogTitle className="text-lg sm:text-xl font-bold text-gray-800 text-center">
             Novo Colaborador
           </DialogTitle>
-          <DialogDescription className="text-gray-600 text-center">
+          <DialogDescription className="text-sm sm:text-base text-gray-600 text-center px-2">
             Preencha as informações do colaborador responsável pelo setor
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           {/* Nome */}
-          <div className="space-y-2">
+          <div className="space-y-1 sm:space-y-2">
             <Label htmlFor="name" className="text-sm font-medium text-gray-700">
               Nome Completo *
             </Label>
@@ -188,13 +188,13 @@ const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess }: CollaboratorForm
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
               placeholder="Digite o nome completo"
-              className="w-full"
+              className="w-full h-10 sm:h-10 text-sm sm:text-base"
               required
             />
           </div>
 
           {/* Setor */}
-          <div className="space-y-2">
+          <div className="space-y-1 sm:space-y-2">
             <Label htmlFor="sector" className="text-sm font-medium text-gray-700">
               Setor Responsável *
             </Label>
@@ -204,13 +204,13 @@ const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess }: CollaboratorForm
               value={formData.sector}
               onChange={(e) => handleInputChange('sector', e.target.value)}
               placeholder="Ex: Logística, Comercial, Financeiro"
-              className="w-full"
+              className="w-full h-10 sm:h-10 text-sm sm:text-base"
               required
             />
           </div>
 
           {/* Telefone */}
-          <div className="space-y-2">
+          <div className="space-y-1 sm:space-y-2">
             <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
               Telefone de Contato *
             </Label>
@@ -220,13 +220,13 @@ const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess }: CollaboratorForm
               value={formData.phone}
               onChange={(e) => handleInputChange('phone', e.target.value)}
               placeholder="(11) 99999-9999"
-              className="w-full"
+              className="w-full h-10 sm:h-10 text-sm sm:text-base"
               required
             />
           </div>
 
           {/* Email */}
-          <div className="space-y-2">
+          <div className="space-y-1 sm:space-y-2">
             <Label htmlFor="email" className="text-sm font-medium text-gray-700">
               Email (Opcional)
             </Label>
@@ -236,17 +236,17 @@ const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess }: CollaboratorForm
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
               placeholder="colaborador@empresa.com"
-              className="w-full"
+              className="w-full h-10 sm:h-10 text-sm sm:text-base"
             />
           </div>
 
           {/* Botões */}
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-2 sm:gap-3 pt-3 sm:pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={handleClose}
-              className="flex-1"
+              className="flex-1 h-10 sm:h-10 text-sm sm:text-base"
               disabled={loading}
             >
               Cancelar
@@ -254,14 +254,14 @@ const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess }: CollaboratorForm
             <Button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+              className="flex-1 h-10 sm:h-10 text-sm sm:text-base bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
               ) : (
                 <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Cadastrar
+                  <Plus className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span>Cadastrar</span>
                 </>
               )}
             </Button>
