@@ -1,492 +1,269 @@
-
-import React, { useState } from 'react';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Eye, EyeOff, Mail, Lock, User, Phone, FileText, Building2, ArrowLeft, ArrowRight, MapPin } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { Building, Mail, Phone, User } from "lucide-react";
 
-interface AddressData {
-  logradouro: string;
-  bairro: string;
-  localidade: string;
-  uf: string;
+interface FormData {
+  companyName: string;
+  cnpj: string;
+  email: string;
+  phone: string;
+  confirmPhone: string;
+  address: string;
+  password: string;
+  confirmPassword: string;
+  responsibleName: string;
 }
 
 const CompanyRegistrationForm = () => {
+  const { toast } = useToast();
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoadingCep, setIsLoadingCep] = useState(false);
-  const [formData, setFormData] = useState({
-    companyName: '',
-    contactName: '',
-    email: '',
-    phone: '',
-    confirmPhone: '',
-    cnpj: '',
-    cep: '',
-    street: '',
-    number: '',
-    complement: '',
-    neighborhood: '',
-    city: '',
-    state: '',
-    password: '',
-    confirmPassword: ''
+  
+  const [formData, setFormData] = useState<FormData>({
+    companyName: "",
+    cnpj: "",
+    email: "",
+    phone: "",
+    confirmPhone: "",
+    address: "",
+    password: "",
+    confirmPassword: "",
+    responsibleName: "",
   });
 
-  const totalSteps = 3;
-  const progressPercentage = (currentStep / totalSteps) * 100;
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const fetchAddressByCep = async (cep: string) => {
-    if (cep.length !== 8) return;
-    
-    setIsLoadingCep(true);
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const data: AddressData = await response.json();
-      
-      if (!data.logradouro) {
-        console.error('CEP não encontrado');
-        return;
-      }
-      
-      setFormData(prev => ({
-        ...prev,
-        street: data.logradouro,
-        neighborhood: data.bairro,
-        city: data.localidade,
-        state: data.uf
-      }));
-    } catch (error) {
-      console.error('Erro ao buscar CEP:', error);
-    } finally {
-      setIsLoadingCep(false);
-    }
-  };
-
-  const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const cep = e.target.value.replace(/\D/g, '');
-    setFormData(prev => ({ ...prev, cep }));
-    
-    if (cep.length === 8) {
-      fetchAddressByCep(cep);
-    }
-  };
-
-  const handleNextStep = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handlePrevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Company registration:', formData);
-    // Aqui você implementaria a lógica de cadastro
-  };
-
-  const getStepTitle = () => {
-    switch (currentStep) {
-      case 1: return 'Dados da Empresa';
-      case 2: return 'Endereço';
-      case 3: return 'Acesso';
-      default: return 'Cadastro';
+    
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Erro de validação",
+        description: "As senhas não coincidem.",
+        variant: "destructive",
+      });
+      return;
     }
+
+    if (formData.phone !== formData.confirmPhone) {
+      toast({
+        title: "Erro de validação", 
+        description: "Os telefones não coincidem.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log('Form submitted:', formData);
+    
+    toast({
+      title: "Cadastro realizado com sucesso!",
+      description: "Agora você precisa enviar os documentos para verificação.",
+    });
+
+    // Redirect to document verification page
+    setTimeout(() => {
+      navigate("/document-verification");
+    }, 1500);
   };
-
-  const renderStep1 = () => (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="companyName" className="text-sm font-medium text-gray-700">
-          Nome da empresa
-        </Label>
-        <div className="relative">
-          <Building2 className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            id="companyName"
-            name="companyName"
-            type="text"
-            placeholder="Digite o nome da empresa"
-            value={formData.companyName}
-            onChange={handleInputChange}
-            className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="contactName" className="text-sm font-medium text-gray-700">
-          Nome do responsável
-        </Label>
-        <div className="relative">
-          <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            id="contactName"
-            name="contactName"
-            type="text"
-            placeholder="Digite o nome do responsável"
-            value={formData.contactName}
-            onChange={handleInputChange}
-            className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-          Email corporativo
-        </Label>
-        <div className="relative">
-          <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            placeholder="Digite o email da empresa"
-            value={formData.email}
-            onChange={handleInputChange}
-            className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
-          Telefone
-        </Label>
-        <div className="relative">
-          <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            id="phone"
-            name="phone"
-            type="tel"
-            placeholder="(11) 99999-9999"
-            value={formData.phone}
-            onChange={handleInputChange}
-            className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="confirmPhone" className="text-sm font-medium text-gray-700">
-          Confirmar telefone
-        </Label>
-        <div className="relative">
-          <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            id="confirmPhone"
-            name="confirmPhone"
-            type="tel"
-            placeholder="(11) 99999-9999"
-            value={formData.confirmPhone}
-            onChange={handleInputChange}
-            className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="cnpj" className="text-sm font-medium text-gray-700">
-          CNPJ
-        </Label>
-        <div className="relative">
-          <FileText className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            id="cnpj"
-            name="cnpj"
-            type="text"
-            placeholder="00.000.000/0000-00"
-            value={formData.cnpj}
-            onChange={handleInputChange}
-            className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderStep2 = () => (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="cep" className="text-sm font-medium text-gray-700">
-          CEP
-        </Label>
-        <div className="relative">
-          <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            id="cep"
-            name="cep"
-            type="text"
-            placeholder="00000-000"
-            value={formData.cep}
-            onChange={handleCepChange}
-            className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            maxLength={8}
-            required
-          />
-          {isLoadingCep && (
-            <div className="absolute right-3 top-3">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="street" className="text-sm font-medium text-gray-700">
-          Rua
-        </Label>
-        <Input
-          id="street"
-          name="street"
-          type="text"
-          placeholder="Nome da rua"
-          value={formData.street}
-          onChange={handleInputChange}
-          className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="number" className="text-sm font-medium text-gray-700">
-            Número
-          </Label>
-          <Input
-            id="number"
-            name="number"
-            type="text"
-            placeholder="123"
-            value={formData.number}
-            onChange={handleInputChange}
-            className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="complement" className="text-sm font-medium text-gray-700">
-            Complemento
-          </Label>
-          <Input
-            id="complement"
-            name="complement"
-            type="text"
-            placeholder="Apto, sala..."
-            value={formData.complement}
-            onChange={handleInputChange}
-            className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="neighborhood" className="text-sm font-medium text-gray-700">
-          Bairro
-        </Label>
-        <Input
-          id="neighborhood"
-          name="neighborhood"
-          type="text"
-          placeholder="Nome do bairro"
-          value={formData.neighborhood}
-          onChange={handleInputChange}
-          className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="city" className="text-sm font-medium text-gray-700">
-            Cidade
-          </Label>
-          <Input
-            id="city"
-            name="city"
-            type="text"
-            placeholder="Nome da cidade"
-            value={formData.city}
-            onChange={handleInputChange}
-            className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="state" className="text-sm font-medium text-gray-700">
-            Estado
-          </Label>
-          <Input
-            id="state"
-            name="state"
-            type="text"
-            placeholder="UF"
-            value={formData.state}
-            onChange={handleInputChange}
-            className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            maxLength={2}
-            required
-          />
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderStep3 = () => (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-          Senha
-        </Label>
-        <div className="relative">
-          <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            id="password"
-            name="password"
-            type={showPassword ? "text" : "password"}
-            placeholder="Digite sua senha"
-            value={formData.password}
-            onChange={handleInputChange}
-            className="pl-10 pr-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
-          Confirmar senha
-        </Label>
-        <div className="relative">
-          <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            placeholder="Confirme sua senha"
-            value={formData.confirmPassword}
-            onChange={handleInputChange}
-            className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-      </div>
-    </div>
-  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader className="space-y-4 text-center pb-6">
-            <button
-              onClick={() => navigate('/register')}
-              className="absolute left-6 top-6 text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            
-            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-blue-700 rounded-full flex items-center justify-center shadow-lg">
-              <Building2 className="w-8 h-8 text-white" />
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <div className="bg-blue-100 p-3 rounded-full">
+              <Building className="h-8 w-8 text-blue-600" />
             </div>
-            <CardTitle className="text-2xl font-bold text-gray-800">
-              {getStepTitle()}
-            </CardTitle>
-            <CardDescription className="text-gray-600">
-              Etapa {currentStep} de {totalSteps}
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Cadastro de Empresa
+          </h1>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Preencha os dados da sua empresa para realizar o cadastro na plataforma.
+          </p>
+        </div>
+
+        {/* Registration Form */}
+        <Card className="shadow-lg rounded-lg">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-2xl">Informações da Empresa</CardTitle>
+            <CardDescription>
+              Preencha os campos abaixo para cadastrar sua empresa.
             </CardDescription>
-            
-            <div className="w-full px-4">
-              <Progress value={progressPercentage} className="h-2" />
-            </div>
           </CardHeader>
-          
-          <CardContent className="space-y-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {currentStep === 1 && renderStep1()}
-              {currentStep === 2 && renderStep2()}
-              {currentStep === 3 && renderStep3()}
-              
-              <div className="flex justify-between gap-4">
-                {currentStep > 1 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handlePrevStep}
-                    className="flex-1 h-12 border-gray-300 text-gray-700 hover:bg-gray-50"
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Voltar
-                  </Button>
-                )}
-                
-                {currentStep < totalSteps ? (
-                  <Button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] shadow-lg"
-                  >
-                    Próximo
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                ) : (
-                  <Button
-                    type="submit"
-                    className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] shadow-lg"
-                  >
-                    Criar conta
-                  </Button>
-                )}
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Company Name */}
+              <div className="space-y-2">
+                <Label htmlFor="companyName" className="text-gray-700">
+                  Nome da Empresa
+                </Label>
+                <Input
+                  type="text"
+                  id="companyName"
+                  name="companyName"
+                  placeholder="Digite o nome da empresa"
+                  value={formData.companyName}
+                  onChange={handleChange}
+                  required
+                />
               </div>
+
+              {/* CNPJ */}
+              <div className="space-y-2">
+                <Label htmlFor="cnpj" className="text-gray-700">
+                  CNPJ
+                </Label>
+                <Input
+                  type="text"
+                  id="cnpj"
+                  name="cnpj"
+                  placeholder="Digite o CNPJ"
+                  value={formData.cnpj}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-gray-700">
+                  Email
+                </Label>
+                <Input
+                  type="email"
+                  id="email"
+                  name="email"
+                  placeholder="Digite o email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-gray-700">
+                  Telefone
+                </Label>
+                <Input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  placeholder="Digite o telefone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              {/* Confirm Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="confirmPhone" className="text-gray-700">
+                  Confirmar Telefone
+                </Label>
+                <Input
+                  type="tel"
+                  id="confirmPhone"
+                  name="confirmPhone"
+                  placeholder="Confirme o telefone"
+                  value={formData.confirmPhone}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              {/* Address */}
+              <div className="space-y-2">
+                <Label htmlFor="address" className="text-gray-700">
+                  Endereço
+                </Label>
+                <Input
+                  type="text"
+                  id="address"
+                  name="address"
+                  placeholder="Digite o endereço"
+                  value={formData.address}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              {/* Responsible Name */}
+              <div className="space-y-2">
+                <Label htmlFor="responsibleName" className="text-gray-700">
+                  Nome do Responsável
+                </Label>
+                <Input
+                  type="text"
+                  id="responsibleName"
+                  name="responsibleName"
+                  placeholder="Digite o nome do responsável"
+                  value={formData.responsibleName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              {/* Password */}
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-gray-700">
+                  Senha
+                </Label>
+                <Input
+                  type="password"
+                  id="password"
+                  name="password"
+                  placeholder="Digite a senha"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              {/* Confirm Password */}
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-gray-700">
+                  Confirmar Senha
+                </Label>
+                <Input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  placeholder="Confirme a senha"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              {/* Submit Button */}
+              <Button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-colors">
+                Cadastrar
+              </Button>
             </form>
-            
-            <div className="text-center">
-              <span className="text-gray-600">
-                Já tem uma conta?
-              </span>
-              <button
-                type="button"
-                onClick={() => navigate('/login')}
-                className="ml-1 text-blue-600 hover:text-blue-800 font-medium transition-colors"
-              >
-                Fazer login
-              </button>
-            </div>
           </CardContent>
         </Card>
+
+        {/* Footer */}
+        <div className="text-center mt-6 text-gray-500">
+          <p>
+            Já possui uma conta? <a href="/login" className="text-blue-600 hover:underline">Entre aqui</a>
+          </p>
+        </div>
       </div>
     </div>
   );
