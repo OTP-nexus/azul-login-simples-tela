@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,11 +30,11 @@ const DocumentUploadForm = () => {
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  // Verificar se o usuário já enviou documentos
+  // Verificar se o usuário realmente tem documentos enviados (com URLs)
   const hasSubmittedDocuments = documentStatus && (
-    documentStatus.address_proof_status !== 'not_submitted' ||
-    documentStatus.cnpj_card_status !== 'not_submitted' ||
-    documentStatus.responsible_document_status !== 'not_submitted'
+    (documentStatus.address_proof_status !== 'not_submitted' && documentStatus.address_proof_url) ||
+    (documentStatus.cnpj_card_status !== 'not_submitted' && documentStatus.cnpj_card_url) ||
+    (documentStatus.responsible_document_status !== 'not_submitted' && documentStatus.responsible_document_url)
   );
 
   const handleFileSelect = (file: File, documentType: keyof UploadedFiles) => {
@@ -118,7 +117,7 @@ const DocumentUploadForm = () => {
       return;
     }
 
-    // Verificar se há documentos já vinculados ao usuário
+    // Verificar se há documentos já vinculados ao usuário (com URLs)
     if (hasSubmittedDocuments) {
       toast({
         title: "Documentos já enviados",
@@ -228,10 +227,12 @@ const DocumentUploadForm = () => {
   };
 
   const documentsSelected = Object.values(uploadedFiles).filter(file => file !== null).length;
+  
+  // Calcular progresso baseado apenas em documentos realmente enviados com URLs
   const progressPercentage = hasSubmittedDocuments 
-    ? ((documentStatus?.address_proof_status !== 'not_submitted' ? 1 : 0) +
-       (documentStatus?.cnpj_card_status !== 'not_submitted' ? 1 : 0) +
-       (documentStatus?.responsible_document_status !== 'not_submitted' ? 1 : 0)) / 3 * 100
+    ? ((documentStatus?.address_proof_url ? 1 : 0) +
+       (documentStatus?.cnpj_card_url ? 1 : 0) +
+       (documentStatus?.responsible_document_url ? 1 : 0)) / 3 * 100
     : (documentsSelected / 3) * 100;
 
   const canSubmit = !hasSubmittedDocuments && documentsSelected === 3 && !uploading;
@@ -243,20 +244,25 @@ const DocumentUploadForm = () => {
   ) => {
     const status = getDocumentStatus(documentType);
     const selectedFile = uploadedFiles[documentType];
+    const hasDocumentUrl = documentStatus && (
+      (documentType === 'addressProof' && documentStatus.address_proof_url) ||
+      (documentType === 'cnpjCard' && documentStatus.cnpj_card_url) ||
+      (documentType === 'responsibleDocument' && documentStatus.responsible_document_url)
+    );
     
     return (
       <Card className="h-full">
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-lg">
             {title}
-            {getStatusIcon(status)}
+            {hasDocumentUrl ? getStatusIcon(status) : <AlertCircle className="w-5 h-5 text-gray-400" />}
           </CardTitle>
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
           <div
             className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-              hasSubmittedDocuments
+              hasDocumentUrl
                 ? 'border-amber-300 bg-amber-50'
                 : dragOver === documentType
                 ? 'border-blue-400 bg-blue-50'
@@ -264,11 +270,11 @@ const DocumentUploadForm = () => {
                 ? 'border-green-400 bg-green-50'
                 : 'border-gray-300 hover:border-gray-400'
             }`}
-            onDragOver={(e) => !hasSubmittedDocuments && handleDragOver(e, documentType)}
-            onDragLeave={!hasSubmittedDocuments ? handleDragLeave : undefined}
-            onDrop={(e) => !hasSubmittedDocuments && handleDrop(e, documentType)}
+            onDragOver={(e) => !hasDocumentUrl && handleDragOver(e, documentType)}
+            onDragLeave={!hasDocumentUrl ? handleDragLeave : undefined}
+            onDrop={(e) => !hasDocumentUrl && handleDrop(e, documentType)}
           >
-            {hasSubmittedDocuments && status === 'pending' ? (
+            {hasDocumentUrl && status === 'pending' ? (
               <div className="space-y-2">
                 <Clock className="w-12 h-12 text-amber-500 mx-auto" />
                 <p className="font-medium text-amber-700">
@@ -315,7 +321,7 @@ const DocumentUploadForm = () => {
               </div>
             )}
             
-            {!hasSubmittedDocuments && (
+            {!hasDocumentUrl && (
               <input
                 id={`file-${documentType}`}
                 type="file"
