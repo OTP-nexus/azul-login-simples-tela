@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,9 +47,8 @@ const LoginForm = () => {
         console.log('Redirecting to document verification...');
         navigate('/document-verification');
       } else if (docStatus === 'approved') {
-        console.log('Documents approved, redirecting to dashboard...');
-        // Redireciona para dashboard principal (quando implementado)
-        alert('Login realizado com sucesso! Documentos aprovados.');
+        console.log('Documents approved, redirecting to company dashboard...');
+        navigate('/company-dashboard');
       }
     }
   };
