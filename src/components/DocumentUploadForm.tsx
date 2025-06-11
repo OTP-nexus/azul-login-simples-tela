@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -19,7 +19,7 @@ interface UploadedFiles {
 const DocumentUploadForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { documentStatus, loading, updateDocumentStatus } = useDocumentStatus();
+  const { documentStatus, loading, updateDocumentStatus, refetch } = useDocumentStatus();
   const { toast } = useToast();
   
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({
@@ -30,6 +30,13 @@ const DocumentUploadForm = () => {
 
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  // Buscar dados quando o componente carrega
+  useEffect(() => {
+    if (user && !loading) {
+      refetch();
+    }
+  }, [user, refetch, loading]);
 
   // Verificar se o usuário tem documentos enviados ou aprovados
   const hasSubmittedDocuments = documentStatus && (
@@ -42,9 +49,11 @@ const DocumentUploadForm = () => {
   );
 
   const handleFileSelect = (file: File, documentType: keyof UploadedFiles) => {
-    // Verificar se o documento específico já está aprovado ou pendente
+    // Verificar se o documento específico já está aprovado ou pendente com URL
     const docStatus = getDocumentStatus(documentType);
-    if (docStatus === 'approved' || (docStatus === 'pending' && getDocumentUrl(documentType))) {
+    const docUrl = getDocumentUrl(documentType);
+    
+    if (docStatus === 'approved' || (docStatus === 'pending' && docUrl)) {
       toast({
         title: "Documento já processado",
         description: "Este documento já foi enviado ou aprovado",
@@ -122,7 +131,7 @@ const DocumentUploadForm = () => {
       return;
     }
 
-    // Verificar se há documentos já aprovados ou pendentes
+    // Verificar se há documentos já aprovados ou pendentes com URL
     if (hasSubmittedDocuments) {
       toast({
         title: "Documentos já processados",
@@ -174,6 +183,9 @@ const DocumentUploadForm = () => {
         console.error('Error updating document status:', updateError);
         throw new Error('Erro ao atualizar status dos documentos');
       }
+
+      // Recarregar dados após envio
+      await refetch();
 
       toast({
         title: "Documentos enviados!",
@@ -373,7 +385,8 @@ const DocumentUploadForm = () => {
     );
   };
 
-  if (loading) {
+  // Mostrar loading enquanto busca dados
+  if (loading || !user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center">
         <div className="text-center">
