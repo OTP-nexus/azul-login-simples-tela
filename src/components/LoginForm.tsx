@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,11 +42,17 @@ const LoginForm = () => {
             navigate('/driver-document-verification');
           }
         } else if (profile.role === 'company') {
-          if (documentStatus.overall_status === 'approved') {
-            console.log('Company documents approved, redirecting to company dashboard...');
+          // Verificar se todos os documentos da empresa estão aprovados
+          const isCompanyFullyApproved = 
+            documentStatus.address_proof_status === 'approved' &&
+            documentStatus.cnpj_card_status === 'approved' &&
+            documentStatus.responsible_document_status === 'approved';
+          
+          if (isCompanyFullyApproved) {
+            console.log('Company documents fully approved, redirecting to company dashboard...');
             navigate('/company-dashboard');
           } else {
-            console.log('Redirecting to company document verification...');
+            console.log('Company documents not fully approved, redirecting to document verification...');
             navigate('/document-verification');
           }
         }
