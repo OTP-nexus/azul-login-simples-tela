@@ -467,8 +467,8 @@ const FreightAggregationForm = () => {
         origem_cidade: formData.origem_cidade,
         destinos: JSON.stringify(formData.destinos),
         tipo_mercadoria: formData.tipo_mercadoria,
-        peso_carga: formData.peso_carga ? parseFloat(formData.peso_carga) : null,
-        valor_carga: formData.valor_carga ? parseFloat(formData.valor_carga) : null,
+        peso_carga: null,
+        valor_carga: null,
         tipos_veiculos: JSON.stringify(formData.tipos_veiculos.filter(v => v.selected)),
         tipos_carrocerias: JSON.stringify(formData.tipos_carrocerias.filter(b => b.selected)),
         tabelas_preco: JSON.stringify(formData.tabelas_preco),
@@ -933,7 +933,7 @@ const FreightAggregationForm = () => {
                 {/* Informações da Carga */}
                 <div className="space-y-4">
                   <Label className="text-lg font-medium text-gray-800">Informações da Carga</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="tipo_mercadoria" className="text-sm font-medium text-gray-700">
                         Tipo de Mercadoria *
@@ -945,31 +945,6 @@ const FreightAggregationForm = () => {
                         onChange={(e) => handleInputChange('tipo_mercadoria', e.target.value)}
                         placeholder="Ex: Eletrônicos"
                         required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="peso_carga" className="text-sm font-medium text-gray-700">
-                        Peso (kg)
-                      </Label>
-                      <Input
-                        id="peso_carga"
-                        type="number"
-                        value={formData.peso_carga}
-                        onChange={(e) => handleInputChange('peso_carga', e.target.value)}
-                        placeholder="Ex: 1000"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="valor_carga" className="text-sm font-medium text-gray-700">
-                        Valor da Carga (R$)
-                      </Label>
-                      <Input
-                        id="valor_carga"
-                        type="number"
-                        step="0.01"
-                        value={formData.valor_carga}
-                        onChange={(e) => handleInputChange('valor_carga', e.target.value)}
-                        placeholder="Ex: 50000.00"
                       />
                     </div>
                   </div>
