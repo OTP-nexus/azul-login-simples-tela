@@ -105,11 +105,7 @@ const FreightAggregationForm = () => {
   const [loadingCollaborators, setLoadingCollaborators] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
   
-  // Estados e cidades IBGE
-  const { estados, loading: loadingEstados } = useEstados();
-  const origemCidades = useCidades(formData.origem_estado);
-  const [destinoCidades, setDestinoCidades] = useState<{[key: string]: any}>({});
-
+  // Move formData declaration before it's used
   const [formData, setFormData] = useState<FreightFormData>({
     collaborator_ids: [],
     origem_cidade: '',
@@ -131,6 +127,11 @@ const FreightAggregationForm = () => {
     pedagio_direcao: '',
     observacoes: ''
   });
+  
+  // Estados e cidades IBGE - now formData is available
+  const { estados, loading: loadingEstados } = useEstados();
+  const origemCidades = useCidades(formData.origem_estado);
+  const [destinoCidades, setDestinoCidades] = useState<{[key: string]: any}>({});
 
   const steps = [
     { number: 1, title: 'Colaboradores', description: 'Selecione os responsáveis' },
