@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Truck, User, Activity, LogOut, Building2 } from 'lucide-react';
+import { Truck, User, Activity, LogOut, Building2, UserCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useDocumentStatus } from '@/hooks/useDocumentStatus';
@@ -110,7 +110,7 @@ const CompanyDashboardCards = () => {
         </div>
 
         {/* Dashboard Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Solicitar Frete Card */}
           <Card 
             className="cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl bg-gradient-to-br from-green-50 to-green-100 border-green-200 group"
@@ -190,6 +190,34 @@ const CompanyDashboardCards = () => {
               <div className="bg-amber-200 rounded-lg p-3">
                 <p className="text-xs text-amber-800 font-medium">
                   Clique para visualizar
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Perfil Card */}
+          <Card 
+            className="cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 group"
+            onClick={() => handleCardClick('PERFIL')}
+          >
+            <CardHeader className="text-center pb-4">
+              <div className="mx-auto w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow mb-4">
+                <UserCircle className="w-8 h-8 text-white" />
+              </div>
+              <CardTitle className="text-xl font-bold text-purple-800">
+                PERFIL
+              </CardTitle>
+              <CardDescription className="text-purple-600">
+                Gerenciar informações da empresa
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="text-sm text-purple-700 mb-4">
+                Visualize e edite as informações de perfil da sua empresa
+              </p>
+              <div className="bg-purple-200 rounded-lg p-3">
+                <p className="text-xs text-purple-800 font-medium">
+                  Clique para acessar
                 </p>
               </div>
             </CardContent>
