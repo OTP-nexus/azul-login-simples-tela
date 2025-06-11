@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Truck, User, Plus, X, ArrowRight, CheckCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Truck, User, Plus, X, ArrowRight, CheckCircle, MapPin, Settings, DollarSign, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,19 +21,79 @@ interface Collaborator {
   email?: string;
 }
 
+interface Destination {
+  id: string;
+  state: string;
+  city: string;
+}
+
+interface VehicleType {
+  id: string;
+  type: string;
+  category: 'heavy' | 'medium' | 'light';
+  selected: boolean;
+}
+
+interface BodyType {
+  id: string;
+  type: string;
+  category: 'open' | 'closed' | 'special';
+  selected: boolean;
+}
+
+interface PriceTable {
+  id: string;
+  vehicleType: string;
+  kmStart: number;
+  kmEnd: number;
+  price: number;
+}
+
 interface FreightFormData {
   collaborator_ids: string[];
-  origin_city: string;
-  origin_state: string;
-  destination_city: string;
-  destination_state: string;
-  cargo_type: string;
-  cargo_weight: string;
-  cargo_value: string;
-  pickup_date: string;
-  delivery_date: string;
-  observations: string;
+  origem_cidade: string;
+  origem_estado: string;
+  destinos: Destination[];
+  tipo_mercadoria: string;
+  peso_carga: string;
+  valor_carga: string;
+  tipos_veiculos: VehicleType[];
+  tipos_carrocerias: BodyType[];
+  tabelas_preco: PriceTable[];
+  regras_agendamento: string[];
+  beneficios: string[];
+  horario_carregamento: string;
+  precisa_ajudante: boolean;
+  precisa_rastreador: boolean;
+  precisa_seguro: boolean;
+  pedagio_pago_por: string;
+  pedagio_direcao: string;
+  observacoes: string;
 }
+
+const predefinedVehicleTypes: VehicleType[] = [
+  { id: '1', type: 'Caminhão Toco', category: 'medium', selected: false },
+  { id: '2', type: 'Caminhão Truck', category: 'heavy', selected: false },
+  { id: '3', type: 'Carreta', category: 'heavy', selected: false },
+  { id: '4', type: 'Van', category: 'light', selected: false },
+  { id: '5', type: '3/4', category: 'light', selected: false },
+];
+
+const predefinedBodyTypes: BodyType[] = [
+  { id: '1', type: 'Baú', category: 'closed', selected: false },
+  { id: '2', type: 'Sider', category: 'closed', selected: false },
+  { id: '3', type: 'Carroceria Aberta', category: 'open', selected: false },
+  { id: '4', type: 'Refrigerado', category: 'special', selected: false },
+  { id: '5', type: 'Graneleiro', category: 'special', selected: false },
+];
+
+const schedulingRules = [
+  'FIFO (Primeiro a chegar, primeiro a sair)',
+  'Janela de tempo específica',
+  'Prioridade por tipo de carga',
+  'Agendamento obrigatório',
+  'Chegada sem agendamento'
+];
 
 const FreightAggregationForm = () => {
   const navigate = useNavigate();
@@ -45,38 +105,39 @@ const FreightAggregationForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FreightFormData>({
     collaborator_ids: [],
-    origin_city: '',
-    origin_state: '',
-    destination_city: '',
-    destination_state: '',
-    cargo_type: '',
-    cargo_weight: '',
-    cargo_value: '',
-    pickup_date: '',
-    delivery_date: '',
-    observations: ''
+    origem_cidade: '',
+    origem_estado: '',
+    destinos: [],
+    tipo_mercadoria: '',
+    peso_carga: '',
+    valor_carga: '',
+    tipos_veiculos: [...predefinedVehicleTypes],
+    tipos_carrocerias: [...predefinedBodyTypes],
+    tabelas_preco: [],
+    regras_agendamento: [],
+    beneficios: [],
+    horario_carregamento: '',
+    precisa_ajudante: false,
+    precisa_rastreador: false,
+    precisa_seguro: false,
+    pedagio_pago_por: '',
+    pedagio_direcao: '',
+    observacoes: ''
   });
 
   const steps = [
     { number: 1, title: 'Colaboradores', description: 'Selecione os responsáveis' },
-    { number: 2, title: 'Formulário', description: 'Preencha os dados do frete' }
+    { number: 2, title: 'Origem e Destinos', description: 'Defina as rotas' },
+    { number: 3, title: 'Carga e Veículos', description: 'Configure tipos e carga' },
+    { number: 4, title: 'Configurações', description: 'Regras e condições' }
   ];
 
   const progressValue = (currentStep / steps.length) * 100;
-
-  const handleBack = () => {
-    navigate('/freight-request');
-  };
-
-  const handleBackToDashboard = () => {
-    navigate('/company-dashboard');
-  };
 
   const fetchCollaborators = async () => {
     if (!user) return;
 
     try {
-      // Buscar a empresa do usuário
       const { data: company, error: companyError } = await supabase
         .from('companies')
         .select('id')
@@ -87,7 +148,6 @@ const FreightAggregationForm = () => {
         throw new Error('Empresa não encontrada');
       }
 
-      // Buscar colaboradores da empresa
       const { data: collaboratorsData, error: collaboratorsError } = await supabase
         .from('collaborators')
         .select('*')
@@ -115,7 +175,15 @@ const FreightAggregationForm = () => {
     fetchCollaborators();
   }, [user]);
 
-  const handleInputChange = (field: keyof FreightFormData, value: string | string[]) => {
+  const handleBack = () => {
+    navigate('/freight-request');
+  };
+
+  const handleBackToDashboard = () => {
+    navigate('/company-dashboard');
+  };
+
+  const handleInputChange = (field: keyof FreightFormData, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -128,6 +196,118 @@ const FreightAggregationForm = () => {
       collaborator_ids: prev.collaborator_ids.includes(collaboratorId)
         ? prev.collaborator_ids.filter(id => id !== collaboratorId)
         : [...prev.collaborator_ids, collaboratorId]
+    }));
+  };
+
+  const addDestination = () => {
+    const newDestination: Destination = {
+      id: Date.now().toString(),
+      state: '',
+      city: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      destinos: [...prev.destinos, newDestination]
+    }));
+  };
+
+  const removeDestination = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      destinos: prev.destinos.filter(dest => dest.id !== id)
+    }));
+  };
+
+  const updateDestination = (id: string, field: 'state' | 'city', value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      destinos: prev.destinos.map(dest =>
+        dest.id === id ? { ...dest, [field]: value } : dest
+      )
+    }));
+  };
+
+  const toggleVehicleType = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tipos_veiculos: prev.tipos_veiculos.map(vehicle =>
+        vehicle.id === id ? { ...vehicle, selected: !vehicle.selected } : vehicle
+      )
+    }));
+  };
+
+  const toggleBodyType = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tipos_carrocerias: prev.tipos_carrocerias.map(body =>
+        body.id === id ? { ...body, selected: !body.selected } : body
+      )
+    }));
+  };
+
+  const addPriceTable = () => {
+    const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
+    if (selectedVehicles.length === 0) {
+      toast({
+        title: "Selecione veículos primeiro",
+        description: "É necessário selecionar pelo menos um tipo de veículo antes de adicionar tabelas de preço",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newPriceTable: PriceTable = {
+      id: Date.now().toString(),
+      vehicleType: selectedVehicles[0].type,
+      kmStart: 0,
+      kmEnd: 100,
+      price: 0
+    };
+    setFormData(prev => ({
+      ...prev,
+      tabelas_preco: [...prev.tabelas_preco, newPriceTable]
+    }));
+  };
+
+  const removePriceTable = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tabelas_preco: prev.tabelas_preco.filter(table => table.id !== id)
+    }));
+  };
+
+  const updatePriceTable = (id: string, field: keyof PriceTable, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      tabelas_preco: prev.tabelas_preco.map(table =>
+        table.id === id ? { ...table, [field]: value } : table
+      )
+    }));
+  };
+
+  const addBenefit = () => {
+    const benefit = prompt('Digite o benefício:');
+    if (benefit && benefit.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        beneficios: [...prev.beneficios, benefit.trim()]
+      }));
+    }
+  };
+
+  const removeBenefit = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      beneficios: prev.beneficios.filter((_, i) => i !== index)
+    }));
+  };
+
+  const toggleSchedulingRule = (rule: string) => {
+    setFormData(prev => ({
+      ...prev,
+      regras_agendamento: prev.regras_agendamento.includes(rule)
+        ? prev.regras_agendamento.filter(r => r !== rule)
+        : [...prev.regras_agendamento, rule]
     }));
   };
 
@@ -147,8 +327,53 @@ const FreightAggregationForm = () => {
         });
         return;
       }
-      setCurrentStep(2);
+    } else if (currentStep === 2) {
+      if (!formData.origem_cidade || !formData.origem_estado) {
+        toast({
+          title: "Erro de validação",
+          description: "Informe a cidade e estado de origem",
+          variant: "destructive"
+        });
+        return;
+      }
+      if (formData.destinos.length === 0) {
+        toast({
+          title: "Erro de validação",
+          description: "Adicione pelo menos um destino",
+          variant: "destructive"
+        });
+        return;
+      }
+      const invalidDestinations = formData.destinos.some(dest => !dest.city || !dest.state);
+      if (invalidDestinations) {
+        toast({
+          title: "Erro de validação",
+          description: "Preencha todos os destinos adicionados",
+          variant: "destructive"
+        });
+        return;
+      }
+    } else if (currentStep === 3) {
+      if (!formData.tipo_mercadoria) {
+        toast({
+          title: "Erro de validação",
+          description: "Informe o tipo de mercadoria",
+          variant: "destructive"
+        });
+        return;
+      }
+      const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
+      if (selectedVehicles.length === 0) {
+        toast({
+          title: "Erro de validação",
+          description: "Selecione pelo menos um tipo de veículo",
+          variant: "destructive"
+        });
+        return;
+      }
     }
+    
+    setCurrentStep(currentStep + 1);
   };
 
   const handlePreviousStep = () => {
@@ -157,78 +382,82 @@ const FreightAggregationForm = () => {
     }
   };
 
-  const validateForm = () => {
-    if (!formData.origin_city || !formData.origin_state) {
-      toast({
-        title: "Erro de validação",
-        description: "Informe a cidade e estado de origem",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    if (!formData.destination_city || !formData.destination_state) {
-      toast({
-        title: "Erro de validação",
-        description: "Informe a cidade e estado de destino",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    if (!formData.cargo_type) {
-      toast({
-        title: "Erro de validação",
-        description: "Informe o tipo de carga",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    if (!formData.pickup_date || !formData.delivery_date) {
-      toast({
-        title: "Erro de validação",
-        description: "Informe as datas de coleta e entrega",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    return true;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
-
     setLoading(true);
     
     try {
-      // Aqui você pode implementar a lógica para salvar o frete
-      // Por enquanto, apenas mostramos uma mensagem de sucesso
-      
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (companyError || !company) {
+        throw new Error('Empresa não encontrada');
+      }
+
+      const freightData = {
+        company_id: company.id,
+        collaborator_ids: formData.collaborator_ids,
+        tipo_frete: 'agregamento',
+        origem_estado: formData.origem_estado,
+        origem_cidade: formData.origem_cidade,
+        destinos: formData.destinos,
+        tipo_mercadoria: formData.tipo_mercadoria,
+        peso_carga: formData.peso_carga ? parseFloat(formData.peso_carga) : null,
+        valor_carga: formData.valor_carga ? parseFloat(formData.valor_carga) : null,
+        tipos_veiculos: formData.tipos_veiculos.filter(v => v.selected),
+        tipos_carrocerias: formData.tipos_carrocerias.filter(b => b.selected),
+        tabelas_preco: formData.tabelas_preco,
+        regras_agendamento: formData.regras_agendamento,
+        beneficios: formData.beneficios,
+        horario_carregamento: formData.horario_carregamento || null,
+        precisa_ajudante: formData.precisa_ajudante,
+        precisa_rastreador: formData.precisa_rastreador,
+        precisa_seguro: formData.precisa_seguro,
+        pedagio_pago_por: formData.pedagio_pago_por || null,
+        pedagio_direcao: formData.pedagio_direcao || null,
+        observacoes: formData.observacoes || null
+      };
+
+      const { error } = await supabase
+        .from('fretes')
+        .insert([freightData]);
+
+      if (error) {
+        throw error;
+      }
+
       toast({
         title: "Sucesso!",
-        description: `Solicitação de frete criada com ${formData.collaborator_ids.length} colaborador(es) responsável(is)`
+        description: `Frete de agregamento criado com ${formData.collaborator_ids.length} colaborador(es) responsável(is)`
       });
 
-      // Limpar formulário
+      // Reset form
       setFormData({
         collaborator_ids: [],
-        origin_city: '',
-        origin_state: '',
-        destination_city: '',
-        destination_state: '',
-        cargo_type: '',
-        cargo_weight: '',
-        cargo_value: '',
-        pickup_date: '',
-        delivery_date: '',
-        observations: ''
+        origem_cidade: '',
+        origem_estado: '',
+        destinos: [],
+        tipo_mercadoria: '',
+        peso_carga: '',
+        valor_carga: '',
+        tipos_veiculos: [...predefinedVehicleTypes],
+        tipos_carrocerias: [...predefinedBodyTypes],
+        tabelas_preco: [],
+        regras_agendamento: [],
+        beneficios: [],
+        horario_carregamento: '',
+        precisa_ajudante: false,
+        precisa_rastreador: false,
+        precisa_seguro: false,
+        pedagio_pago_por: '',
+        pedagio_direcao: '',
+        observacoes: ''
       });
 
-      // Voltar para o primeiro step
       setCurrentStep(1);
 
     } catch (error: any) {
@@ -254,7 +483,6 @@ const FreightAggregationForm = () => {
   if (collaborators.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-        {/* Header */}
         <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
@@ -277,7 +505,6 @@ const FreightAggregationForm = () => {
           </div>
         </header>
 
-        {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Card className="text-center py-12">
             <CardContent>
@@ -316,7 +543,6 @@ const FreightAggregationForm = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -339,8 +565,7 @@ const FreightAggregationForm = () => {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Progress Steps */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -382,26 +607,25 @@ const FreightAggregationForm = () => {
           <CardHeader>
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                <Truck className="w-6 h-6 text-white" />
+                {currentStep === 1 && <User className="w-6 h-6 text-white" />}
+                {currentStep === 2 && <MapPin className="w-6 h-6 text-white" />}
+                {currentStep === 3 && <Truck className="w-6 h-6 text-white" />}
+                {currentStep === 4 && <Settings className="w-6 h-6 text-white" />}
               </div>
               <div>
                 <CardTitle className="text-xl text-gray-800">
-                  {currentStep === 1 ? 'Selecionar Colaboradores' : 'Dados do Frete'}
+                  {steps[currentStep - 1].title}
                 </CardTitle>
                 <CardDescription>
-                  {currentStep === 1 
-                    ? 'Selecione os colaboradores responsáveis pelo pedido' 
-                    : 'Preencha as informações do frete de agregamento'
-                  }
+                  {steps[currentStep - 1].description}
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           
           <CardContent>
-            {currentStep === 1 ? (
+            {currentStep === 1 && (
               <div className="space-y-6">
-                {/* Seleção de Colaboradores */}
                 <div className="space-y-4">
                   <Label className="text-sm font-medium text-gray-700">
                     Colaboradores Responsáveis *
@@ -410,7 +634,6 @@ const FreightAggregationForm = () => {
                     Selecione um ou mais colaboradores que serão responsáveis por este pedido de frete.
                   </p>
                   
-                  {/* Lista de colaboradores para seleção */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto border rounded-lg p-4">
                     {collaborators.map((collaborator) => (
                       <div key={collaborator.id} className="flex items-center space-x-3 p-2 border rounded-lg hover:bg-gray-50">
@@ -419,10 +642,7 @@ const FreightAggregationForm = () => {
                           checked={formData.collaborator_ids.includes(collaborator.id)}
                           onCheckedChange={() => handleCollaboratorToggle(collaborator.id)}
                         />
-                        <label
-                          htmlFor={collaborator.id}
-                          className="flex-1 cursor-pointer"
-                        >
+                        <label htmlFor={collaborator.id} className="flex-1 cursor-pointer">
                           <div className="font-medium text-gray-800">{collaborator.name}</div>
                           <div className="text-sm text-gray-600">{collaborator.sector}</div>
                           <div className="text-xs text-gray-500">{collaborator.phone}</div>
@@ -431,7 +651,6 @@ const FreightAggregationForm = () => {
                     ))}
                   </div>
 
-                  {/* Colaboradores selecionados */}
                   {selectedCollaborators.length > 0 && (
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-green-700">
@@ -458,7 +677,6 @@ const FreightAggregationForm = () => {
                   )}
                 </div>
 
-                {/* Botão para próximo passo */}
                 <div className="flex gap-4 pt-4">
                   <Button
                     type="button"
@@ -479,9 +697,228 @@ const FreightAggregationForm = () => {
                   </Button>
                 </div>
               </div>
-            ) : (
+            )}
+
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                {/* Origem */}
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium text-gray-800">Origem</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="origem_cidade" className="text-sm font-medium text-gray-700">
+                        Cidade de Origem *
+                      </Label>
+                      <Input
+                        id="origem_cidade"
+                        type="text"
+                        value={formData.origem_cidade}
+                        onChange={(e) => handleInputChange('origem_cidade', e.target.value)}
+                        placeholder="Ex: São Paulo"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="origem_estado" className="text-sm font-medium text-gray-700">
+                        Estado de Origem *
+                      </Label>
+                      <Input
+                        id="origem_estado"
+                        type="text"
+                        value={formData.origem_estado}
+                        onChange={(e) => handleInputChange('origem_estado', e.target.value)}
+                        placeholder="Ex: SP"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Destinos */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-lg font-medium text-gray-800">Destinos</Label>
+                    <Button
+                      type="button"
+                      onClick={addDestination}
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center space-x-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Adicionar Destino</span>
+                    </Button>
+                  </div>
+
+                  {formData.destinos.length === 0 && (
+                    <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                      <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-500">Nenhum destino adicionado</p>
+                      <p className="text-sm text-gray-400">Clique em "Adicionar Destino" para começar</p>
+                    </div>
+                  )}
+
+                  {formData.destinos.map((destino) => (
+                    <div key={destino.id} className="flex items-center space-x-3 p-4 border rounded-lg">
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input
+                          placeholder="Cidade"
+                          value={destino.city}
+                          onChange={(e) => updateDestination(destino.id, 'city', e.target.value)}
+                        />
+                        <Input
+                          placeholder="Estado"
+                          value={destino.state}
+                          onChange={(e) => updateDestination(destino.id, 'state', e.target.value)}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => removeDestination(destino.id)}
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handlePreviousStep}
+                    className="flex-1"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Voltar
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                  >
+                    Próximo
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                {/* Informações da Carga */}
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium text-gray-800">Informações da Carga</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="tipo_mercadoria" className="text-sm font-medium text-gray-700">
+                        Tipo de Mercadoria *
+                      </Label>
+                      <Input
+                        id="tipo_mercadoria"
+                        type="text"
+                        value={formData.tipo_mercadoria}
+                        onChange={(e) => handleInputChange('tipo_mercadoria', e.target.value)}
+                        placeholder="Ex: Eletrônicos"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="peso_carga" className="text-sm font-medium text-gray-700">
+                        Peso (kg)
+                      </Label>
+                      <Input
+                        id="peso_carga"
+                        type="number"
+                        value={formData.peso_carga}
+                        onChange={(e) => handleInputChange('peso_carga', e.target.value)}
+                        placeholder="Ex: 1000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="valor_carga" className="text-sm font-medium text-gray-700">
+                        Valor da Carga (R$)
+                      </Label>
+                      <Input
+                        id="valor_carga"
+                        type="number"
+                        step="0.01"
+                        value={formData.valor_carga}
+                        onChange={(e) => handleInputChange('valor_carga', e.target.value)}
+                        placeholder="Ex: 50000.00"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tipos de Veículos */}
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium text-gray-800">Tipos de Veículos *</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {formData.tipos_veiculos.map((vehicle) => (
+                      <div key={vehicle.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                        <Checkbox
+                          id={`vehicle-${vehicle.id}`}
+                          checked={vehicle.selected}
+                          onCheckedChange={() => toggleVehicleType(vehicle.id)}
+                        />
+                        <label htmlFor={`vehicle-${vehicle.id}`} className="flex-1 cursor-pointer">
+                          <div className="font-medium text-gray-800">{vehicle.type}</div>
+                          <div className="text-sm text-gray-600 capitalize">{vehicle.category}</div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tipos de Carroceria */}
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium text-gray-800">Tipos de Carroceria</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {formData.tipos_carrocerias.map((body) => (
+                      <div key={body.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                        <Checkbox
+                          id={`body-${body.id}`}
+                          checked={body.selected}
+                          onCheckedChange={() => toggleBodyType(body.id)}
+                        />
+                        <label htmlFor={`body-${body.id}`} className="flex-1 cursor-pointer">
+                          <div className="font-medium text-gray-800">{body.type}</div>
+                          <div className="text-sm text-gray-600 capitalize">{body.category}</div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handlePreviousStep}
+                    className="flex-1"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Voltar
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                  >
+                    Próximo
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 4 && (
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Colaboradores selecionados - resumo */}
+                {/* Resumo dos colaboradores */}
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <Label className="text-sm font-medium text-green-800 mb-2 block">
                     Colaboradores Responsáveis ({selectedCollaborators.length})
@@ -498,145 +935,236 @@ const FreightAggregationForm = () => {
                   </div>
                 </div>
 
-                {/* Origem */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="origin_city" className="text-sm font-medium text-gray-700">
-                      Cidade de Origem *
-                    </Label>
-                    <Input
-                      id="origin_city"
-                      type="text"
-                      value={formData.origin_city}
-                      onChange={(e) => handleInputChange('origin_city', e.target.value)}
-                      placeholder="Ex: São Paulo"
-                      required
-                    />
+                {/* Configurações Operacionais */}
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium text-gray-800">Configurações Operacionais</Label>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="precisa_ajudante"
+                        checked={formData.precisa_ajudante}
+                        onCheckedChange={(checked) => handleInputChange('precisa_ajudante', checked)}
+                      />
+                      <Label htmlFor="precisa_ajudante" className="text-sm font-medium text-gray-700">
+                        Precisa de ajudante
+                      </Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="precisa_rastreador"
+                        checked={formData.precisa_rastreador}
+                        onCheckedChange={(checked) => handleInputChange('precisa_rastreador', checked)}
+                      />
+                      <Label htmlFor="precisa_rastreador" className="text-sm font-medium text-gray-700">
+                        Precisa de rastreador
+                      </Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="precisa_seguro"
+                        checked={formData.precisa_seguro}
+                        onCheckedChange={(checked) => handleInputChange('precisa_seguro', checked)}
+                      />
+                      <Label htmlFor="precisa_seguro" className="text-sm font-medium text-gray-700">
+                        Precisa de seguro
+                      </Label>
+                    </div>
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="origin_state" className="text-sm font-medium text-gray-700">
-                      Estado de Origem *
+                    <Label htmlFor="horario_carregamento" className="text-sm font-medium text-gray-700">
+                      Horário de Carregamento
                     </Label>
                     <Input
-                      id="origin_state"
-                      type="text"
-                      value={formData.origin_state}
-                      onChange={(e) => handleInputChange('origin_state', e.target.value)}
-                      placeholder="Ex: SP"
-                      required
+                      id="horario_carregamento"
+                      type="time"
+                      value={formData.horario_carregamento}
+                      onChange={(e) => handleInputChange('horario_carregamento', e.target.value)}
                     />
                   </div>
                 </div>
 
-                {/* Destino */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="destination_city" className="text-sm font-medium text-gray-700">
-                      Cidade de Destino *
-                    </Label>
-                    <Input
-                      id="destination_city"
-                      type="text"
-                      value={formData.destination_city}
-                      onChange={(e) => handleInputChange('destination_city', e.target.value)}
-                      placeholder="Ex: Rio de Janeiro"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="destination_state" className="text-sm font-medium text-gray-700">
-                      Estado de Destino *
-                    </Label>
-                    <Input
-                      id="destination_state"
-                      type="text"
-                      value={formData.destination_state}
-                      onChange={(e) => handleInputChange('destination_state', e.target.value)}
-                      placeholder="Ex: RJ"
-                      required
-                    />
+                {/* Configurações de Pedágio */}
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium text-gray-800">Configurações de Pedágio</Label>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">Pedágio pago por</Label>
+                      <Select 
+                        value={formData.pedagio_pago_por} 
+                        onValueChange={(value) => handleInputChange('pedagio_pago_por', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione quem paga" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="motorista">Motorista</SelectItem>
+                          <SelectItem value="empresa">Empresa</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">Direção do pedágio</Label>
+                      <Select 
+                        value={formData.pedagio_direcao} 
+                        onValueChange={(value) => handleInputChange('pedagio_direcao', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a direção" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ida">Apenas ida</SelectItem>
+                          <SelectItem value="volta">Apenas volta</SelectItem>
+                          <SelectItem value="ida_volta">Ida e volta</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
 
-                {/* Informações da Carga */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Regras de Agendamento */}
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium text-gray-800">Regras de Agendamento</Label>
                   <div className="space-y-2">
-                    <Label htmlFor="cargo_type" className="text-sm font-medium text-gray-700">
-                      Tipo de Carga *
-                    </Label>
-                    <Input
-                      id="cargo_type"
-                      type="text"
-                      value={formData.cargo_type}
-                      onChange={(e) => handleInputChange('cargo_type', e.target.value)}
-                      placeholder="Ex: Eletrônicos"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cargo_weight" className="text-sm font-medium text-gray-700">
-                      Peso (kg)
-                    </Label>
-                    <Input
-                      id="cargo_weight"
-                      type="number"
-                      value={formData.cargo_weight}
-                      onChange={(e) => handleInputChange('cargo_weight', e.target.value)}
-                      placeholder="Ex: 1000"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cargo_value" className="text-sm font-medium text-gray-700">
-                      Valor da Carga (R$)
-                    </Label>
-                    <Input
-                      id="cargo_value"
-                      type="number"
-                      step="0.01"
-                      value={formData.cargo_value}
-                      onChange={(e) => handleInputChange('cargo_value', e.target.value)}
-                      placeholder="Ex: 50000.00"
-                    />
+                    {schedulingRules.map((rule) => (
+                      <div key={rule} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`rule-${rule}`}
+                          checked={formData.regras_agendamento.includes(rule)}
+                          onCheckedChange={() => toggleSchedulingRule(rule)}
+                        />
+                        <Label htmlFor={`rule-${rule}`} className="text-sm text-gray-700">
+                          {rule}
+                        </Label>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* Datas */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="pickup_date" className="text-sm font-medium text-gray-700">
-                      Data de Coleta *
-                    </Label>
-                    <Input
-                      id="pickup_date"
-                      type="date"
-                      value={formData.pickup_date}
-                      onChange={(e) => handleInputChange('pickup_date', e.target.value)}
-                      required
-                    />
+                {/* Tabelas de Preço */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-lg font-medium text-gray-800">Tabelas de Preço</Label>
+                    <Button
+                      type="button"
+                      onClick={addPriceTable}
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center space-x-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Adicionar Tabela</span>
+                    </Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="delivery_date" className="text-sm font-medium text-gray-700">
-                      Data de Entrega *
-                    </Label>
-                    <Input
-                      id="delivery_date"
-                      type="date"
-                      value={formData.delivery_date}
-                      onChange={(e) => handleInputChange('delivery_date', e.target.value)}
-                      required
-                    />
+
+                  {formData.tabelas_preco.map((table) => (
+                    <div key={table.id} className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border rounded-lg items-end">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">Tipo de Veículo</Label>
+                        <Select 
+                          value={table.vehicleType} 
+                          onValueChange={(value) => updatePriceTable(table.id, 'vehicleType', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {formData.tipos_veiculos.filter(v => v.selected).map((vehicle) => (
+                              <SelectItem key={vehicle.id} value={vehicle.type}>
+                                {vehicle.type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">KM Inicial</Label>
+                        <Input
+                          type="number"
+                          value={table.kmStart}
+                          onChange={(e) => updatePriceTable(table.id, 'kmStart', parseInt(e.target.value))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">KM Final</Label>
+                        <Input
+                          type="number"
+                          value={table.kmEnd}
+                          onChange={(e) => updatePriceTable(table.id, 'kmEnd', parseInt(e.target.value))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">Preço (R$)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={table.price}
+                          onChange={(e) => updatePriceTable(table.id, 'price', parseFloat(e.target.value))}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => removePriceTable(table.id)}
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Benefícios */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-lg font-medium text-gray-800">Benefícios</Label>
+                    <Button
+                      type="button"
+                      onClick={addBenefit}
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center space-x-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Adicionar Benefício</span>
+                    </Button>
                   </div>
+
+                  {formData.beneficios.length > 0 && (
+                    <div className="space-y-2">
+                      {formData.beneficios.map((benefit, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                          <span className="text-sm text-gray-700">{benefit}</span>
+                          <Button
+                            type="button"
+                            onClick={() => removeBenefit(index)}
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Observações */}
                 <div className="space-y-2">
-                  <Label htmlFor="observations" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="observacoes" className="text-sm font-medium text-gray-700">
                     Observações
                   </Label>
                   <Textarea
-                    id="observations"
-                    value={formData.observations}
-                    onChange={(e) => handleInputChange('observations', e.target.value)}
+                    id="observacoes"
+                    value={formData.observacoes}
+                    onChange={(e) => handleInputChange('observacoes', e.target.value)}
                     placeholder="Informações adicionais sobre o frete..."
                     rows={4}
                   />

@@ -273,6 +273,104 @@ export type Database = {
           },
         ]
       }
+      fretes: {
+        Row: {
+          beneficios: Json | null
+          collaborator_ids: string[]
+          company_id: string
+          created_at: string
+          data_coleta: string | null
+          data_entrega: string | null
+          destinos: Json
+          horario_carregamento: string | null
+          id: string
+          observacoes: string | null
+          origem_cidade: string
+          origem_estado: string
+          pedagio_direcao: string | null
+          pedagio_pago_por: string | null
+          peso_carga: number | null
+          precisa_ajudante: boolean | null
+          precisa_rastreador: boolean | null
+          precisa_seguro: boolean | null
+          regras_agendamento: Json | null
+          status: string | null
+          tabelas_preco: Json | null
+          tipo_frete: string
+          tipo_mercadoria: string
+          tipos_carrocerias: Json | null
+          tipos_veiculos: Json | null
+          updated_at: string
+          valor_carga: number | null
+        }
+        Insert: {
+          beneficios?: Json | null
+          collaborator_ids: string[]
+          company_id: string
+          created_at?: string
+          data_coleta?: string | null
+          data_entrega?: string | null
+          destinos?: Json
+          horario_carregamento?: string | null
+          id?: string
+          observacoes?: string | null
+          origem_cidade: string
+          origem_estado: string
+          pedagio_direcao?: string | null
+          pedagio_pago_por?: string | null
+          peso_carga?: number | null
+          precisa_ajudante?: boolean | null
+          precisa_rastreador?: boolean | null
+          precisa_seguro?: boolean | null
+          regras_agendamento?: Json | null
+          status?: string | null
+          tabelas_preco?: Json | null
+          tipo_frete?: string
+          tipo_mercadoria: string
+          tipos_carrocerias?: Json | null
+          tipos_veiculos?: Json | null
+          updated_at?: string
+          valor_carga?: number | null
+        }
+        Update: {
+          beneficios?: Json | null
+          collaborator_ids?: string[]
+          company_id?: string
+          created_at?: string
+          data_coleta?: string | null
+          data_entrega?: string | null
+          destinos?: Json
+          horario_carregamento?: string | null
+          id?: string
+          observacoes?: string | null
+          origem_cidade?: string
+          origem_estado?: string
+          pedagio_direcao?: string | null
+          pedagio_pago_por?: string | null
+          peso_carga?: number | null
+          precisa_ajudante?: boolean | null
+          precisa_rastreador?: boolean | null
+          precisa_seguro?: boolean | null
+          regras_agendamento?: Json | null
+          status?: string | null
+          tabelas_preco?: Json | null
+          tipo_frete?: string
+          tipo_mercadoria?: string
+          tipos_carrocerias?: Json | null
+          tipos_veiculos?: Json | null
+          updated_at?: string
+          valor_carga?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fretes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
