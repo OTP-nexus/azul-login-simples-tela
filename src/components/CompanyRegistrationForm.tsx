@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,7 +98,10 @@ const CompanyRegistrationForm = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Company registration:', formData);
-    // Aqui você implementaria a lógica de cadastro
+    // Simular cadastro bem-sucedido
+    alert('Cadastro realizado com sucesso! Redirecionando para verificação de documentos...');
+    // Redirecionar para a tela de verificação de documentos
+    navigate('/document-verification');
   };
 
   const getStepTitle = () => {
