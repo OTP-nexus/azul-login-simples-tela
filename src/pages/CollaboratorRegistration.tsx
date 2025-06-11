@@ -1,8 +1,8 @@
 
-import CollaboratorRegistrationForm from "@/components/CollaboratorRegistrationForm";
+import CollaboratorsList from "@/components/CollaboratorsList";
 
 const CollaboratorRegistration = () => {
-  return <CollaboratorRegistrationForm />;
+  return <CollaboratorsList />;
 };
 
 export default CollaboratorRegistration;
