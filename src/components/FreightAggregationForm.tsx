@@ -492,9 +492,7 @@ const FreightAggregationForm = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSubmit = async () => {
     setLoading(true);
     
     try {
