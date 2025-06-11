@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, User, Phone, Mail, Building2, Users, edit, trash } from 'lucide-react';
+import { ArrowLeft, Plus, User, Phone, Mail, Building2, Users, Edit, Trash } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -222,7 +221,7 @@ const CollaboratorsList = () => {
                         className="h-8 w-8 p-0"
                         onClick={() => handleEditCollaborator(collaborator)}
                       >
-                        <edit className="h-4 w-4 text-blue-600" />
+                        <Edit className="h-4 w-4 text-blue-600" />
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -231,7 +230,7 @@ const CollaboratorsList = () => {
                             size="sm"
                             className="h-8 w-8 p-0"
                           >
-                            <trash className="h-4 w-4 text-red-600" />
+                            <Trash className="h-4 w-4 text-red-600" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent className="sm:max-w-[425px] w-[95%] max-w-[95%] sm:w-full mx-auto">

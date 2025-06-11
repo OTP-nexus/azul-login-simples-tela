@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, User, edit } from 'lucide-react';
+import { Plus, User, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -221,7 +221,7 @@ const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess, editingCollaborato
         <DialogHeader>
           <div className="mx-auto w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg mb-3 sm:mb-4">
             {isEditing ? (
-              <edit className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              <Edit className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             ) : (
               <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             )}
@@ -323,7 +323,7 @@ const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess, editingCollaborato
                 <>
                   {isEditing ? (
                     <>
-                      <edit className="w-4 h-4 mr-1 sm:mr-2" />
+                      <Edit className="w-4 h-4 mr-1 sm:mr-2" />
                       <span>Atualizar</span>
                     </>
                   ) : (
