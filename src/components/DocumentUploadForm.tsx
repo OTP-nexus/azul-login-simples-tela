@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileText, CheckCircle, AlertCircle, Building2, ArrowLeft, Clock } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Building2, ArrowLeft, Clock, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDocumentStatus } from '@/hooks/useDocumentStatus';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,7 +17,7 @@ interface UploadedFiles {
 
 const DocumentUploadForm = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { documentStatus, loading, updateDocumentStatus, refetch } = useDocumentStatus();
   const { toast } = useToast();
   
@@ -258,6 +257,24 @@ const DocumentUploadForm = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso",
+      });
+      navigate('/login');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      toast({
+        title: "Erro no logout",
+        description: "Não foi possível desconectar. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const documentsSelected = Object.values(uploadedFiles).filter(file => file !== null).length;
   
   // Calcular progresso considerando documentos aprovados como completos
@@ -401,13 +418,24 @@ const DocumentUploadForm = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <button
-            onClick={() => navigate('/login')}
-            className="flex items-center text-gray-600 hover:text-gray-800 transition-colors mb-4"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            {hasSubmittedDocuments ? 'Voltar ao login' : 'Voltar ao cadastro'}
-          </button>
+          <div className="flex justify-between items-center mb-4">
+            <button
+              onClick={() => navigate('/login')}
+              className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              {hasSubmittedDocuments ? 'Voltar ao login' : 'Voltar ao cadastro'}
+            </button>
+            
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              className="flex items-center space-x-2 text-gray-700 hover:text-red-600 hover:border-red-300"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sair</span>
+            </Button>
+          </div>
           
           <div className="text-center">
             <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-blue-700 rounded-full flex items-center justify-center shadow-lg mb-4">
