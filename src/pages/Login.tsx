@@ -1,8 +1,8 @@
 
 import LoginForm from "@/components/LoginForm";
 
-const Index = () => {
+const Login = () => {
   return <LoginForm />;
 };
 
-export default Index;
+export default Login;
