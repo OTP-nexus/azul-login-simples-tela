@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,10 +26,16 @@ const LoginForm = () => {
   };
 
   const checkDocumentStatus = () => {
-    // Simula verificação do status dos documentos do usuário
-    // Em um app real, isso viria de uma API
-    const documentStatus = localStorage.getItem('documentStatus') || 'not_submitted';
-    return documentStatus;
+    // Verifica o tipo de usuário e status dos documentos
+    const userType = localStorage.getItem('userType') || 'company';
+    
+    if (userType === 'driver') {
+      const driverDocumentStatus = localStorage.getItem('driverDocumentStatus') || 'not_submitted';
+      return { userType, documentStatus: driverDocumentStatus };
+    } else {
+      const documentStatus = localStorage.getItem('documentStatus') || 'not_submitted';
+      return { userType, documentStatus };
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -39,16 +46,28 @@ const LoginForm = () => {
     if (formData.email && formData.password) {
       console.log('Login successful, checking document status...');
       
-      // Verifica status dos documentos
-      const docStatus = checkDocumentStatus();
-      console.log('Document status:', docStatus);
+      // Verifica status dos documentos e tipo de usuário
+      const { userType, documentStatus } = checkDocumentStatus();
+      console.log('User type:', userType, 'Document status:', documentStatus);
       
-      if (docStatus === 'pending' || docStatus === 'not_submitted') {
-        console.log('Redirecting to document verification...');
-        navigate('/document-verification');
-      } else if (docStatus === 'approved') {
-        console.log('Documents approved, redirecting to company dashboard...');
-        navigate('/company-dashboard');
+      if (userType === 'driver') {
+        if (documentStatus === 'pending' || documentStatus === 'not_submitted') {
+          console.log('Redirecting to driver document verification...');
+          navigate('/driver-document-verification');
+        } else if (documentStatus === 'approved') {
+          console.log('Driver documents approved, redirecting to driver dashboard...');
+          // TODO: Criar dashboard do motorista
+          alert('Bem-vindo! Dashboard do motorista será implementado em breve.');
+        }
+      } else {
+        // Fluxo para empresas (mantém o comportamento existente)
+        if (documentStatus === 'pending' || documentStatus === 'not_submitted') {
+          console.log('Redirecting to company document verification...');
+          navigate('/document-verification');
+        } else if (documentStatus === 'approved') {
+          console.log('Company documents approved, redirecting to company dashboard...');
+          navigate('/company-dashboard');
+        }
       }
     }
   };

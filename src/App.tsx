@@ -10,6 +10,7 @@ import UserTypeSelectionPage from "./pages/UserTypeSelection";
 import DriverRegistration from "./pages/DriverRegistration";
 import CompanyRegistration from "./pages/CompanyRegistration";
 import DocumentVerification from "./pages/DocumentVerification";
+import DriverDocumentVerification from "./pages/DriverDocumentVerification";
 import CompanyDashboard from "./pages/CompanyDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -31,6 +32,7 @@ const App = () => {
             <Route path="/register/driver" element={<DriverRegistration />} />
             <Route path="/register/company" element={<CompanyRegistration />} />
             <Route path="/document-verification" element={<DocumentVerification />} />
+            <Route path="/driver-document-verification" element={<DriverDocumentVerification />} />
             <Route path="/company-dashboard" element={<CompanyDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

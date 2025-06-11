@@ -31,7 +31,13 @@ const DriverRegistrationForm = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Driver registration:', formData);
-    // Aqui você implementaria a lógica de cadastro
+    
+    // Salva o tipo de usuário para identificar como motorista
+    localStorage.setItem('userType', 'driver');
+    localStorage.setItem('driverDocumentStatus', 'not_submitted');
+    
+    // Redireciona para verificação de documentos
+    navigate('/driver-document-verification');
   };
 
   return (
