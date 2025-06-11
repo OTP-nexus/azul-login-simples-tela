@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,19 +31,23 @@ const DocumentUploadForm = () => {
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  // Verificar se o usuário realmente tem documentos enviados (com URLs)
+  // Verificar se o usuário tem documentos enviados ou aprovados
   const hasSubmittedDocuments = documentStatus && (
-    (documentStatus.address_proof_status !== 'not_submitted' && documentStatus.address_proof_url) ||
-    (documentStatus.cnpj_card_status !== 'not_submitted' && documentStatus.cnpj_card_url) ||
-    (documentStatus.responsible_document_status !== 'not_submitted' && documentStatus.responsible_document_url)
+    (documentStatus.address_proof_status === 'pending' && documentStatus.address_proof_url) ||
+    (documentStatus.cnpj_card_status === 'pending' && documentStatus.cnpj_card_url) ||
+    (documentStatus.responsible_document_status === 'pending' && documentStatus.responsible_document_url) ||
+    documentStatus.address_proof_status === 'approved' ||
+    documentStatus.cnpj_card_status === 'approved' ||
+    documentStatus.responsible_document_status === 'approved'
   );
 
   const handleFileSelect = (file: File, documentType: keyof UploadedFiles) => {
-    // Apenas armazenar o arquivo localmente, não fazer upload ainda
-    if (hasSubmittedDocuments) {
+    // Verificar se o documento específico já está aprovado ou pendente
+    const docStatus = getDocumentStatus(documentType);
+    if (docStatus === 'approved' || (docStatus === 'pending' && getDocumentUrl(documentType))) {
       toast({
-        title: "Documentos já enviados",
-        description: "Você já enviou documentos que estão em análise",
+        title: "Documento já processado",
+        description: "Este documento já foi enviado ou aprovado",
         variant: "destructive"
       });
       return;
@@ -117,11 +122,11 @@ const DocumentUploadForm = () => {
       return;
     }
 
-    // Verificar se há documentos já vinculados ao usuário (com URLs)
+    // Verificar se há documentos já aprovados ou pendentes
     if (hasSubmittedDocuments) {
       toast({
-        title: "Documentos já enviados",
-        description: "Você já possui documentos em análise",
+        title: "Documentos já processados",
+        description: "Você já possui documentos aprovados ou em análise",
         variant: "destructive"
       });
       return;
@@ -226,13 +231,34 @@ const DocumentUploadForm = () => {
     }
   };
 
+  const getDocumentUrl = (documentType: keyof UploadedFiles) => {
+    if (!documentStatus) return null;
+    
+    switch (documentType) {
+      case 'addressProof':
+        return documentStatus.address_proof_url;
+      case 'cnpjCard':
+        return documentStatus.cnpj_card_url;
+      case 'responsibleDocument':
+        return documentStatus.responsible_document_url;
+      default:
+        return null;
+    }
+  };
+
   const documentsSelected = Object.values(uploadedFiles).filter(file => file !== null).length;
   
-  // Calcular progresso baseado apenas em documentos realmente enviados com URLs
+  // Calcular progresso considerando documentos aprovados como completos
+  const approvedDocs = (documentStatus?.address_proof_status === 'approved' ? 1 : 0) +
+                      (documentStatus?.cnpj_card_status === 'approved' ? 1 : 0) +
+                      (documentStatus?.responsible_document_status === 'approved' ? 1 : 0);
+  
+  const pendingDocs = (documentStatus?.address_proof_status === 'pending' && documentStatus?.address_proof_url ? 1 : 0) +
+                     (documentStatus?.cnpj_card_status === 'pending' && documentStatus?.cnpj_card_url ? 1 : 0) +
+                     (documentStatus?.responsible_document_status === 'pending' && documentStatus?.responsible_document_url ? 1 : 0);
+
   const progressPercentage = hasSubmittedDocuments 
-    ? ((documentStatus?.address_proof_url ? 1 : 0) +
-       (documentStatus?.cnpj_card_url ? 1 : 0) +
-       (documentStatus?.responsible_document_url ? 1 : 0)) / 3 * 100
+    ? ((approvedDocs + pendingDocs) / 3 * 100)
     : (documentsSelected / 3) * 100;
 
   const canSubmit = !hasSubmittedDocuments && documentsSelected === 3 && !uploading;
@@ -244,25 +270,26 @@ const DocumentUploadForm = () => {
   ) => {
     const status = getDocumentStatus(documentType);
     const selectedFile = uploadedFiles[documentType];
-    const hasDocumentUrl = documentStatus && (
-      (documentType === 'addressProof' && documentStatus.address_proof_url) ||
-      (documentType === 'cnpjCard' && documentStatus.cnpj_card_url) ||
-      (documentType === 'responsibleDocument' && documentStatus.responsible_document_url)
-    );
+    const documentUrl = getDocumentUrl(documentType);
+    const isApproved = status === 'approved';
+    const isPendingWithUrl = status === 'pending' && documentUrl;
+    const isProcessed = isApproved || isPendingWithUrl;
     
     return (
       <Card className="h-full">
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-lg">
             {title}
-            {hasDocumentUrl ? getStatusIcon(status) : <AlertCircle className="w-5 h-5 text-gray-400" />}
+            {isProcessed ? getStatusIcon(status) : <AlertCircle className="w-5 h-5 text-gray-400" />}
           </CardTitle>
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
           <div
             className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-              hasDocumentUrl
+              isApproved
+                ? 'border-green-300 bg-green-50'
+                : isPendingWithUrl
                 ? 'border-amber-300 bg-amber-50'
                 : dragOver === documentType
                 ? 'border-blue-400 bg-blue-50'
@@ -270,11 +297,21 @@ const DocumentUploadForm = () => {
                 ? 'border-green-400 bg-green-50'
                 : 'border-gray-300 hover:border-gray-400'
             }`}
-            onDragOver={(e) => !hasDocumentUrl && handleDragOver(e, documentType)}
-            onDragLeave={!hasDocumentUrl ? handleDragLeave : undefined}
-            onDrop={(e) => !hasDocumentUrl && handleDrop(e, documentType)}
+            onDragOver={(e) => !isProcessed && handleDragOver(e, documentType)}
+            onDragLeave={!isProcessed ? handleDragLeave : undefined}
+            onDrop={(e) => !isProcessed && handleDrop(e, documentType)}
           >
-            {hasDocumentUrl && status === 'pending' ? (
+            {isApproved ? (
+              <div className="space-y-2">
+                <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
+                <p className="font-medium text-green-700">
+                  Documento aprovado
+                </p>
+                <p className="text-sm text-green-600">
+                  Verificação concluída
+                </p>
+              </div>
+            ) : isPendingWithUrl ? (
               <div className="space-y-2">
                 <Clock className="w-12 h-12 text-amber-500 mx-auto" />
                 <p className="font-medium text-amber-700">
@@ -321,7 +358,7 @@ const DocumentUploadForm = () => {
               </div>
             )}
             
-            {!hasDocumentUrl && (
+            {!isProcessed && (
               <input
                 id={`file-${documentType}`}
                 type="file"
