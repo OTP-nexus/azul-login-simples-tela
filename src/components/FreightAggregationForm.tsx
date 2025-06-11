@@ -73,19 +73,44 @@ interface FreightFormData {
 }
 
 const predefinedVehicleTypes: VehicleType[] = [
-  { id: '1', type: 'Caminhão Toco', category: 'medium', selected: false },
-  { id: '2', type: 'Caminhão Truck', category: 'heavy', selected: false },
-  { id: '3', type: 'Carreta', category: 'heavy', selected: false },
-  { id: '4', type: 'Van', category: 'light', selected: false },
-  { id: '5', type: '3/4', category: 'light', selected: false },
+  // Pesados
+  { id: '1', type: 'Carreta', category: 'heavy', selected: false },
+  { id: '2', type: 'Carreta LS', category: 'heavy', selected: false },
+  { id: '3', type: 'Vanderléia', category: 'heavy', selected: false },
+  { id: '4', type: 'Bitrem', category: 'heavy', selected: false },
+  // Médios
+  { id: '5', type: 'Truck', category: 'medium', selected: false },
+  { id: '6', type: 'Bitruck', category: 'medium', selected: false },
+  // Leves
+  { id: '7', type: 'Fiorino', category: 'light', selected: false },
+  { id: '8', type: 'VLC', category: 'light', selected: false },
+  { id: '9', type: 'VUC', category: 'light', selected: false },
+  { id: '10', type: '3/4', category: 'light', selected: false },
+  { id: '11', type: 'Toco', category: 'light', selected: false },
 ];
 
 const predefinedBodyTypes: BodyType[] = [
-  { id: '1', type: 'Baú', category: 'closed', selected: false },
-  { id: '2', type: 'Sider', category: 'closed', selected: false },
-  { id: '3', type: 'Carroceria Aberta', category: 'open', selected: false },
-  { id: '4', type: 'Refrigerado', category: 'special', selected: false },
-  { id: '5', type: 'Graneleiro', category: 'special', selected: false },
+  // Abertas
+  { id: '1', type: 'Graneleiro', category: 'open', selected: false },
+  { id: '2', type: 'Grade Baixa', category: 'open', selected: false },
+  { id: '3', type: 'Prancha', category: 'open', selected: false },
+  { id: '4', type: 'Caçamba', category: 'open', selected: false },
+  { id: '5', type: 'Plataforma', category: 'open', selected: false },
+  // Fechadas
+  { id: '6', type: 'Sider', category: 'closed', selected: false },
+  { id: '7', type: 'Baú', category: 'closed', selected: false },
+  { id: '8', type: 'Baú Frigorífico', category: 'closed', selected: false },
+  { id: '9', type: 'Baú Refrigerado', category: 'closed', selected: false },
+  // Especiais
+  { id: '10', type: 'Silo', category: 'special', selected: false },
+  { id: '11', type: 'Cegonheiro', category: 'special', selected: false },
+  { id: '12', type: 'Gaiola', category: 'special', selected: false },
+  { id: '13', type: 'Tanque', category: 'special', selected: false },
+  { id: '14', type: 'Bug Porta Container', category: 'special', selected: false },
+  { id: '15', type: 'Munk', category: 'special', selected: false },
+  { id: '16', type: 'Apenas Cavalo', category: 'special', selected: false },
+  { id: '17', type: 'Cavaqueira', category: 'special', selected: false },
+  { id: '18', type: 'Hopper', category: 'special', selected: false },
 ];
 
 const schedulingRules = [
@@ -105,7 +130,6 @@ const FreightAggregationForm = () => {
   const [loadingCollaborators, setLoadingCollaborators] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
   
-  // Move formData declaration before it's used
   const [formData, setFormData] = useState<FreightFormData>({
     collaborator_ids: [],
     origem_cidade: '',
@@ -128,7 +152,6 @@ const FreightAggregationForm = () => {
     observacoes: ''
   });
   
-  // Estados e cidades IBGE - now formData is available
   const { estados, loading: loadingEstados } = useEstados();
   const origemCidades = useCidades(formData.origem_estado);
   const [destinoCidades, setDestinoCidades] = useState<{[key: string]: any}>({});
@@ -183,7 +206,6 @@ const FreightAggregationForm = () => {
     fetchCollaborators();
   }, [user]);
 
-  // Buscar cidades quando a UF de um destino for alterada
   const fetchCidadesForDestino = async (uf: string, destinoId: string) => {
     if (!uf) return;
     
@@ -240,7 +262,6 @@ const FreightAggregationForm = () => {
       ...prev,
       destinos: prev.destinos.filter(dest => dest.id !== id)
     }));
-    // Remove cidades do cache também
     setDestinoCidades(prev => {
       const newState = { ...prev };
       delete newState[id];
@@ -256,7 +277,6 @@ const FreightAggregationForm = () => {
       )
     }));
 
-    // Se mudou o estado, buscar as cidades e limpar a cidade selecionada
     if (field === 'state') {
       fetchCidadesForDestino(value, id);
       setFormData(prev => ({
@@ -476,7 +496,6 @@ const FreightAggregationForm = () => {
         description: `Frete de agregamento criado com ${formData.collaborator_ids.length} colaborador(es) responsável(is)`
       });
 
-      // Reset form
       setFormData({
         collaborator_ids: [],
         origem_cidade: '',
@@ -959,40 +978,124 @@ const FreightAggregationForm = () => {
                 {/* Tipos de Veículos */}
                 <div className="space-y-4">
                   <Label className="text-lg font-medium text-gray-800">Tipos de Veículos *</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {formData.tipos_veiculos.map((vehicle) => (
-                      <div key={vehicle.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                        <Checkbox
-                          id={`vehicle-${vehicle.id}`}
-                          checked={vehicle.selected}
-                          onCheckedChange={() => toggleVehicleType(vehicle.id)}
-                        />
-                        <label htmlFor={`vehicle-${vehicle.id}`} className="flex-1 cursor-pointer">
-                          <div className="font-medium text-gray-800">{vehicle.type}</div>
-                          <div className="text-sm text-gray-600 capitalize">{vehicle.category}</div>
-                        </label>
-                      </div>
-                    ))}
+                  
+                  {/* Pesados */}
+                  <div className="space-y-3">
+                    <h4 className="text-md font-semibold text-gray-700">Pesados</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {formData.tipos_veiculos.filter(v => v.category === 'heavy').map((vehicle) => (
+                        <div key={vehicle.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                          <Checkbox
+                            id={`vehicle-${vehicle.id}`}
+                            checked={vehicle.selected}
+                            onCheckedChange={() => toggleVehicleType(vehicle.id)}
+                          />
+                          <label htmlFor={`vehicle-${vehicle.id}`} className="flex-1 cursor-pointer">
+                            <div className="font-medium text-gray-800">{vehicle.type}</div>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Médios */}
+                  <div className="space-y-3">
+                    <h4 className="text-md font-semibold text-gray-700">Médios</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {formData.tipos_veiculos.filter(v => v.category === 'medium').map((vehicle) => (
+                        <div key={vehicle.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                          <Checkbox
+                            id={`vehicle-${vehicle.id}`}
+                            checked={vehicle.selected}
+                            onCheckedChange={() => toggleVehicleType(vehicle.id)}
+                          />
+                          <label htmlFor={`vehicle-${vehicle.id}`} className="flex-1 cursor-pointer">
+                            <div className="font-medium text-gray-800">{vehicle.type}</div>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Leves */}
+                  <div className="space-y-3">
+                    <h4 className="text-md font-semibold text-gray-700">Leves</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {formData.tipos_veiculos.filter(v => v.category === 'light').map((vehicle) => (
+                        <div key={vehicle.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                          <Checkbox
+                            id={`vehicle-${vehicle.id}`}
+                            checked={vehicle.selected}
+                            onCheckedChange={() => toggleVehicleType(vehicle.id)}
+                          />
+                          <label htmlFor={`vehicle-${vehicle.id}`} className="flex-1 cursor-pointer">
+                            <div className="font-medium text-gray-800">{vehicle.type}</div>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 {/* Tipos de Carroceria */}
                 <div className="space-y-4">
                   <Label className="text-lg font-medium text-gray-800">Tipos de Carroceria</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {formData.tipos_carrocerias.map((body) => (
-                      <div key={body.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                        <Checkbox
-                          id={`body-${body.id}`}
-                          checked={body.selected}
-                          onCheckedChange={() => toggleBodyType(body.id)}
-                        />
-                        <label htmlFor={`body-${body.id}`} className="flex-1 cursor-pointer">
-                          <div className="font-medium text-gray-800">{body.type}</div>
-                          <div className="text-sm text-gray-600 capitalize">{body.category}</div>
-                        </label>
-                      </div>
-                    ))}
+                  
+                  {/* Abertas */}
+                  <div className="space-y-3">
+                    <h4 className="text-md font-semibold text-gray-700">Abertas</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {formData.tipos_carrocerias.filter(b => b.category === 'open').map((body) => (
+                        <div key={body.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                          <Checkbox
+                            id={`body-${body.id}`}
+                            checked={body.selected}
+                            onCheckedChange={() => toggleBodyType(body.id)}
+                          />
+                          <label htmlFor={`body-${body.id}`} className="flex-1 cursor-pointer">
+                            <div className="font-medium text-gray-800">{body.type}</div>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Fechadas */}
+                  <div className="space-y-3">
+                    <h4 className="text-md font-semibold text-gray-700">Fechadas</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {formData.tipos_carrocerias.filter(b => b.category === 'closed').map((body) => (
+                        <div key={body.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                          <Checkbox
+                            id={`body-${body.id}`}
+                            checked={body.selected}
+                            onCheckedChange={() => toggleBodyType(body.id)}
+                          />
+                          <label htmlFor={`body-${body.id}`} className="flex-1 cursor-pointer">
+                            <div className="font-medium text-gray-800">{body.type}</div>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Especiais */}
+                  <div className="space-y-3">
+                    <h4 className="text-md font-semibold text-gray-700">Especiais</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {formData.tipos_carrocerias.filter(b => b.category === 'special').map((body) => (
+                        <div key={body.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                          <Checkbox
+                            id={`body-${body.id}`}
+                            checked={body.selected}
+                            onCheckedChange={() => toggleBodyType(body.id)}
+                          />
+                          <label htmlFor={`body-${body.id}`} className="flex-1 cursor-pointer">
+                            <div className="font-medium text-gray-800">{body.type}</div>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
