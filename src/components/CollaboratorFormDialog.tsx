@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, User } from 'lucide-react';
+import { Plus, User, edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,13 +16,23 @@ interface CollaboratorFormData {
   email: string;
 }
 
+interface Collaborator {
+  id: string;
+  name: string;
+  sector: string;
+  phone: string;
+  email?: string;
+  created_at: string;
+}
+
 interface CollaboratorFormDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  editingCollaborator?: Collaborator | null;
 }
 
-const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess }: CollaboratorFormDialogProps) => {
+const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess, editingCollaborator }: CollaboratorFormDialogProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -32,6 +42,27 @@ const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess }: CollaboratorForm
     phone: '',
     email: ''
   });
+
+  const isEditing = !!editingCollaborator;
+
+  // Preencher formulário quando estiver editando
+  useEffect(() => {
+    if (editingCollaborator) {
+      setFormData({
+        name: editingCollaborator.name,
+        sector: editingCollaborator.sector,
+        phone: editingCollaborator.phone,
+        email: editingCollaborator.email || ''
+      });
+    } else {
+      setFormData({
+        name: '',
+        sector: '',
+        phone: '',
+        email: ''
+      });
+    }
+  }, [editingCollaborator]);
 
   const handleInputChange = (field: keyof CollaboratorFormData, value: string) => {
     setFormData(prev => ({
@@ -97,36 +128,59 @@ const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess }: CollaboratorForm
     setLoading(true);
     
     try {
-      // Primeiro, buscar a empresa do usuário
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
+      if (isEditing && editingCollaborator) {
+        // Atualizar colaborador existente
+        const { error: updateError } = await supabase
+          .from('collaborators')
+          .update({
+            name: formData.name.trim(),
+            sector: formData.sector.trim(),
+            phone: formData.phone.trim(),
+            email: formData.email.trim() || null
+          })
+          .eq('id', editingCollaborator.id);
 
-      if (companyError || !company) {
-        throw new Error('Empresa não encontrada');
-      }
+        if (updateError) {
+          throw updateError;
+        }
 
-      // Inserir o colaborador
-      const { error: insertError } = await supabase
-        .from('collaborators')
-        .insert({
-          company_id: company.id,
-          name: formData.name.trim(),
-          sector: formData.sector.trim(),
-          phone: formData.phone.trim(),
-          email: formData.email.trim() || null
+        toast({
+          title: "Sucesso!",
+          description: "Colaborador atualizado com sucesso"
         });
+      } else {
+        // Criar novo colaborador
+        // Primeiro, buscar a empresa do usuário
+        const { data: company, error: companyError } = await supabase
+          .from('companies')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
 
-      if (insertError) {
-        throw insertError;
+        if (companyError || !company) {
+          throw new Error('Empresa não encontrada');
+        }
+
+        // Inserir o colaborador
+        const { error: insertError } = await supabase
+          .from('collaborators')
+          .insert({
+            company_id: company.id,
+            name: formData.name.trim(),
+            sector: formData.sector.trim(),
+            phone: formData.phone.trim(),
+            email: formData.email.trim() || null
+          });
+
+        if (insertError) {
+          throw insertError;
+        }
+
+        toast({
+          title: "Sucesso!",
+          description: "Colaborador cadastrado com sucesso"
+        });
       }
-
-      toast({
-        title: "Sucesso!",
-        description: "Colaborador cadastrado com sucesso"
-      });
 
       // Limpar formulário e fechar dialog
       setFormData({
@@ -140,10 +194,10 @@ const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess }: CollaboratorForm
       onClose();
 
     } catch (error: any) {
-      console.error('Erro ao cadastrar colaborador:', error);
+      console.error('Erro ao salvar colaborador:', error);
       toast({
-        title: "Erro ao cadastrar",
-        description: error.message || "Não foi possível cadastrar o colaborador. Tente novamente.",
+        title: isEditing ? "Erro ao atualizar" : "Erro ao cadastrar",
+        description: error.message || `Não foi possível ${isEditing ? 'atualizar' : 'cadastrar'} o colaborador. Tente novamente.`,
         variant: "destructive"
       });
     } finally {
@@ -166,13 +220,20 @@ const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess }: CollaboratorForm
       <DialogContent className="sm:max-w-[425px] w-[95%] max-w-[95%] sm:w-full mx-auto">
         <DialogHeader>
           <div className="mx-auto w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg mb-3 sm:mb-4">
-            <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            {isEditing ? (
+              <edit className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            ) : (
+              <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            )}
           </div>
           <DialogTitle className="text-lg sm:text-xl font-bold text-gray-800 text-center">
-            Novo Colaborador
+            {isEditing ? 'Editar Colaborador' : 'Novo Colaborador'}
           </DialogTitle>
           <DialogDescription className="text-sm sm:text-base text-gray-600 text-center px-2">
-            Preencha as informações do colaborador responsável pelo setor
+            {isEditing 
+              ? 'Atualize as informações do colaborador' 
+              : 'Preencha as informações do colaborador responsável pelo setor'
+            }
           </DialogDescription>
         </DialogHeader>
         
@@ -260,8 +321,17 @@ const CollaboratorFormDialog = ({ isOpen, onClose, onSuccess }: CollaboratorForm
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
               ) : (
                 <>
-                  <Plus className="w-4 h-4 mr-1 sm:mr-2" />
-                  <span>Cadastrar</span>
+                  {isEditing ? (
+                    <>
+                      <edit className="w-4 h-4 mr-1 sm:mr-2" />
+                      <span>Atualizar</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-1 sm:mr-2" />
+                      <span>Cadastrar</span>
+                    </>
+                  )}
                 </>
               )}
             </Button>

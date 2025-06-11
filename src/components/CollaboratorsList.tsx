@@ -2,12 +2,23 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, User, Phone, Mail, Building2, Users } from 'lucide-react';
+import { ArrowLeft, Plus, User, Phone, Mail, Building2, Users, edit, trash } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import CollaboratorFormDialog from './CollaboratorFormDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Collaborator {
   id: string;
@@ -25,6 +36,8 @@ const CollaboratorsList = () => {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingCollaborator, setEditingCollaborator] = useState<Collaborator | null>(null);
+  const [deletingCollaboratorId, setDeletingCollaboratorId] = useState<string | null>(null);
 
   const handleBack = () => {
     navigate('/company-dashboard');
@@ -74,7 +87,50 @@ const CollaboratorsList = () => {
   }, [user]);
 
   const handleDialogSuccess = () => {
-    fetchCollaborators(); // Recarregar a lista após adicionar um colaborador
+    fetchCollaborators(); // Recarregar a lista após adicionar/editar um colaborador
+    setEditingCollaborator(null); // Limpar estado de edição
+  };
+
+  const handleEditCollaborator = (collaborator: Collaborator) => {
+    setEditingCollaborator(collaborator);
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteCollaborator = async (collaboratorId: string) => {
+    try {
+      const { error } = await supabase
+        .from('collaborators')
+        .delete()
+        .eq('id', collaboratorId);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Sucesso!",
+        description: "Colaborador excluído com sucesso"
+      });
+
+      fetchCollaborators(); // Recarregar a lista
+    } catch (error: any) {
+      console.error('Erro ao excluir colaborador:', error);
+      toast({
+        title: "Erro ao excluir",
+        description: error.message || "Não foi possível excluir o colaborador. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleNewCollaborator = () => {
+    setEditingCollaborator(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+    setEditingCollaborator(null);
   };
 
   return (
@@ -99,7 +155,7 @@ const CollaboratorsList = () => {
               </div>
             </div>
             <Button
-              onClick={() => setIsDialogOpen(true)}
+              onClick={handleNewCollaborator}
               className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white flex items-center space-x-1 sm:space-x-2 flex-shrink-0"
               size="sm"
             >
@@ -130,7 +186,7 @@ const CollaboratorsList = () => {
                 Comece adicionando os responsáveis por cada setor da sua empresa
               </p>
               <Button
-                onClick={() => setIsDialogOpen(true)}
+                onClick={handleNewCollaborator}
                 className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
                 size="sm"
               >
@@ -144,18 +200,59 @@ const CollaboratorsList = () => {
             {collaborators.map((collaborator) => (
               <Card key={collaborator.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-2 sm:pb-3">
-                  <div className="flex items-center space-x-2 sm:space-x-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <User className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-sm sm:text-lg font-semibold text-gray-800 truncate">
+                          {collaborator.name}
+                        </CardTitle>
+                        <CardDescription className="flex items-center text-xs sm:text-sm text-gray-600">
+                          <Building2 className="w-3 h-3 mr-1 flex-shrink-0" />
+                          <span className="truncate">{collaborator.sector}</span>
+                        </CardDescription>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <CardTitle className="text-sm sm:text-lg font-semibold text-gray-800 truncate">
-                        {collaborator.name}
-                      </CardTitle>
-                      <CardDescription className="flex items-center text-xs sm:text-sm text-gray-600">
-                        <Building2 className="w-3 h-3 mr-1 flex-shrink-0" />
-                        <span className="truncate">{collaborator.sector}</span>
-                      </CardDescription>
+                    <div className="flex items-center space-x-1 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleEditCollaborator(collaborator)}
+                      >
+                        <edit className="h-4 w-4 text-blue-600" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                          >
+                            <trash className="h-4 w-4 text-red-600" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="sm:max-w-[425px] w-[95%] max-w-[95%] sm:w-full mx-auto">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja excluir o colaborador <strong>{collaborator.name}</strong>? 
+                              Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteCollaborator(collaborator.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 </CardHeader>
@@ -200,11 +297,12 @@ const CollaboratorsList = () => {
         </Card>
       </main>
 
-      {/* Dialog para novo colaborador */}
+      {/* Dialog para novo/editar colaborador */}
       <CollaboratorFormDialog
         isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
+        onClose={handleDialogClose}
         onSuccess={handleDialogSuccess}
+        editingCollaborator={editingCollaborator}
       />
     </div>
   );
