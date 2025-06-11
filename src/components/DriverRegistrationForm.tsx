@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,10 +5,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, EyeOff, Mail, Lock, User, Phone, FileText, Truck, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const DriverRegistrationForm = () => {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
+  const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -28,16 +33,74 @@ const DriverRegistrationForm = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Driver registration:', formData);
     
-    // Salva o tipo de usuário para identificar como motorista
-    localStorage.setItem('userType', 'driver');
-    localStorage.setItem('driverDocumentStatus', 'not_submitted');
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Erro",
+        description: "As senhas não coincidem",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
     
-    // Redireciona para verificação de documentos
-    navigate('/driver-document-verification');
+    try {
+      // Criar usuário no Supabase Auth
+      const { error: authError } = await signUp(formData.email, formData.password, {
+        full_name: formData.name,
+        role: 'driver',
+        phone: formData.phone
+      });
+
+      if (authError) {
+        throw authError;
+      }
+
+      // Aguardar um pouco para o trigger criar o profile
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Buscar o usuário criado
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Criar registro na tabela drivers
+        const { error: driverError } = await supabase
+          .from('drivers')
+          .insert({
+            user_id: user.id,
+            cpf: formData.cpf,
+            cnh: formData.cnh,
+            vehicle_type: formData.vehicleType
+          });
+
+        if (driverError) {
+          console.error('Error creating driver:', driverError);
+        }
+      }
+
+      toast({
+        title: "Sucesso!",
+        description: "Conta criada com sucesso. Redirecionando para verificação de documentos...",
+      });
+
+      // Redirecionar para verificação de documentos
+      setTimeout(() => {
+        navigate('/driver-document-verification');
+      }, 1500);
+
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      toast({
+        title: "Erro no cadastro",
+        description: error.message || "Ocorreu um erro ao criar sua conta",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -80,6 +143,7 @@ const DriverRegistrationForm = () => {
                     onChange={handleInputChange}
                     className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -99,6 +163,7 @@ const DriverRegistrationForm = () => {
                     onChange={handleInputChange}
                     className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -118,6 +183,7 @@ const DriverRegistrationForm = () => {
                     onChange={handleInputChange}
                     className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -137,6 +203,7 @@ const DriverRegistrationForm = () => {
                     onChange={handleInputChange}
                     className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -156,6 +223,7 @@ const DriverRegistrationForm = () => {
                     onChange={handleInputChange}
                     className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -175,6 +243,7 @@ const DriverRegistrationForm = () => {
                     onChange={handleInputChange}
                     className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -194,11 +263,13 @@ const DriverRegistrationForm = () => {
                     onChange={handleInputChange}
                     className="pl-10 pr-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
+                    disabled={loading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+                    disabled={loading}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -220,15 +291,17 @@ const DriverRegistrationForm = () => {
                     onChange={handleInputChange}
                     className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
               
               <Button
                 type="submit"
-                className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] shadow-lg"
+                disabled={loading}
+                className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] shadow-lg disabled:opacity-50"
               >
-                Criar conta
+                {loading ? 'Criando conta...' : 'Criar conta'}
               </Button>
             </form>
             
@@ -240,6 +313,7 @@ const DriverRegistrationForm = () => {
                 type="button"
                 onClick={() => navigate('/login')}
                 className="ml-1 text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                disabled={loading}
               >
                 Fazer login
               </button>

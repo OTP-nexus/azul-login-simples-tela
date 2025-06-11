@@ -1,18 +1,27 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, FileText, Camera, Home, CheckCircle, Clock, AlertCircle, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useDocumentStatus } from '@/hooks/useDocumentStatus';
+import { uploadDocument } from '@/utils/fileUpload';
+import { useToast } from '@/hooks/use-toast';
 
 interface UploadedFile {
   name: string;
   size: number;
   type: string;
+  url?: string;
 }
 
 const DriverDocumentUploadForm = () => {
   const navigate = useNavigate();
+  const { user, profile, loading: authLoading } = useAuth();
+  const { documentStatus, updateDocumentStatus, loading: statusLoading } = useDocumentStatus();
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<{
     cnh: UploadedFile | null;
     photo: UploadedFile | null;
@@ -27,26 +36,128 @@ const DriverDocumentUploadForm = () => {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const addressInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = (type: 'cnh' | 'photo' | 'addressProof', file: File) => {
+  // Redirect if user is not authenticated or not a driver
+  useEffect(() => {
+    if (!authLoading && (!user || !profile)) {
+      navigate('/login');
+      return;
+    }
+
+    if (!authLoading && profile && profile.role !== 'driver') {
+      navigate('/');
+      return;
+    }
+  }, [user, profile, authLoading, navigate]);
+
+  // Initialize uploaded files from document status
+  useEffect(() => {
+    if (documentStatus) {
+      setUploadedFiles({
+        cnh: documentStatus.cnh_document_url ? {
+          name: 'CNH enviada',
+          size: 0,
+          type: 'document',
+          url: documentStatus.cnh_document_url
+        } : null,
+        photo: documentStatus.photo_url ? {
+          name: 'Foto enviada',
+          size: 0,
+          type: 'image',
+          url: documentStatus.photo_url
+        } : null,
+        addressProof: documentStatus.driver_address_proof_url ? {
+          name: 'Comprovante enviado',
+          size: 0,
+          type: 'document',
+          url: documentStatus.driver_address_proof_url
+        } : null
+      });
+    }
+  }, [documentStatus]);
+
+  const handleFileUpload = async (type: 'cnh' | 'photo' | 'addressProof', file: File) => {
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (file.size > 5 * 1024 * 1024) {
-      alert('Arquivo muito grande! Máximo 5MB.');
+      toast({
+        title: "Arquivo muito grande",
+        description: "O arquivo deve ter no máximo 5MB",
+        variant: "destructive"
+      });
       return;
     }
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
     if (!allowedTypes.includes(file.type)) {
-      alert('Tipo de arquivo não permitido! Use JPG, PNG ou PDF.');
+      toast({
+        title: "Tipo de arquivo não permitido",
+        description: "Use apenas JPG, PNG ou PDF",
+        variant: "destructive"
+      });
       return;
     }
 
-    setUploadedFiles(prev => ({
-      ...prev,
-      [type]: {
-        name: file.name,
-        size: file.size,
-        type: file.type
+    setUploading(type);
+
+    try {
+      // Upload file to Supabase Storage
+      const { url, error } = await uploadDocument(file, user.id, type);
+
+      if (error) {
+        throw error;
       }
-    }));
+
+      // Update local state
+      setUploadedFiles(prev => ({
+        ...prev,
+        [type]: {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          url
+        }
+      }));
+
+      // Update document status in database
+      const updateData: any = {};
+      const statusField = type === 'cnh' ? 'cnh_document_status' : 
+                         type === 'photo' ? 'photo_status' : 
+                         'driver_address_proof_status';
+      const urlField = type === 'cnh' ? 'cnh_document_url' : 
+                      type === 'photo' ? 'photo_url' : 
+                      'driver_address_proof_url';
+
+      updateData[statusField] = 'pending';
+      updateData[urlField] = url;
+
+      const { error: updateError } = await updateDocumentStatus(updateData);
+
+      if (updateError) {
+        console.error('Error updating document status:', updateError);
+      }
+
+      toast({
+        title: "Documento enviado",
+        description: "Arquivo enviado com sucesso!",
+      });
+
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Erro no upload",
+        description: error.message || "Erro ao enviar arquivo",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(null);
+    }
   };
 
   const handleDrop = (e: React.DragEvent, type: 'cnh' | 'photo' | 'addressProof') => {
@@ -59,16 +170,20 @@ const DriverDocumentUploadForm = () => {
 
   const handleSubmit = () => {
     if (!uploadedFiles.cnh || !uploadedFiles.photo || !uploadedFiles.addressProof) {
-      alert('Por favor, envie todos os documentos obrigatórios.');
+      toast({
+        title: "Documentos incompletos",
+        description: "Por favor, envie todos os documentos obrigatórios",
+        variant: "destructive"
+      });
       return;
     }
 
-    // Salva o status como pendente
-    localStorage.setItem('driverDocumentStatus', 'pending');
-    
-    alert('Documentos enviados com sucesso! Eles serão analisados em até 24 horas.');
-    
-    // Redireciona para o login ou dashboard futuro
+    toast({
+      title: "Documentos enviados!",
+      description: "Seus documentos estão sendo analisados. Você receberá um email quando a verificação for concluída.",
+    });
+
+    // Redirect to login or a waiting page
     navigate('/login');
   };
 
@@ -78,6 +193,21 @@ const DriverDocumentUploadForm = () => {
     const sizes = ['Bytes', 'KB', 'MB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getDocumentStatus = (type: 'cnh' | 'photo' | 'addressProof') => {
+    if (!documentStatus) return 'not_submitted';
+    
+    switch (type) {
+      case 'cnh':
+        return documentStatus.cnh_document_status;
+      case 'photo':
+        return documentStatus.photo_status;
+      case 'addressProof':
+        return documentStatus.driver_address_proof_status;
+      default:
+        return 'not_submitted';
+    }
   };
 
   const DocumentUploadCard = ({ 
@@ -96,6 +226,8 @@ const DriverDocumentUploadForm = () => {
     accept?: string;
   }) => {
     const file = uploadedFiles[type];
+    const status = getDocumentStatus(type);
+    const isUploading = uploading === type;
     
     return (
       <Card className="border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors">
@@ -105,14 +237,28 @@ const DriverDocumentUploadForm = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
             <p className="text-sm text-gray-600 mb-4">{description}</p>
             
-            {file ? (
+            {isUploading ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-sm font-medium text-blue-800">Enviando...</span>
+                </div>
+              </div>
+            ) : file && status === 'pending' ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-center justify-center space-x-2">
+                  <Clock className="h-5 w-5 text-amber-600" />
+                  <span className="text-sm font-medium text-amber-800">Aguardando verificação</span>
+                </div>
+                <p className="text-xs text-amber-600 mt-1">{file.name}</p>
+              </div>
+            ) : file && status === 'approved' ? (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="flex items-center justify-center space-x-2">
                   <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-sm font-medium text-green-800">Arquivo enviado</span>
+                  <span className="text-sm font-medium text-green-800">Documento aprovado</span>
                 </div>
                 <p className="text-xs text-green-600 mt-1">{file.name}</p>
-                <p className="text-xs text-green-600">{formatFileSize(file.size)}</p>
               </div>
             ) : (
               <div
@@ -143,6 +289,21 @@ const DriverDocumentUploadForm = () => {
     );
   };
 
+  // Show loading while checking auth
+  if (authLoading || statusLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-600 mt-4">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const allDocumentsSubmitted = uploadedFiles.cnh && uploadedFiles.photo && uploadedFiles.addressProof;
+  const isPending = documentStatus?.overall_status === 'pending';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4">
       <div className="max-w-4xl mx-auto">
@@ -155,10 +316,30 @@ const DriverDocumentUploadForm = () => {
               Verificação de Documentos - Motorista
             </CardTitle>
             <CardDescription className="text-gray-600">
-              Envie os documentos necessários para verificar sua conta
+              {isPending 
+                ? 'Seus documentos estão em análise. Aguarde a confirmação por email.'
+                : 'Envie os documentos necessários para verificar sua conta'
+              }
             </CardDescription>
           </CardHeader>
         </Card>
+
+        {isPending && (
+          <Card className="mb-6 bg-amber-50 border-amber-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-3">
+                <Clock className="w-6 h-6 text-amber-600" />
+                <div>
+                  <h3 className="font-semibold text-amber-800">Documentos em análise</h3>
+                  <p className="text-sm text-amber-600">
+                    Seus documentos foram enviados e estão sendo verificados pela nossa equipe. 
+                    Você receberá um email com o resultado em até 24 horas úteis.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <DocumentUploadCard
@@ -215,10 +396,10 @@ const DriverDocumentUploadForm = () => {
               
               <Button
                 onClick={handleSubmit}
-                disabled={!uploadedFiles.cnh || !uploadedFiles.photo || !uploadedFiles.addressProof}
+                disabled={!allDocumentsSubmitted || isPending}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
               >
-                Enviar Documentos
+                {isPending ? 'Documentos em análise' : 'Finalizar envio'}
               </Button>
             </div>
           </CardContent>

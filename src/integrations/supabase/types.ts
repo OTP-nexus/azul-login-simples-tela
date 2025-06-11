@@ -9,16 +9,272 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      companies: {
+        Row: {
+          cep: string
+          city: string
+          cnpj: string
+          company_name: string
+          complement: string | null
+          confirm_phone: string
+          contact_name: string
+          created_at: string | null
+          id: string
+          neighborhood: string
+          number: string
+          phone: string
+          state: string
+          street: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cep: string
+          city: string
+          cnpj: string
+          company_name: string
+          complement?: string | null
+          confirm_phone: string
+          contact_name: string
+          created_at?: string | null
+          id?: string
+          neighborhood: string
+          number: string
+          phone: string
+          state: string
+          street: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cep?: string
+          city?: string
+          cnpj?: string
+          company_name?: string
+          complement?: string | null
+          confirm_phone?: string
+          contact_name?: string
+          created_at?: string | null
+          id?: string
+          neighborhood?: string
+          number?: string
+          phone?: string
+          state?: string
+          street?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "companies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_verifications: {
+        Row: {
+          address_proof_status:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          address_proof_url: string | null
+          cnh_document_status:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          cnh_document_url: string | null
+          cnpj_card_status:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          cnpj_card_url: string | null
+          created_at: string | null
+          driver_address_proof_status:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          driver_address_proof_url: string | null
+          id: string
+          overall_status: Database["public"]["Enums"]["document_status"] | null
+          photo_status: Database["public"]["Enums"]["document_status"] | null
+          photo_url: string | null
+          rejection_reason: string | null
+          responsible_document_status:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          responsible_document_url: string | null
+          updated_at: string | null
+          user_id: string
+          user_role: Database["public"]["Enums"]["user_role"]
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          address_proof_status?:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          address_proof_url?: string | null
+          cnh_document_status?:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          cnh_document_url?: string | null
+          cnpj_card_status?:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          cnpj_card_url?: string | null
+          created_at?: string | null
+          driver_address_proof_status?:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          driver_address_proof_url?: string | null
+          id?: string
+          overall_status?: Database["public"]["Enums"]["document_status"] | null
+          photo_status?: Database["public"]["Enums"]["document_status"] | null
+          photo_url?: string | null
+          rejection_reason?: string | null
+          responsible_document_status?:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          responsible_document_url?: string | null
+          updated_at?: string | null
+          user_id: string
+          user_role: Database["public"]["Enums"]["user_role"]
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          address_proof_status?:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          address_proof_url?: string | null
+          cnh_document_status?:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          cnh_document_url?: string | null
+          cnpj_card_status?:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          cnpj_card_url?: string | null
+          created_at?: string | null
+          driver_address_proof_status?:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          driver_address_proof_url?: string | null
+          id?: string
+          overall_status?: Database["public"]["Enums"]["document_status"] | null
+          photo_status?: Database["public"]["Enums"]["document_status"] | null
+          photo_url?: string | null
+          rejection_reason?: string | null
+          responsible_document_status?:
+            | Database["public"]["Enums"]["document_status"]
+            | null
+          responsible_document_url?: string | null
+          updated_at?: string | null
+          user_id?: string
+          user_role?: Database["public"]["Enums"]["user_role"]
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_verifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_verifications_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drivers: {
+        Row: {
+          cnh: string
+          cpf: string
+          created_at: string | null
+          id: string
+          updated_at: string | null
+          user_id: string
+          vehicle_type: string
+        }
+        Insert: {
+          cnh: string
+          cpf: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+          vehicle_type: string
+        }
+        Update: {
+          cnh?: string
+          cpf?: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+          vehicle_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drivers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name: string
+          id: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_documents_complete: {
+        Args: {
+          user_role_param: Database["public"]["Enums"]["user_role"]
+          verification_record: Database["public"]["Tables"]["document_verifications"]["Row"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      document_status: "not_submitted" | "pending" | "approved" | "rejected"
+      user_role: "admin" | "driver" | "company"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +389,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      document_status: ["not_submitted", "pending", "approved", "rejected"],
+      user_role: ["admin", "driver", "company"],
+    },
   },
 } as const
