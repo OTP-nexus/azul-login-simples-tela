@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Truck, User, Plus, X, ArrowRight, CheckCircle, MapPin, Settings, DollarSign, Calendar } from 'lucide-react';
+import { ArrowLeft, Truck, User, Plus, X, ArrowRight, CheckCircle, MapPin, Settings, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,12 +42,16 @@ interface BodyType {
   selected: boolean;
 }
 
-interface PriceTable {
+interface PriceRange {
   id: string;
-  vehicleType: string;
   kmStart: number;
   kmEnd: number;
   price: number;
+}
+
+interface VehiclePriceTable {
+  vehicleType: string;
+  ranges: PriceRange[];
 }
 
 interface FreightFormData {
@@ -56,11 +60,9 @@ interface FreightFormData {
   origem_estado: string;
   destinos: Destination[];
   tipo_mercadoria: string;
-  peso_carga: string;
-  valor_carga: string;
   tipos_veiculos: VehicleType[];
   tipos_carrocerias: BodyType[];
-  tabelas_preco: PriceTable[];
+  vehicle_price_tables: VehiclePriceTable[];
   regras_agendamento: string[];
   beneficios: string[];
   horario_carregamento: string;
@@ -136,11 +138,9 @@ const FreightAggregationForm = () => {
     origem_estado: '',
     destinos: [],
     tipo_mercadoria: '',
-    peso_carga: '',
-    valor_carga: '',
     tipos_veiculos: [...predefinedVehicleTypes],
     tipos_carrocerias: [...predefinedBodyTypes],
-    tabelas_preco: [],
+    vehicle_price_tables: [],
     regras_agendamento: [],
     beneficios: [],
     horario_carregamento: '',
@@ -205,6 +205,37 @@ const FreightAggregationForm = () => {
   useEffect(() => {
     fetchCollaborators();
   }, [user]);
+
+  // Atualizar tabelas de preço quando veículos são selecionados/deselecionados
+  useEffect(() => {
+    const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
+    const currentTables = formData.vehicle_price_tables;
+    
+    // Remover tabelas de veículos que não estão mais selecionados
+    const updatedTables = currentTables.filter(table => 
+      selectedVehicles.some(vehicle => vehicle.type === table.vehicleType)
+    );
+    
+    // Adicionar tabelas para novos veículos selecionados
+    selectedVehicles.forEach(vehicle => {
+      if (!updatedTables.some(table => table.vehicleType === vehicle.type)) {
+        updatedTables.push({
+          vehicleType: vehicle.type,
+          ranges: [{
+            id: Date.now().toString(),
+            kmStart: 0,
+            kmEnd: 100,
+            price: 0
+          }]
+        });
+      }
+    });
+    
+    setFormData(prev => ({
+      ...prev,
+      vehicle_price_tables: updatedTables
+    }));
+  }, [formData.tipos_veiculos]);
 
   const fetchCidadesForDestino = async (uf: string, destinoId: string) => {
     if (!uf) return;
@@ -306,42 +337,55 @@ const FreightAggregationForm = () => {
     }));
   };
 
-  const addPriceTable = () => {
-    const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
-    if (selectedVehicles.length === 0) {
-      toast({
-        title: "Selecione veículos primeiro",
-        description: "É necessário selecionar pelo menos um tipo de veículo antes de adicionar tabelas de preço",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const newPriceTable: PriceTable = {
-      id: Date.now().toString(),
-      vehicleType: selectedVehicles[0].type,
-      kmStart: 0,
-      kmEnd: 100,
-      price: 0
-    };
+  // Funções para gerenciar tabelas de preço por veículo
+  const addPriceRange = (vehicleType: string) => {
     setFormData(prev => ({
       ...prev,
-      tabelas_preco: [...prev.tabelas_preco, newPriceTable]
+      vehicle_price_tables: prev.vehicle_price_tables.map(table =>
+        table.vehicleType === vehicleType
+          ? {
+              ...table,
+              ranges: [
+                ...table.ranges,
+                {
+                  id: Date.now().toString(),
+                  kmStart: 0,
+                  kmEnd: 100,
+                  price: 0
+                }
+              ]
+            }
+          : table
+      )
     }));
   };
 
-  const removePriceTable = (id: string) => {
+  const removePriceRange = (vehicleType: string, rangeId: string) => {
     setFormData(prev => ({
       ...prev,
-      tabelas_preco: prev.tabelas_preco.filter(table => table.id !== id)
+      vehicle_price_tables: prev.vehicle_price_tables.map(table =>
+        table.vehicleType === vehicleType
+          ? {
+              ...table,
+              ranges: table.ranges.filter(range => range.id !== rangeId)
+            }
+          : table
+      )
     }));
   };
 
-  const updatePriceTable = (id: string, field: keyof PriceTable, value: any) => {
+  const updatePriceRange = (vehicleType: string, rangeId: string, field: keyof PriceRange, value: any) => {
     setFormData(prev => ({
       ...prev,
-      tabelas_preco: prev.tabelas_preco.map(table =>
-        table.id === id ? { ...table, [field]: value } : table
+      vehicle_price_tables: prev.vehicle_price_tables.map(table =>
+        table.vehicleType === vehicleType
+          ? {
+              ...table,
+              ranges: table.ranges.map(range =>
+                range.id === rangeId ? { ...range, [field]: value } : range
+              )
+            }
+          : table
       )
     }));
   };
@@ -471,7 +515,7 @@ const FreightAggregationForm = () => {
         valor_carga: null,
         tipos_veiculos: JSON.stringify(formData.tipos_veiculos.filter(v => v.selected)),
         tipos_carrocerias: JSON.stringify(formData.tipos_carrocerias.filter(b => b.selected)),
-        tabelas_preco: JSON.stringify(formData.tabelas_preco),
+        tabelas_preco: JSON.stringify(formData.vehicle_price_tables),
         regras_agendamento: JSON.stringify(formData.regras_agendamento),
         beneficios: JSON.stringify(formData.beneficios),
         horario_carregamento: formData.horario_carregamento || null,
@@ -483,12 +527,38 @@ const FreightAggregationForm = () => {
         observacoes: formData.observacoes || null
       };
 
-      const { error } = await supabase
+      const { data: freteData, error: freteError } = await supabase
         .from('fretes')
-        .insert([freightData]);
+        .insert([freightData])
+        .select()
+        .single();
 
-      if (error) {
-        throw error;
+      if (freteError) {
+        throw freteError;
+      }
+
+      // Salvar tabelas de preço separadamente na nova tabela
+      const priceTableInserts = [];
+      for (const vehicleTable of formData.vehicle_price_tables) {
+        for (const range of vehicleTable.ranges) {
+          priceTableInserts.push({
+            frete_id: freteData.id,
+            vehicle_type: vehicleTable.vehicleType,
+            km_start: range.kmStart,
+            km_end: range.kmEnd,
+            price: range.price
+          });
+        }
+      }
+
+      if (priceTableInserts.length > 0) {
+        const { error: priceError } = await supabase
+          .from('freight_price_tables')
+          .insert(priceTableInserts);
+
+        if (priceError) {
+          throw priceError;
+        }
       }
 
       toast({
@@ -502,11 +572,9 @@ const FreightAggregationForm = () => {
         origem_estado: '',
         destinos: [],
         tipo_mercadoria: '',
-        peso_carga: '',
-        valor_carga: '',
         tipos_veiculos: [...predefinedVehicleTypes],
         tipos_carrocerias: [...predefinedBodyTypes],
-        tabelas_preco: [],
+        vehicle_price_tables: [],
         regras_agendamento: [],
         beneficios: [],
         horario_carregamento: '',
@@ -1074,6 +1142,85 @@ const FreightAggregationForm = () => {
                   </div>
                 </div>
 
+                {/* Tabelas de Preço por Veículo */}
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium text-gray-800">Tabelas de Preço por Veículo</Label>
+                  
+                  {formData.vehicle_price_tables.length === 0 ? (
+                    <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                      <DollarSign className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-500">Selecione veículos para configurar as tabelas de preço</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {formData.vehicle_price_tables.map((vehicleTable) => (
+                        <div key={vehicleTable.vehicleType} className="border rounded-lg p-4 bg-gray-50">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-lg font-semibold text-gray-800">{vehicleTable.vehicleType}</h4>
+                            <Button
+                              type="button"
+                              onClick={() => addPriceRange(vehicleTable.vehicleType)}
+                              variant="outline"
+                              size="sm"
+                              className="flex items-center space-x-2"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>Adicionar Faixa</span>
+                            </Button>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            {vehicleTable.ranges.map((range) => (
+                              <div key={range.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-3 bg-white rounded-lg border">
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium text-gray-700">KM Inicial</Label>
+                                  <Input
+                                    type="number"
+                                    value={range.kmStart}
+                                    onChange={(e) => updatePriceRange(vehicleTable.vehicleType, range.id, 'kmStart', parseInt(e.target.value) || 0)}
+                                    min="0"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium text-gray-700">KM Final</Label>
+                                  <Input
+                                    type="number"
+                                    value={range.kmEnd}
+                                    onChange={(e) => updatePriceRange(vehicleTable.vehicleType, range.id, 'kmEnd', parseInt(e.target.value) || 0)}
+                                    min="0"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium text-gray-700">Preço (R$)</Label>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={range.price}
+                                    onChange={(e) => updatePriceRange(vehicleTable.vehicleType, range.id, 'price', parseFloat(e.target.value) || 0)}
+                                    min="0"
+                                  />
+                                </div>
+                                <div className="flex items-end">
+                                  <Button
+                                    type="button"
+                                    onClick={() => removePriceRange(vehicleTable.vehicleType, range.id)}
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-700 w-full"
+                                    disabled={vehicleTable.ranges.length === 1}
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex gap-4 pt-4">
                   <Button
                     type="button"
@@ -1224,80 +1371,6 @@ const FreightAggregationForm = () => {
                       </div>
                     ))}
                   </div>
-                </div>
-
-                {/* Tabelas de Preço */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-lg font-medium text-gray-800">Tabelas de Preço</Label>
-                    <Button
-                      type="button"
-                      onClick={addPriceTable}
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center space-x-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Adicionar Tabela</span>
-                    </Button>
-                  </div>
-
-                  {formData.tabelas_preco.map((table) => (
-                    <div key={table.id} className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border rounded-lg items-end">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">Tipo de Veículo</Label>
-                        <Select 
-                          value={table.vehicleType} 
-                          onValueChange={(value) => updatePriceTable(table.id, 'vehicleType', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {formData.tipos_veiculos.filter(v => v.selected).map((vehicle) => (
-                              <SelectItem key={vehicle.id} value={vehicle.type}>
-                                {vehicle.type}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">KM Inicial</Label>
-                        <Input
-                          type="number"
-                          value={table.kmStart}
-                          onChange={(e) => updatePriceTable(table.id, 'kmStart', parseInt(e.target.value))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">KM Final</Label>
-                        <Input
-                          type="number"
-                          value={table.kmEnd}
-                          onChange={(e) => updatePriceTable(table.id, 'kmEnd', parseInt(e.target.value))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">Preço (R$)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={table.price}
-                          onChange={(e) => updatePriceTable(table.id, 'price', parseFloat(e.target.value))}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={() => removePriceTable(table.id)}
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
                 </div>
 
                 {/* Benefícios */}

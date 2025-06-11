@@ -273,6 +273,44 @@ export type Database = {
           },
         ]
       }
+      freight_price_tables: {
+        Row: {
+          created_at: string
+          frete_id: string
+          id: string
+          km_end: number
+          km_start: number
+          price: number
+          vehicle_type: string
+        }
+        Insert: {
+          created_at?: string
+          frete_id: string
+          id?: string
+          km_end: number
+          km_start: number
+          price: number
+          vehicle_type: string
+        }
+        Update: {
+          created_at?: string
+          frete_id?: string
+          id?: string
+          km_end?: number
+          km_start?: number
+          price?: number
+          vehicle_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freight_price_tables_frete_id_fkey"
+            columns: ["frete_id"]
+            isOneToOne: false
+            referencedRelation: "fretes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fretes: {
         Row: {
           beneficios: Json | null
