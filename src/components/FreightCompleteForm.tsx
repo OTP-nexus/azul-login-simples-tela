@@ -20,7 +20,6 @@ import {
   VehicleTypeComplete, 
   BodyTypeComplete, 
   VehiclePriceTableComplete, 
-  PriceRangeComplete,
   FreightFormDataComplete
 } from './freight-complete/types';
 
