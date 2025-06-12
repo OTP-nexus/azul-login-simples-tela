@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,9 +85,7 @@ interface FreightCompleteFormData {
 const FreightCompleteForm = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { estados } = useEstados();
-  const { cidades: cidadesOrigem } = useCidades(formData.origem_estado);
-
+  
   const [formData, setFormData] = useState<FreightCompleteFormData>({
     collaborator_ids: [],
     origem_cidade: '',
@@ -108,6 +105,10 @@ const FreightCompleteForm = () => {
     pedagio_direcao: '',
     observacoes: '',
   });
+
+  // Now we can use formData in the hooks
+  const { estados } = useEstados();
+  const { cidades: cidadesOrigem } = useCidades(formData.origem_estado);
 
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
