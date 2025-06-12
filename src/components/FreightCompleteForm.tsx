@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -108,6 +109,7 @@ const FreightCompleteForm = () => {
   });
 
   const [collaborators, setCollaborators] = useState<any[]>([]);
+  const [selectedCollaborators, setSelectedCollaborators] = useState<string[]>([]);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -167,6 +169,21 @@ const FreightCompleteForm = () => {
     });
   };
 
+  const handleCollaboratorToggle = (collaboratorId: string) => {
+    setSelectedCollaborators(prev => {
+      const newSelection = prev.includes(collaboratorId)
+        ? prev.filter(id => id !== collaboratorId)
+        : [...prev, collaboratorId];
+      
+      setFormData(prevForm => ({
+        ...prevForm,
+        collaborator_ids: newSelection
+      }));
+      
+      return newSelection;
+    });
+  };
+
   const handleSubmit = async (formData: FreightCompleteFormData) => {
     setIsSubmitting(true);
     try {
@@ -206,13 +223,13 @@ const FreightCompleteForm = () => {
         tipo_frete: 'completo',
         origem_cidade: formData.origem_cidade,
         origem_estado: formData.origem_estado,
-        paradas: formData.paradas, // Nova coluna para frete completo
-        destinos: [], // Manter vazio para frete completo
+        paradas: JSON.parse(JSON.stringify(formData.paradas)), // Convert to Json type
+        destinos: [] as any,
         tipo_mercadoria: formData.tipo_mercadoria,
-        tipos_veiculos: formData.tipos_veiculos,
-        tipos_carrocerias: formData.tipos_carrocerias,
-        regras_agendamento: formData.regras_agendamento,
-        beneficios: formData.beneficios,
+        tipos_veiculos: JSON.parse(JSON.stringify(formData.tipos_veiculos)) as any,
+        tipos_carrocerias: JSON.parse(JSON.stringify(formData.tipos_carrocerias)) as any,
+        regras_agendamento: JSON.parse(JSON.stringify(formData.regras_agendamento)) as any,
+        beneficios: JSON.parse(JSON.stringify(formData.beneficios)) as any,
         horario_carregamento: formData.horario_carregamento || null,
         precisa_ajudante: formData.precisa_ajudante,
         precisa_rastreador: formData.precisa_rastreador,
@@ -220,7 +237,7 @@ const FreightCompleteForm = () => {
         pedagio_pago_por: formData.pedagio_pago_por || null,
         pedagio_direcao: formData.pedagio_direcao || null,
         observacoes: formData.observacoes || null,
-        codigo_agregamento: codigoCompleto, // Reutilizar coluna existente para código
+        codigo_agregamento: codigoCompleto,
         status: 'pendente'
       };
 
@@ -229,7 +246,7 @@ const FreightCompleteForm = () => {
       // Inserir o frete completo (será apenas 1 registro)
       const { data: freightInserted, error: freightError } = await supabase
         .from('fretes')
-        .insert([freightData])
+        .insert(freightData)
         .select()
         .single();
 
@@ -291,10 +308,6 @@ const FreightCompleteForm = () => {
     }
   };
 
-  // Additional handlers and JSX for the form UI, including inputs for origem, paradas, tipos_veiculos, etc.
-
-  // For brevity, here is a simplified JSX structure focusing on paradas and submission:
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="max-w-4xl mx-auto">
@@ -306,22 +319,20 @@ const FreightCompleteForm = () => {
             {/* Colaboradores selection */}
             <div>
               <Label>Colaboradores Responsáveis</Label>
-              <Select
-                multiple
-                value={formData.collaborator_ids}
-                onValueChange={(values) => setFormData(prev => ({ ...prev, collaborator_ids: values }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione colaboradores" />
-                </SelectTrigger>
-                <SelectContent>
-                  {collaborators.map(collab => (
-                    <SelectItem key={collab.id} value={collab.id}>
+              <div className="space-y-2 mt-2">
+                {collaborators.map(collab => (
+                  <div key={collab.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={collab.id}
+                      checked={selectedCollaborators.includes(collab.id)}
+                      onCheckedChange={() => handleCollaboratorToggle(collab.id)}
+                    />
+                    <Label htmlFor={collab.id}>
                       {collab.name} - {collab.sector}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </Label>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Origem */}
@@ -369,7 +380,8 @@ const FreightCompleteForm = () => {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label>Paradas</Label>
-                <Button size="sm" variant="outline" onClick={handleAddStop} leftIcon={<Plus />}>
+                <Button size="sm" variant="outline" onClick={handleAddStop}>
+                  <Plus className="w-4 h-4 mr-2" />
                   Adicionar Parada
                 </Button>
               </div>
@@ -438,12 +450,6 @@ const FreightCompleteForm = () => {
                 placeholder="Descreva o tipo de mercadoria"
               />
             </div>
-
-            {/* Tipos de Veículos e Carrocerias - simplified for brevity */}
-            {/* ... Implement UI for selecting tipos_veiculos and tipos_carrocerias similarly */}
-
-            {/* Regras de Agendamento, Benefícios, Horário, Pedágio, Observações */}
-            {/* ... Implement UI inputs for these fields similarly */}
 
             {/* Submit Button */}
             <div className="pt-4">
