@@ -76,3 +76,34 @@ export const useCidades = (uf: string) => {
 
   return { cidades, loading, error };
 };
+
+// Hook principal que combina estados e cidades
+export const useIBGE = () => {
+  const { estados, loading: estadosLoading, error: estadosError } = useEstados();
+  const [cidadesPorUF, setCidadesPorUF] = useState<Record<string, string[]>>({});
+
+  const cidadesPorEstado = (uf: string): string[] => {
+    if (!cidadesPorUF[uf]) {
+      // Buscar cidades para este estado se ainda não foram carregadas
+      fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`)
+        .then(response => response.json())
+        .then(data => {
+          setCidadesPorUF(prev => ({
+            ...prev,
+            [uf]: data.map((cidade: Cidade) => cidade.nome)
+          }));
+        })
+        .catch(error => console.error('Erro ao buscar cidades:', error));
+      
+      return [];
+    }
+    return cidadesPorUF[uf];
+  };
+
+  return {
+    estados,
+    loading: estadosLoading,
+    error: estadosError,
+    cidadesPorEstado
+  };
+};
