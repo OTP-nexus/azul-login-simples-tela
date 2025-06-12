@@ -1,9 +1,11 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, User, Truck, DollarSign, Settings, CheckCircle } from 'lucide-react';
+import { MapPin, User, Truck, CheckCircle } from 'lucide-react';
+import { FreightCompleteFormData } from '@/types/freightComplete';
 
 interface Collaborator {
   id: string;
@@ -13,76 +15,10 @@ interface Collaborator {
   email?: string;
 }
 
-interface Destination {
-  id: string;
-  state: string;
-  city: string;
-}
-
-interface VehicleType {
-  id: string;
-  type: string;
-  category: 'heavy' | 'medium' | 'light';
-  selected: boolean;
-}
-
-interface BodyType {
-  id: string;
-  type: string;
-  category: 'open' | 'closed' | 'special';
-  selected: boolean;
-}
-
-interface PriceRange {
-  id: string;
-  kmStart: number;
-  kmEnd: number;
-  price: number;
-}
-
-interface VehiclePriceTable {
-  vehicleType: string;
-  ranges: PriceRange[];
-}
-
-interface Parada {
-  id: string;
-  state: string;
-  city: string;
-  order: number;
-  tempoEstimado?: string;
-  tempoPermanencia?: number; // em minutos
-  tipoOperacao: 'carga' | 'descarga' | 'ambos';
-  pesoEspecifico?: number;
-  volumeEspecifico?: number;
-  observacoes?: string;
-}
-
-interface FreightFormData {
-  collaborator_ids: string[];
-  origem_cidade: string;
-  origem_estado: string;
-  destinos: Destination[];
-  paradas: Parada[];
-  tipo_mercadoria: string;
-  tipos_veiculos: VehicleType[];
-  tipos_carrocerias: BodyType[];
-  vehicle_price_tables: VehiclePriceTable[];
-  regras_agendamento: string[];
-  beneficios: string[];
-  horario_carregamento: string;
-  precisa_ajudante: boolean;
-  precisa_rastreador: boolean;
-  precisa_seguro: boolean;
-  pedagio_pago_por: string;
-  pedagio_direcao: string;
-  observacoes: string;
-}
-
 interface FreightVerificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  formData: FreightFormData;
+  formData: FreightCompleteFormData;
   collaborators: Collaborator[];
   onEdit: () => void;
   onConfirm: () => void;
@@ -102,8 +38,8 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
     formData.collaborator_ids.includes(collaborator.id)
   );
 
-  const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
-  const selectedBodies = formData.tipos_carrocerias.filter(b => b.selected);
+  const selectedVehicles = formData.tipos_veiculos.filter((v: any) => v.selected);
+  const selectedBodies = formData.tipos_carrocerias.filter((b: any) => b.selected);
 
   // Verificar se é frete completo baseado na presença de paradas
   const isFreteCompleto = formData.paradas && formData.paradas.length > 0;
@@ -136,13 +72,11 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
 
           <Separator />
 
-          {/* Origem e Paradas/Destinos */}
+          {/* Origem e Paradas */}
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <MapPin className="w-5 h-5 text-green-600" />
-              <h3 className="text-lg font-semibold">
-                {isFreteCompleto ? 'Origem e Paradas' : 'Origem e Destinos'}
-              </h3>
+              <h3 className="text-lg font-semibold">Origem e Paradas</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3 bg-green-50 rounded-lg border">
@@ -150,52 +84,41 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
                 <p className="text-green-700">{formData.origem_cidade}/{formData.origem_estado}</p>
               </div>
               
-              {isFreteCompleto ? (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-gray-800">
-                    Paradas Sequenciais ({formData.paradas.length})
-                  </h4>
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {formData.paradas.map((parada, index) => (
-                      <div key={parada.id} className="p-3 bg-green-50 rounded border">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Badge className="bg-green-600 text-white text-xs">
-                              {index + 1}
-                            </Badge>
-                            <span className="font-medium text-green-700">
-                              {parada.city}/{parada.state}
-                            </span>
-                          </div>
-                          <Badge variant="outline" className="text-xs">
-                            {parada.tipoOperacao}
+              <div className="space-y-2">
+                <h4 className="font-medium text-gray-800">
+                  Paradas Sequenciais ({formData.paradas.length})
+                </h4>
+                <div className="max-h-48 overflow-y-auto space-y-2">
+                  {formData.paradas.map((parada, index) => (
+                    <div key={parada.id} className="p-3 bg-green-50 rounded border">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Badge className="bg-green-600 text-white text-xs">
+                            {index + 1}
                           </Badge>
+                          <span className="font-medium text-green-700">
+                            {parada.city}/{parada.state}
+                          </span>
                         </div>
-                        <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-green-600">
-                          {parada.tempoPermanencia && (
-                            <div>⏱️ {parada.tempoPermanencia}min</div>
-                          )}
-                          {parada.pesoEspecifico && (
-                            <div>⚖️ {parada.pesoEspecifico}kg</div>
-                          )}
-                          {parada.tempoEstimado && (
-                            <div>🕐 {parada.tempoEstimado}</div>
-                          )}
-                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {parada.tipoOperacao}
+                        </Badge>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-gray-800">Destinos ({formData.destinos?.length || 0})</h4>
-                  {formData.destinos?.map((destino, index) => (
-                    <div key={destino.id} className="p-2 bg-blue-50 rounded border text-blue-700">
-                      {index + 1}. {destino.city}/{destino.state}
+                      <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-green-600">
+                        {parada.tempoPermanencia && (
+                          <div>⏱️ {parada.tempoPermanencia}min</div>
+                        )}
+                        {parada.pesoEspecifico && (
+                          <div>⚖️ {parada.pesoEspecifico}kg</div>
+                        )}
+                        {parada.tempoEstimado && (
+                          <div>🕐 {parada.tempoEstimado}</div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
-              )}
+              </div>
             </div>
           </div>
 
@@ -253,7 +176,7 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Tipos de Veículos ({selectedVehicles.length})</h4>
                 <div className="flex flex-wrap gap-1">
-                  {selectedVehicles.map((vehicle) => (
+                  {selectedVehicles.map((vehicle: any) => (
                     <Badge key={vehicle.id} variant="outline" className="text-xs">
                       {vehicle.type}
                     </Badge>
@@ -264,7 +187,7 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
                 <div>
                   <h4 className="font-medium text-gray-800 mb-2">Tipos de Carroceria ({selectedBodies.length})</h4>
                   <div className="flex flex-wrap gap-1">
-                    {selectedBodies.map((body) => (
+                    {selectedBodies.map((body: any) => (
                       <Badge key={body.id} variant="outline" className="text-xs">
                         {body.type}
                       </Badge>
@@ -277,37 +200,10 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
 
           <Separator />
 
-          {/* Tabelas de Preço */}
-          {formData.vehicle_price_tables.length > 0 && (
-            <>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <DollarSign className="w-5 h-5 text-green-600" />
-                  <h3 className="text-lg font-semibold">Tabelas de Preço</h3>
-                </div>
-                <div className="space-y-3">
-                  {formData.vehicle_price_tables.map((table) => (
-                    <div key={table.vehicleType} className="p-3 bg-green-50 rounded-lg border">
-                      <h4 className="font-medium text-green-800 mb-2">{table.vehicleType}</h4>
-                      <div className="space-y-1">
-                        {table.ranges.map((range) => (
-                          <div key={range.id} className="text-sm text-green-700">
-                            {range.kmStart}km - {range.kmEnd}km: R$ {range.price.toFixed(2)}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <Separator />
-            </>
-          )}
-
           {/* Configurações */}
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
-              <Settings className="w-5 h-5 text-purple-600" />
+              <CheckCircle className="w-5 h-5 text-purple-600" />
               <h3 className="text-lg font-semibold">Configurações</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -335,35 +231,6 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Regras e Benefícios */}
-          {(formData.regras_agendamento.length > 0 || formData.beneficios.length > 0) && (
-            <>
-              <Separator />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {formData.regras_agendamento.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-gray-800 mb-2">Regras de Agendamento</h4>
-                    <div className="space-y-1">
-                      {formData.regras_agendamento.map((regra, index) => (
-                        <p key={index} className="text-sm text-gray-600">• {regra}</p>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {formData.beneficios.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-gray-800 mb-2">Benefícios</h4>
-                    <div className="space-y-1">
-                      {formData.beneficios.map((beneficio, index) => (
-                        <p key={index} className="text-sm text-blue-600">• {beneficio}</p>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
 
           {/* Observações */}
           {formData.observacoes && (
@@ -393,7 +260,7 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
             {loading ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
             ) : (
-              isFreteCompleto ? 'Concluir Frete Completo' : 'Concluir Pedido'
+              'Concluir Frete Completo'
             )}
           </Button>
         </DialogFooter>

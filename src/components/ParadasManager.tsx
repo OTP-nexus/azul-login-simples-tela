@@ -7,8 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, GripVertical, Trash2, Plus, Clock, Weight, Package } from 'lucide-react';
-import { useIBGE } from '@/hooks/useIBGE';
+import { MapPin, Truck, ArrowLeft, CheckCircle, User } from 'lucide-react';
 import { Parada } from '@/types/freightComplete';
 
 interface ParadasManagerProps {
@@ -17,8 +16,30 @@ interface ParadasManagerProps {
 }
 
 const ParadasManager: React.FC<ParadasManagerProps> = ({ paradas, onParadasChange }) => {
-  const { states, cities, loadCities } = useIBGE();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  // Estados estáticos para evitar erro do IBGE
+  const states = [
+    { sigla: 'SP', nome: 'São Paulo' },
+    { sigla: 'RJ', nome: 'Rio de Janeiro' },
+    { sigla: 'MG', nome: 'Minas Gerais' },
+    { sigla: 'RS', nome: 'Rio Grande do Sul' },
+    { sigla: 'PR', nome: 'Paraná' },
+    { sigla: 'SC', nome: 'Santa Catarina' },
+    { sigla: 'GO', nome: 'Goiás' },
+    { sigla: 'MT', nome: 'Mato Grosso' },
+  ];
+
+  const cities = [
+    { nome: 'São Paulo' },
+    { nome: 'Rio de Janeiro' },
+    { nome: 'Belo Horizonte' },
+    { nome: 'Porto Alegre' },
+    { nome: 'Curitiba' },
+    { nome: 'Florianópolis' },
+    { nome: 'Goiânia' },
+    { nome: 'Cuiabá' },
+  ];
 
   const addParada = () => {
     const newParada: Parada = {
@@ -76,12 +97,6 @@ const ParadasManager: React.FC<ParadasManagerProps> = ({ paradas, onParadasChang
     setDraggedIndex(null);
   };
 
-  const handleStateChange = (index: number, state: string) => {
-    updateParada(index, 'state', state);
-    updateParada(index, 'city', '');
-    loadCities(state);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -97,7 +112,7 @@ const ParadasManager: React.FC<ParadasManagerProps> = ({ paradas, onParadasChang
           onClick={addParada}
           className="bg-green-600 hover:bg-green-700 text-white"
         >
-          <Plus className="w-4 h-4 mr-2" />
+          <MapPin className="w-4 h-4 mr-2" />
           Adicionar Parada
         </Button>
       </div>
@@ -115,7 +130,7 @@ const ParadasManager: React.FC<ParadasManagerProps> = ({ paradas, onParadasChang
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
-                  <GripVertical className="w-5 h-5 text-gray-400 cursor-move" />
+                  <Truck className="w-5 h-5 text-gray-400 cursor-move" />
                   <div className="flex items-center space-x-2">
                     <Badge className="bg-green-600 text-white">
                       Parada {parada.order}
@@ -144,7 +159,7 @@ const ParadasManager: React.FC<ParadasManagerProps> = ({ paradas, onParadasChang
                   onClick={() => removeParada(index)}
                   className="text-red-600 hover:text-red-700"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <ArrowLeft className="w-4 h-4" />
                 </Button>
               </div>
 
@@ -153,7 +168,7 @@ const ParadasManager: React.FC<ParadasManagerProps> = ({ paradas, onParadasChang
                   <Label>Estado</Label>
                   <Select 
                     value={parada.state} 
-                    onValueChange={(value) => handleStateChange(index, value)}
+                    onValueChange={(value) => updateParada(index, 'state', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o estado" />
@@ -173,7 +188,6 @@ const ParadasManager: React.FC<ParadasManagerProps> = ({ paradas, onParadasChang
                   <Select 
                     value={parada.city} 
                     onValueChange={(value) => updateParada(index, 'city', value)}
-                    disabled={!parada.state}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a cidade" />
@@ -189,7 +203,7 @@ const ParadasManager: React.FC<ParadasManagerProps> = ({ paradas, onParadasChang
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Clock className="w-4 h-4 text-gray-500" />
+                  <CheckCircle className="w-4 h-4 text-gray-500" />
                   <div className="flex-1">
                     <Label>Tempo de Permanência (min)</Label>
                     <Input
@@ -203,7 +217,7 @@ const ParadasManager: React.FC<ParadasManagerProps> = ({ paradas, onParadasChang
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Weight className="w-4 h-4 text-gray-500" />
+                  <Truck className="w-4 h-4 text-gray-500" />
                   <div className="flex-1">
                     <Label>Peso Específico (kg)</Label>
                     <Input
@@ -217,7 +231,7 @@ const ParadasManager: React.FC<ParadasManagerProps> = ({ paradas, onParadasChang
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Package className="w-4 h-4 text-gray-500" />
+                  <MapPin className="w-4 h-4 text-gray-500" />
                   <div className="flex-1">
                     <Label>Volume Específico (m³)</Label>
                     <Input
@@ -265,7 +279,7 @@ const ParadasManager: React.FC<ParadasManagerProps> = ({ paradas, onParadasChang
               Adicione as paradas sequenciais do seu frete completo
             </p>
             <Button onClick={addParada} className="bg-green-600 hover:bg-green-700 text-white">
-              <Plus className="w-4 h-4 mr-2" />
+              <MapPin className="w-4 h-4 mr-2" />
               Adicionar Primeira Parada
             </Button>
           </CardContent>

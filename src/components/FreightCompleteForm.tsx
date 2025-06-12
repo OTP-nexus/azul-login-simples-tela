@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,9 +17,8 @@ import {
   User,
 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { useIBGE } from '@/hooks/useIBGE';
-import { useUser } from '@/hooks/use-user';
-import { useSupabase } from '@/hooks/use-supabase';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import FreightVerificationDialog from './FreightVerificationDialog';
 import FreightSuccessDialog from './FreightSuccessDialog';
 import ParadasManager from './ParadasManager';
@@ -26,9 +26,7 @@ import { FreightCompleteFormData, Parada } from '@/types/freightComplete';
 
 const FreightCompleteForm = () => {
   const { toast } = useToast();
-  const { user, session, isLoading: userLoading } = useUser();
-  const { supabase } = useSupabase();
-  const { states, cities, loadCities } = useIBGE();
+  const { user, session, isLoading: userLoading } = useAuth();
 
   const [companyData, setCompanyData] = useState<any>(null);
   const [collaborators, setCollaborators] = useState<any[]>([]);
@@ -132,7 +130,7 @@ const FreightCompleteForm = () => {
     };
 
     fetchCompanyData();
-  }, [session, user?.id, supabase, toast, userLoading]);
+  }, [session, user?.id, toast, userLoading]);
 
   const handleCheckboxChange = (collaboratorId: string) => {
     setFormData(prev => {
@@ -358,6 +356,18 @@ const FreightCompleteForm = () => {
     setShowVerificationDialog(false);
   };
 
+  // Estados e cidades estáticos para evitar erro do IBGE
+  const states = [
+    { sigla: 'SP', nome: 'São Paulo' },
+    { sigla: 'RJ', nome: 'Rio de Janeiro' },
+    { sigla: 'MG', nome: 'Minas Gerais' },
+    { sigla: 'RS', nome: 'Rio Grande do Sul' },
+    { sigla: 'PR', nome: 'Paraná' },
+    { sigla: 'SC', nome: 'Santa Catarina' },
+    { sigla: 'GO', nome: 'Goiás' },
+    { sigla: 'MT', nome: 'Mato Grosso' },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-50">
       <FreightVerificationDialog
@@ -456,7 +466,7 @@ const FreightCompleteForm = () => {
                 <Separator />
               </div>
 
-              {/* Paradas section - NOVA */}
+              {/* Paradas section */}
               <ParadasManager 
                 paradas={formData.paradas}
                 onParadasChange={handleParadasChange}
@@ -552,18 +562,6 @@ const FreightCompleteForm = () => {
                 <Separator />
               </div>
 
-              {/* Tabelas de Preço */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Tabelas de Preço por Tipo de Veículo</h3>
-                {vehicleTypes.map((vehicle) => (
-                  <div key={vehicle.id} className="space-y-2">
-                    <h4 className="font-medium text-gray-800">{vehicle.type}</h4>
-                    {/* PriceTable component will be here */}
-                  </div>
-                ))}
-                <Separator />
-              </div>
-
               {/* Configurações */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Configurações Adicionais</h3>
@@ -642,20 +640,6 @@ const FreightCompleteForm = () => {
                     </Select>
                   </div>
                 </div>
-                <Separator />
-              </div>
-
-              {/* Regras de Agendamento */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Regras de Agendamento</h3>
-                {/* SchedulingRules component will be here */}
-                <Separator />
-              </div>
-
-              {/* Benefícios */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Benefícios Oferecidos</h3>
-                {/* Benefits component will be here */}
                 <Separator />
               </div>
 
