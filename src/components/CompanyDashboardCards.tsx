@@ -68,11 +68,6 @@ const CompanyDashboardCards = () => {
       return;
     }
     
-    if (cardType === 'PERFIL') {
-      navigate('/company-profile');
-      return;
-    }
-    
     toast({
       title: "Em breve",
       description: `Funcionalidade "${cardType}" será implementada em breve!`,
