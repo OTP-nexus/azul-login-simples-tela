@@ -6,11 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Copy, MapPin, Truck, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+interface Parada {
+  id: string;
+  state: string;
+  city: string;
+  order: number;
+}
+
 interface GeneratedFreight {
   id: string;
   codigo_agregamento: string;
-  destino_cidade: string;
-  destino_estado: string;
+  paradas: Parada[];
 }
 
 interface FreightSuccessDialogProps {
@@ -38,17 +44,9 @@ const FreightSuccessDialog: React.FC<FreightSuccessDialogProps> = ({
     });
   };
 
-  const copyAllCodes = () => {
-    const allCodes = generatedFreights.map(freight => 
-      `${freight.destino_cidade}/${freight.destino_estado}: ${freight.codigo_agregamento}`
-    ).join('\n');
-    
-    navigator.clipboard.writeText(allCodes);
-    toast({
-      title: "Todos os códigos copiados!",
-      description: "Todos os códigos foram copiados para sua área de transferência.",
-    });
-  };
+  const freight = generatedFreights[0]; // Para frete completo, sempre será apenas um
+
+  if (!freight) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -59,12 +57,9 @@ const FreightSuccessDialog: React.FC<FreightSuccessDialogProps> = ({
               <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-green-800">Pedido Criado com Sucesso!</h2>
+              <h2 className="text-xl font-bold text-green-800">Frete Completo Criado com Sucesso!</h2>
               <p className="text-sm text-green-600 font-normal">
-                {generatedFreights.length === 1 
-                  ? 'Seu frete foi criado e está disponível para os motoristas'
-                  : `${generatedFreights.length} fretes foram criados para cada destino`
-                }
+                Seu frete completo foi criado e está disponível para os motoristas
               </p>
             </div>
           </DialogTitle>
@@ -74,62 +69,59 @@ const FreightSuccessDialog: React.FC<FreightSuccessDialogProps> = ({
           {/* Success message */}
           <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
             <p className="text-green-800 font-medium">
-              {generatedFreights.length === 1 
-                ? 'Código de agregamento gerado:'
-                : 'Códigos de agregamento gerados:'
-              }
+              Código de agregamento gerado:
             </p>
           </div>
 
-          {/* Generated freight codes */}
-          <div className="space-y-3">
-            {generatedFreights.map((freight, index) => (
-              <div key={freight.id} className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="w-4 h-4 text-blue-600" />
-                    <span className="font-medium text-blue-800">
-                      {freight.destino_cidade}/{freight.destino_estado}
-                    </span>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400" />
-                  <Badge variant="secondary" className="font-mono text-lg px-3 py-1">
-                    {freight.codigo_agregamento}
-                  </Badge>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyToClipboard(freight.codigo_agregamento)}
-                  className="text-blue-600 hover:text-blue-700"
-                >
-                  <Copy className="w-4 h-4" />
-                </Button>
+          {/* Generated freight code */}
+          <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
+                <Truck className="w-4 h-4 text-blue-600" />
+                <span className="font-medium text-blue-800">Frete Completo</span>
               </div>
-            ))}
+              <ArrowRight className="w-4 h-4 text-gray-400" />
+              <Badge variant="secondary" className="font-mono text-lg px-3 py-1">
+                {freight.codigo_agregamento}
+              </Badge>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => copyToClipboard(freight.codigo_agregamento)}
+              className="text-blue-600 hover:text-blue-700"
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
           </div>
 
-          {/* Copy all button for multiple freights */}
-          {generatedFreights.length > 1 && (
-            <div className="flex justify-center">
-              <Button
-                variant="outline"
-                onClick={copyAllCodes}
-                className="flex items-center space-x-2"
-              >
-                <Copy className="w-4 h-4" />
-                <span>Copiar Todos os Códigos</span>
-              </Button>
+          {/* Route details */}
+          <div className="space-y-3">
+            <h4 className="font-medium text-gray-800 mb-2">Rota do Frete:</h4>
+            <div className="space-y-2">
+              {freight.paradas
+                .sort((a, b) => a.order - b.order)
+                .map((parada, index) => (
+                <div key={parada.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                    {parada.order}
+                  </div>
+                  <MapPin className="w-4 h-4 text-gray-400" />
+                  <span className="text-gray-800">
+                    Parada {parada.order}: {parada.city}/{parada.state}
+                  </span>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
 
           {/* Additional info */}
           <div className="p-4 bg-gray-50 rounded-lg">
             <h4 className="font-medium text-gray-800 mb-2">Próximos passos:</h4>
             <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Os motoristas agregados poderão visualizar {generatedFreights.length === 1 ? 'este frete' : 'estes fretes'}</li>
+              <li>• Os motoristas agregados poderão visualizar este frete</li>
               <li>• Você receberá notificações quando houver interesse</li>
-              <li>• {generatedFreights.length === 1 ? 'O código' : 'Os códigos'} {generatedFreights.length === 1 ? 'serve' : 'servem'} como referência para acompanhamento</li>
+              <li>• O código serve como referência para acompanhamento</li>
             </ul>
           </div>
         </div>
