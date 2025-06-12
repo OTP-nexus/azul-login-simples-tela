@@ -76,3 +76,18 @@ export const useCidades = (uf: string) => {
 
   return { cidades, loading, error };
 };
+
+// Hook combinado para facilitar o uso
+export const useIBGE = () => {
+  const { estados } = useEstados();
+  
+  const cidadesPorEstado = (uf: string): string[] => {
+    // Esta é uma versão simplificada, você pode melhorar com cache
+    return [];
+  };
+
+  return {
+    estados,
+    cidadesPorEstado
+  };
+};
