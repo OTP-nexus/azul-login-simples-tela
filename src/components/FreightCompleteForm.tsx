@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -167,6 +168,15 @@ const FreightCompleteForm = () => {
     });
   };
 
+  const handleCollaboratorToggle = (collaboratorId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      collaborator_ids: prev.collaborator_ids.includes(collaboratorId)
+        ? prev.collaborator_ids.filter(id => id !== collaboratorId)
+        : [...prev.collaborator_ids, collaboratorId]
+    }));
+  };
+
   const handleSubmit = async (formData: FreightCompleteFormData) => {
     setIsSubmitting(true);
     try {
@@ -199,20 +209,20 @@ const FreightCompleteForm = () => {
       // Gerar código único para o frete completo
       const codigoCompleto = await generateFreightCompleteCode();
 
-      // Preparar dados do frete completo
+      // Preparar dados do frete completo - convertendo para tipos compatíveis com Supabase
       const freightData = {
         company_id: company.id,
         collaborator_ids: formData.collaborator_ids,
         tipo_frete: 'completo',
         origem_cidade: formData.origem_cidade,
         origem_estado: formData.origem_estado,
-        paradas: formData.paradas, // Nova coluna para frete completo
-        destinos: [], // Manter vazio para frete completo
+        paradas: formData.paradas as any, // Converter para Json
+        destinos: [] as any, // Manter vazio para frete completo
         tipo_mercadoria: formData.tipo_mercadoria,
-        tipos_veiculos: formData.tipos_veiculos,
-        tipos_carrocerias: formData.tipos_carrocerias,
-        regras_agendamento: formData.regras_agendamento,
-        beneficios: formData.beneficios,
+        tipos_veiculos: formData.tipos_veiculos as any, // Converter para Json
+        tipos_carrocerias: formData.tipos_carrocerias as any, // Converter para Json
+        regras_agendamento: formData.regras_agendamento as any, // Converter para Json
+        beneficios: formData.beneficios as any, // Converter para Json
         horario_carregamento: formData.horario_carregamento || null,
         precisa_ajudante: formData.precisa_ajudante,
         precisa_rastreador: formData.precisa_rastreador,
@@ -229,7 +239,7 @@ const FreightCompleteForm = () => {
       // Inserir o frete completo (será apenas 1 registro)
       const { data: freightInserted, error: freightError } = await supabase
         .from('fretes')
-        .insert([freightData])
+        .insert(freightData)
         .select()
         .single();
 
@@ -291,10 +301,6 @@ const FreightCompleteForm = () => {
     }
   };
 
-  // Additional handlers and JSX for the form UI, including inputs for origem, paradas, tipos_veiculos, etc.
-
-  // For brevity, here is a simplified JSX structure focusing on paradas and submission:
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="max-w-4xl mx-auto">
@@ -306,22 +312,20 @@ const FreightCompleteForm = () => {
             {/* Colaboradores selection */}
             <div>
               <Label>Colaboradores Responsáveis</Label>
-              <Select
-                multiple
-                value={formData.collaborator_ids}
-                onValueChange={(values) => setFormData(prev => ({ ...prev, collaborator_ids: values }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione colaboradores" />
-                </SelectTrigger>
-                <SelectContent>
-                  {collaborators.map(collab => (
-                    <SelectItem key={collab.id} value={collab.id}>
+              <div className="space-y-2 mt-2">
+                {collaborators.map(collab => (
+                  <div key={collab.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={collab.id}
+                      checked={formData.collaborator_ids.includes(collab.id)}
+                      onCheckedChange={() => handleCollaboratorToggle(collab.id)}
+                    />
+                    <Label htmlFor={collab.id} className="cursor-pointer">
                       {collab.name} - {collab.sector}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </Label>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Origem */}
@@ -369,7 +373,8 @@ const FreightCompleteForm = () => {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label>Paradas</Label>
-                <Button size="sm" variant="outline" onClick={handleAddStop} leftIcon={<Plus />}>
+                <Button size="sm" variant="outline" onClick={handleAddStop}>
+                  <Plus className="w-4 h-4 mr-2" />
                   Adicionar Parada
                 </Button>
               </div>
@@ -438,12 +443,6 @@ const FreightCompleteForm = () => {
                 placeholder="Descreva o tipo de mercadoria"
               />
             </div>
-
-            {/* Tipos de Veículos e Carrocerias - simplified for brevity */}
-            {/* ... Implement UI for selecting tipos_veiculos and tipos_carrocerias similarly */}
-
-            {/* Regras de Agendamento, Benefícios, Horário, Pedágio, Observações */}
-            {/* ... Implement UI inputs for these fields similarly */}
 
             {/* Submit Button */}
             <div className="pt-4">
