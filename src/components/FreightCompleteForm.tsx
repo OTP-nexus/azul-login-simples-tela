@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -199,20 +200,20 @@ const FreightCompleteForm = () => {
       // Gerar código único para o frete completo
       const codigoCompleto = await generateFreightCompleteCode();
 
-      // Preparar dados do frete completo
+      // Preparar dados do frete completo com conversões para Json
       const freightData = {
         company_id: company.id,
         collaborator_ids: formData.collaborator_ids,
         tipo_frete: 'completo',
         origem_cidade: formData.origem_cidade,
         origem_estado: formData.origem_estado,
-        paradas: formData.paradas, // Nova coluna para frete completo
+        paradas: formData.paradas as any, // Conversão para Json
         destinos: [], // Manter vazio para frete completo
         tipo_mercadoria: formData.tipo_mercadoria,
-        tipos_veiculos: formData.tipos_veiculos,
-        tipos_carrocerias: formData.tipos_carrocerias,
-        regras_agendamento: formData.regras_agendamento,
-        beneficios: formData.beneficios,
+        tipos_veiculos: formData.tipos_veiculos as any, // Conversão para Json
+        tipos_carrocerias: formData.tipos_carrocerias as any, // Conversão para Json
+        regras_agendamento: formData.regras_agendamento as any, // Conversão para Json
+        beneficios: formData.beneficios as any, // Conversão para Json
         horario_carregamento: formData.horario_carregamento || null,
         precisa_ajudante: formData.precisa_ajudante,
         precisa_rastreador: formData.precisa_rastreador,
@@ -229,7 +230,7 @@ const FreightCompleteForm = () => {
       // Inserir o frete completo (será apenas 1 registro)
       const { data: freightInserted, error: freightError } = await supabase
         .from('fretes')
-        .insert([freightData])
+        .insert(freightData)
         .select()
         .single();
 
@@ -307,9 +308,8 @@ const FreightCompleteForm = () => {
             <div>
               <Label>Colaboradores Responsáveis</Label>
               <Select
-                multiple
-                value={formData.collaborator_ids}
-                onValueChange={(values) => setFormData(prev => ({ ...prev, collaborator_ids: values }))}
+                value={formData.collaborator_ids.join(',')}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, collaborator_ids: value ? value.split(',') : [] }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione colaboradores" />
@@ -369,7 +369,8 @@ const FreightCompleteForm = () => {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label>Paradas</Label>
-                <Button size="sm" variant="outline" onClick={handleAddStop} leftIcon={<Plus />}>
+                <Button size="sm" variant="outline" onClick={handleAddStop}>
+                  <Plus className="w-4 h-4 mr-2" />
                   Adicionar Parada
                 </Button>
               </div>
