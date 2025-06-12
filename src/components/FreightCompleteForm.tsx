@@ -11,7 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useIBGE } from '@/hooks/useIBGE';
+import { useEstados, useCidades } from '../hooks/useIBGE';
+
 import { generateFreightCompleteCode } from '@/utils/freightCompleteUtils';
 import { 
   Plus, 
