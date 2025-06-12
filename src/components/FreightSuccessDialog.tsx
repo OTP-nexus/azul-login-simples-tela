@@ -30,6 +30,9 @@ const FreightSuccessDialog: React.FC<FreightSuccessDialogProps> = ({
 }) => {
   const { toast } = useToast();
 
+  // Safe access to generatedFreights with fallback
+  const safeGeneratedFreights = generatedFreights || [];
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
@@ -39,7 +42,7 @@ const FreightSuccessDialog: React.FC<FreightSuccessDialogProps> = ({
   };
 
   const copyAllCodes = () => {
-    const allCodes = generatedFreights.map(freight => 
+    const allCodes = safeGeneratedFreights.map(freight => 
       `${freight.destino_cidade}/${freight.destino_estado}: ${freight.codigo_agregamento}`
     ).join('\n');
     
@@ -61,9 +64,9 @@ const FreightSuccessDialog: React.FC<FreightSuccessDialogProps> = ({
             <div>
               <h2 className="text-xl font-bold text-green-800">Pedido Criado com Sucesso!</h2>
               <p className="text-sm text-green-600 font-normal">
-                {generatedFreights.length === 1 
+                {safeGeneratedFreights.length === 1 
                   ? 'Seu frete foi criado e está disponível para os motoristas'
-                  : `${generatedFreights.length} fretes foram criados para cada destino`
+                  : `${safeGeneratedFreights.length} fretes foram criados para cada destino`
                 }
               </p>
             </div>
@@ -74,7 +77,7 @@ const FreightSuccessDialog: React.FC<FreightSuccessDialogProps> = ({
           {/* Success message */}
           <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
             <p className="text-green-800 font-medium">
-              {generatedFreights.length === 1 
+              {safeGeneratedFreights.length === 1 
                 ? 'Código de agregamento gerado:'
                 : 'Códigos de agregamento gerados:'
               }
@@ -83,7 +86,7 @@ const FreightSuccessDialog: React.FC<FreightSuccessDialogProps> = ({
 
           {/* Generated freight codes */}
           <div className="space-y-3">
-            {generatedFreights.map((freight, index) => (
+            {safeGeneratedFreights.map((freight, index) => (
               <div key={freight.id} className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="flex items-center space-x-3">
                   <div className="flex items-center space-x-2">
@@ -110,7 +113,7 @@ const FreightSuccessDialog: React.FC<FreightSuccessDialogProps> = ({
           </div>
 
           {/* Copy all button for multiple freights */}
-          {generatedFreights.length > 1 && (
+          {safeGeneratedFreights.length > 1 && (
             <div className="flex justify-center">
               <Button
                 variant="outline"

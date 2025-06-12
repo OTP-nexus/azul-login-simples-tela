@@ -85,12 +85,12 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
   onConfirm,
   loading
 }) => {
-  const selectedCollaborators = collaborators.filter(collaborator => 
+  const selectedCollaborators = (collaborators || []).filter(collaborator => 
     formData.collaborator_ids.includes(collaborator.id)
   );
 
-  const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
-  const selectedBodies = formData.tipos_carrocerias.filter(b => b.selected);
+  const selectedVehicles = (formData.tipos_veiculos || []).filter(v => v.selected);
+  const selectedBodies = (formData.tipos_carrocerias || []).filter(b => b.selected);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

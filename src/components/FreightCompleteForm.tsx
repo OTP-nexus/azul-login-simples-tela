@@ -539,25 +539,78 @@ const FreightCompleteForm = () => {
     setLoading(true);
 
     try {
-      // Prepare data to send to backend or supabase
-      const payload = {
-        ...formData,
-        user_id: user?.id,
-      };
+      // Get company_id first
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('user_id', user?.id)
+        .single();
 
-      // Example: Insert freight data into supabase
+      if (companyError || !company) {
+        throw new Error('Empresa não encontrada');
+      }
+
+      // Create separate freights for each destination
+      const freightsToCreate = formData.destinos.map(destino => ({
+        company_id: company.id,
+        collaborator_ids: formData.collaborator_ids,
+        origem_cidade: formData.origem_cidade,
+        origem_estado: formData.origem_estado,
+        destino_cidade: destino.city,
+        destino_estado: destino.state,
+        tipo_mercadoria: formData.tipo_mercadoria,
+        peso_carga: formData.peso_carga,
+        valor_carga: formData.valor_carga,
+        data_coleta: formData.data_coleta,
+        data_entrega: formData.data_entrega,
+        urgencia: formData.urgencia,
+        temperatura_controlada: formData.temperatura_controlada,
+        equipamento_especial: formData.equipamento_especial,
+        altura_carga: formData.altura_carga,
+        largura_carga: formData.largura_carga,
+        comprimento_carga: formData.comprimento_carga,
+        empilhavel: formData.empilhavel,
+        fragil: formData.fragil,
+        perigosa: formData.perigosa,
+        numero_nota_fiscal: formData.numero_nota_fiscal,
+        horario_carregamento: formData.horario_carregamento,
+        precisa_ajudante: formData.precisa_ajudante,
+        precisa_rastreador: formData.precisa_rastreador,
+        precisa_seguro: formData.precisa_seguro,
+        pedagio_pago_por: formData.pedagio_pago_por,
+        pedagio_direcao: formData.pedagio_direcao,
+        observacoes: formData.observacoes,
+        tipos_veiculos: JSON.stringify(formData.tipos_veiculos.filter(v => v.selected)),
+        tipos_carrocerias: JSON.stringify(formData.tipos_carrocerias.filter(b => b.selected)),
+        regras_agendamento: JSON.stringify(formData.regras_agendamento),
+        beneficios: JSON.stringify(formData.beneficios),
+        valores_definidos: JSON.stringify(formData.vehicle_price_tables),
+        tipo_frete: 'completo' as const,
+        status: 'ativo'
+      }));
+
+      // Insert freights into supabase
       const { data, error } = await supabase
-        .from('freights')
-        .insert([payload])
-        .select();
+        .from('fretes')
+        .insert(freightsToCreate)
+        .select('id, codigo_agregamento, destino_cidade, destino_estado');
 
       if (error) {
         throw error;
       }
 
-      setGeneratedFreights(data || []);
+      // Transform data to match GeneratedFreight interface
+      const transformedData: GeneratedFreight[] = (data || []).map(freight => ({
+        id: freight.id,
+        codigo_agregamento: freight.codigo_agregamento || `FRETE-${freight.id}`,
+        destino_cidade: freight.destino_cidade,
+        destino_estado: freight.destino_estado
+      }));
+
+      setGeneratedFreights(transformedData);
       setShowSuccessDialog(true);
     } catch (error: any) {
+      console.error('Erro ao criar frete:', error);
       toast({
         title: "Erro ao enviar frete",
         description: error.message || "Tente novamente",
@@ -1234,20 +1287,60 @@ const FreightCompleteForm = () => {
         open={showVerificationDialog}
         onOpenChange={setShowVerificationDialog}
         onConfirm={handleSubmit}
+        onEdit={() => setShowVerificationDialog(false)}
         formData={formData}
-        selectedCollaborators={selectedCollaborators}
+        collaborators={collaborators || []}
+        loading={loading}
       />
 
       <FreightLoadingAnimation
         open={showLoadingAnimation}
-        onOpenChange={setShowLoadingAnimation}
       />
 
       <FreightSuccessDialog
         open={showSuccessDialog}
         onOpenChange={setShowSuccessDialog}
         onBackToDashboard={handleBackToDashboard}
-        freights={generatedFreights}
+        onNewFreight={() => {
+          setShowSuccessDialog(false);
+          // Reset form or navigate to new freight
+          setCurrentStep(1);
+          setFormData({
+            collaborator_ids: [],
+            origem_cidade: '',
+            origem_estado: '',
+            destinos: [],
+            tipo_mercadoria: '',
+            tipos_veiculos: [...predefinedVehicleTypes],
+            tipos_carrocerias: [...predefinedBodyTypes],
+            vehicle_price_tables: [],
+            regras_agendamento: [],
+            beneficios: [],
+            horario_carregamento: '',
+            precisa_ajudante: false,
+            precisa_rastreador: false,
+            precisa_seguro: false,
+            pedagio_pago_por: '',
+            pedagio_direcao: '',
+            observacoes: '',
+            peso_carga: 0,
+            valor_carga: 0,
+            data_coleta: '',
+            data_entrega: '',
+            urgencia: 'normal',
+            temperatura_controlada: false,
+            equipamento_especial: '',
+            altura_carga: 0,
+            largura_carga: 0,
+            comprimento_carga: 0,
+            empilhavel: false,
+            fragil: false,
+            perigosa: false,
+            numero_nota_fiscal: '',
+            paradas: []
+          });
+        }}
+        generatedFreights={generatedFreights || []}
       />
     </div>
   );
