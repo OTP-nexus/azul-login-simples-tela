@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Edit, MapPin, User, Truck, DollarSign, Settings, CheckCircle } from 'lucide-react';
+import { Edit, MapPin, User, Truck, DollarSign, Settings, CheckCircle, Package } from 'lucide-react';
 
 interface StopComplete {
   id: string;
@@ -46,6 +46,12 @@ interface VehiclePriceTableComplete {
   ranges: PriceRangeComplete[];
 }
 
+interface ValoresDefinidos {
+  tipo: 'combinar' | 'definido';
+  valor: number | null;
+  observacoes: string | null;
+}
+
 interface FreightCompleteFormData {
   collaborator_ids: string[];
   origem_cidade: string;
@@ -64,6 +70,7 @@ interface FreightCompleteFormData {
   pedagio_pago_por: string;
   pedagio_direcao: string;
   observacoes: string;
+  valores_definidos: ValoresDefinidos;
 }
 
 interface CollaboratorComplete {
@@ -185,7 +192,7 @@ const FreightCompleteVerificationDialog: React.FC<FreightCompleteVerificationDia
           {/* Informações da Carga */}
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
-              <Truck className="w-5 h-5 text-blue-600" />
+              <Package className="w-5 h-5 text-orange-600" />
               <h3 className="text-lg font-semibold text-gray-800">Informações da Carga</h3>
             </div>
             
@@ -197,17 +204,54 @@ const FreightCompleteVerificationDialog: React.FC<FreightCompleteVerificationDia
             </div>
           </div>
 
-          {/* Tipos de Veículos */}
+          <Separator />
+
+          {/* Valores */}
           <div className="space-y-3">
-            <h4 className="text-md font-semibold text-gray-700">Tipos de Veículos</h4>
-            <div className="flex flex-wrap gap-2">
-              {selectedVehicles.map((vehicle) => (
-                <Badge key={vehicle.id} variant="outline" className="text-sm">
-                  {vehicle.type}
-                </Badge>
-              ))}
+            <div className="flex items-center space-x-2">
+              <DollarSign className="w-5 h-5 text-green-600" />
+              <h3 className="text-lg font-semibold text-gray-800">Valores</h3>
+            </div>
+            
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Tipo de Valor:</span>
+                  <p className="text-lg font-semibold text-gray-800">
+                    {formData.valores_definidos.tipo === 'combinar' ? 'A COMBINAR' : 'VALOR DEFINIDO'}
+                  </p>
+                </div>
+                {formData.valores_definidos.tipo === 'definido' && formData.valores_definidos.valor && (
+                  <div className="text-right">
+                    <span className="text-sm font-medium text-gray-600">Valor Oferecido:</span>
+                    <p className="text-2xl font-bold text-green-600">
+                      R$ {formData.valores_definidos.valor.toFixed(2)}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Tipos de Veículos */}
+          {selectedVehicles.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <Truck className="w-5 h-5 text-blue-600" />
+                  <h4 className="text-md font-semibold text-gray-700">Tipos de Veículos</h4>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedVehicles.map((vehicle) => (
+                    <Badge key={vehicle.id} variant="outline" className="text-sm">
+                      {vehicle.type}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Tipos de Carroceria */}
           {selectedBodies.length > 0 && (
@@ -223,39 +267,37 @@ const FreightCompleteVerificationDialog: React.FC<FreightCompleteVerificationDia
             </div>
           )}
 
-          <Separator />
-
           {/* Tabelas de Preço */}
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <DollarSign className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-semibold text-gray-800">Tabelas de Preço</h3>
-            </div>
-            
-            <div className="space-y-4">
-              {formData.vehicle_price_tables.map((table) => (
-                <div key={table.vehicleType} className="border rounded-lg p-3">
-                  <h5 className="font-medium text-gray-800 mb-2">{table.vehicleType}</h5>
-                  <div className="space-y-2">
-                    {table.ranges.map((range) => (
-                      <div key={range.id} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">
-                          {range.kmStart} - {range.kmEnd} km
-                        </span>
-                        <span className="font-medium text-gray-800">
-                          R$ {range.price.toFixed(2)}
-                        </span>
+          {formData.vehicle_price_tables.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold text-gray-800">Tabelas de Preço</h3>
+                <div className="space-y-4">
+                  {formData.vehicle_price_tables.map((table) => (
+                    <div key={table.vehicleType} className="border rounded-lg p-3">
+                      <h5 className="font-medium text-gray-800 mb-2">{table.vehicleType}</h5>
+                      <div className="space-y-2">
+                        {table.ranges.map((range) => (
+                          <div key={range.id} className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">
+                              {range.kmStart} - {range.kmEnd} km
+                            </span>
+                            <span className="font-medium text-gray-800">
+                              R$ {range.price.toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <Separator />
+              </div>
+            </>
+          )}
 
           {/* Configurações */}
+          <Separator />
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <Settings className="w-5 h-5 text-blue-600" />
