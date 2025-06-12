@@ -1,21 +1,34 @@
 
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CalendarDays, Clock, Plus, Trash2, Package, Truck, MapPin, GripVertical } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import FreightSuccessDialog from "./FreightSuccessDialog";
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
+import { ArrowLeft, Plus, X, GripVertical, MapPin } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 interface Parada {
@@ -27,111 +40,98 @@ interface Parada {
   numero: string;
   complemento?: string;
   bairro: string;
-  contato: string;
-  telefone: string;
+  contato?: string;
+  telefone?: string;
   observacoes?: string;
-}
-
-interface PriceTable {
-  vehicleType: string;
-  kmStart: number;
-  kmEnd: number;
-  price: number;
 }
 
 interface FreightFormData {
-  tipoFrete: 'agregamento' | 'completo';
-  origemEstado: string;
-  origemCidade: string;
+  origem_cidade: string;
+  origem_estado: string;
+  tipo_mercadoria: string;
+  peso_carga: string;
+  valor_carga: string;
+  data_coleta: string;
+  data_entrega: string;
+  horario_carregamento: string;
   paradas: Parada[];
-  tipoMercadoria: string;
-  pesoCarga?: number;
-  valorCarga?: number;
-  dataColeta?: string;
-  dataEntrega?: string;
-  horarioCarregamento?: string;
-  tiposVeiculos: string[];
-  tiposCarrocerias: string[];
-  precisaAjudante: boolean;
-  precisaSeguro: boolean;
-  precisaRastreador: boolean;
-  pedagioPagoPor?: 'embarcador' | 'transportador';
-  pedagioDirecao?: 'ida' | 'volta' | 'ida_volta';
-  observacoes?: string;
-  valoresDefinidos: boolean;
-  tabelasPreco: PriceTable[];
-  regraAgendamento: string[];
-  beneficios: string[];
+  tipos_veiculos: string[];
+  tipos_carrocerias: string[];
+  precisa_ajudante: boolean;
+  precisa_rastreador: boolean;
+  precisa_seguro: boolean;
+  pedagio_pago_por: string;
+  pedagio_direcao: string;
+  observacoes: string;
 }
 
-interface GeneratedFreight {
-  id: string;
-  codigo_agregamento: string;
-  destino_cidade: string;
-  destino_estado: string;
-}
-
-interface SortableParadaCardProps {
+const SortableParadaCard = ({ parada, index, onUpdate, onRemove }: {
   parada: Parada;
   index: number;
-  onUpdate: (index: number, field: keyof Parada, value: string) => void;
+  onUpdate: (index: number, field: string, value: string) => void;
   onRemove: (index: number) => void;
-}
-
-const SortableParadaCard = ({ parada, index, onUpdate, onRemove }: SortableParadaCardProps) => {
+}) => {
   const {
     attributes,
     listeners,
     setNodeRef,
     transform,
     transition,
+    isDragging,
   } = useSortable({ id: parada.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.5 : 1,
   };
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
-      <Card className="mb-4">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <div {...listeners} className="cursor-grab hover:cursor-grabbing">
-              <GripVertical className="h-4 w-4 text-gray-400" />
+      <Card className="mb-4 border-l-4 border-l-blue-500">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div 
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded"
+              >
+                <GripVertical className="w-4 h-4 text-gray-400" />
+              </div>
+              <MapPin className="w-4 h-4 text-blue-500" />
+              <CardTitle className="text-lg">Parada {index + 1}</CardTitle>
             </div>
-            <MapPin className="h-5 w-5 text-blue-600" />
-            Parada {index + 1}
-          </CardTitle>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onRemove(index)}
-            className="text-red-600 hover:text-red-700"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onRemove(index)}
+              className="text-red-500 hover:text-red-700"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor={`cidade-${index}`}>Cidade *</Label>
+              <Label htmlFor={`parada-cidade-${index}`}>Cidade *</Label>
               <Input
-                id={`cidade-${index}`}
+                id={`parada-cidade-${index}`}
                 value={parada.cidade}
                 onChange={(e) => onUpdate(index, 'cidade', e.target.value)}
-                placeholder="Ex: São Paulo"
+                placeholder="Nome da cidade"
                 required
               />
             </div>
             <div>
-              <Label htmlFor={`estado-${index}`}>Estado *</Label>
+              <Label htmlFor={`parada-estado-${index}`}>Estado *</Label>
               <Input
-                id={`estado-${index}`}
+                id={`parada-estado-${index}`}
                 value={parada.estado}
                 onChange={(e) => onUpdate(index, 'estado', e.target.value)}
-                placeholder="Ex: SP"
+                placeholder="UF"
+                maxLength={2}
                 required
               />
             </div>
@@ -139,51 +139,51 @@ const SortableParadaCard = ({ parada, index, onUpdate, onRemove }: SortableParad
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor={`cep-${index}`}>CEP *</Label>
+              <Label htmlFor={`parada-cep-${index}`}>CEP *</Label>
               <Input
-                id={`cep-${index}`}
+                id={`parada-cep-${index}`}
                 value={parada.cep}
                 onChange={(e) => onUpdate(index, 'cep', e.target.value)}
                 placeholder="00000-000"
                 required
               />
             </div>
-            <div>
-              <Label htmlFor={`endereco-${index}`}>Endereço *</Label>
+            <div className="md:col-span-2">
+              <Label htmlFor={`parada-endereco-${index}`}>Endereço *</Label>
               <Input
-                id={`endereco-${index}`}
+                id={`parada-endereco-${index}`}
                 value={parada.endereco}
                 onChange={(e) => onUpdate(index, 'endereco', e.target.value)}
-                placeholder="Nome da rua"
+                placeholder="Rua, Avenida..."
                 required
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor={`numero-${index}`}>Número *</Label>
+              <Label htmlFor={`parada-numero-${index}`}>Número *</Label>
               <Input
-                id={`numero-${index}`}
+                id={`parada-numero-${index}`}
                 value={parada.numero}
                 onChange={(e) => onUpdate(index, 'numero', e.target.value)}
                 placeholder="123"
                 required
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor={`complemento-${index}`}>Complemento</Label>
+              <Label htmlFor={`parada-complemento-${index}`}>Complemento</Label>
               <Input
-                id={`complemento-${index}`}
+                id={`parada-complemento-${index}`}
                 value={parada.complemento || ''}
                 onChange={(e) => onUpdate(index, 'complemento', e.target.value)}
-                placeholder="Apto, sala, etc."
+                placeholder="Apt, Sala..."
               />
             </div>
             <div>
-              <Label htmlFor={`bairro-${index}`}>Bairro *</Label>
+              <Label htmlFor={`parada-bairro-${index}`}>Bairro *</Label>
               <Input
-                id={`bairro-${index}`}
+                id={`parada-bairro-${index}`}
                 value={parada.bairro}
                 onChange={(e) => onUpdate(index, 'bairro', e.target.value)}
                 placeholder="Nome do bairro"
@@ -194,31 +194,29 @@ const SortableParadaCard = ({ parada, index, onUpdate, onRemove }: SortableParad
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor={`contato-${index}`}>Nome do Contato *</Label>
+              <Label htmlFor={`parada-contato-${index}`}>Contato</Label>
               <Input
-                id={`contato-${index}`}
-                value={parada.contato}
+                id={`parada-contato-${index}`}
+                value={parada.contato || ''}
                 onChange={(e) => onUpdate(index, 'contato', e.target.value)}
-                placeholder="Nome completo"
-                required
+                placeholder="Nome do contato"
               />
             </div>
             <div>
-              <Label htmlFor={`telefone-${index}`}>Telefone *</Label>
+              <Label htmlFor={`parada-telefone-${index}`}>Telefone</Label>
               <Input
-                id={`telefone-${index}`}
-                value={parada.telefone}
+                id={`parada-telefone-${index}`}
+                value={parada.telefone || ''}
                 onChange={(e) => onUpdate(index, 'telefone', e.target.value)}
                 placeholder="(11) 99999-9999"
-                required
               />
             </div>
           </div>
 
           <div>
-            <Label htmlFor={`observacoes-${index}`}>Observações</Label>
+            <Label htmlFor={`parada-observacoes-${index}`}>Observações</Label>
             <Textarea
-              id={`observacoes-${index}`}
+              id={`parada-observacoes-${index}`}
               value={parada.observacoes || ''}
               onChange={(e) => onUpdate(index, 'observacoes', e.target.value)}
               placeholder="Informações adicionais sobre esta parada..."
@@ -232,36 +230,31 @@ const SortableParadaCard = ({ parada, index, onUpdate, onRemove }: SortableParad
 };
 
 const FreightCompleteForm = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [generatedFreights, setGeneratedFreights] = useState<GeneratedFreight[]>([]);
 
   const [formData, setFormData] = useState<FreightFormData>({
-    tipoFrete: 'completo',
-    origemEstado: '',
-    origemCidade: '',
+    origem_cidade: '',
+    origem_estado: '',
+    tipo_mercadoria: '',
+    peso_carga: '',
+    valor_carga: '',
+    data_coleta: '',
+    data_entrega: '',
+    horario_carregamento: '',
     paradas: [],
-    tipoMercadoria: '',
-    pesoCarga: undefined,
-    valorCarga: undefined,
-    dataColeta: undefined,
-    dataEntrega: undefined,
-    horarioCarregamento: undefined,
-    tiposVeiculos: [],
-    tiposCarrocerias: [],
-    precisaAjudante: false,
-    precisaSeguro: false,
-    precisaRastreador: false,
-    pedagioPagoPor: undefined,
-    pedagioDirecao: undefined,
-    observacoes: undefined,
-    valoresDefinidos: false,
-    tabelasPreco: [],
-    regraAgendamento: [],
-    beneficios: [],
+    tipos_veiculos: [],
+    tipos_carrocerias: [],
+    precisa_ajudante: false,
+    precisa_rastreador: false,
+    precisa_seguro: false,
+    pedagio_pago_por: '',
+    pedagio_direcao: '',
+    observacoes: ''
   });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -272,7 +265,7 @@ const FreightCompleteForm = () => {
 
   const addParada = () => {
     const newParada: Parada = {
-      id: Date.now().toString(),
+      id: `parada-${Date.now()}`,
       cidade: '',
       estado: '',
       cep: '',
@@ -282,7 +275,7 @@ const FreightCompleteForm = () => {
       bairro: '',
       contato: '',
       telefone: '',
-      observacoes: '',
+      observacoes: ''
     };
 
     setFormData(prev => ({
@@ -298,10 +291,10 @@ const FreightCompleteForm = () => {
     }));
   };
 
-  const updateParada = (index: number, field: keyof Parada, value: string) => {
+  const updateParada = (index: number, field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-      paradas: prev.paradas.map((parada, i) =>
+      paradas: prev.paradas.map((parada, i) => 
         i === index ? { ...parada, [field]: value } : parada
       )
     }));
@@ -310,14 +303,14 @@ const FreightCompleteForm = () => {
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
 
-    if (active.id !== over?.id) {
+    if (active.id !== over.id) {
       setFormData(prev => {
-        const oldIndex = prev.paradas.findIndex(p => p.id === active.id);
-        const newIndex = prev.paradas.findIndex(p => p.id === over.id);
+        const oldIndex = prev.paradas.findIndex(item => item.id === active.id);
+        const newIndex = prev.paradas.findIndex(item => item.id === over.id);
 
         return {
           ...prev,
-          paradas: arrayMove(prev.paradas, oldIndex, newIndex),
+          paradas: arrayMove(prev.paradas, oldIndex, newIndex)
         };
       });
     }
@@ -330,7 +323,7 @@ const FreightCompleteForm = () => {
       toast({
         title: "Erro",
         description: "Você precisa estar logado para criar um frete.",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
@@ -339,23 +332,7 @@ const FreightCompleteForm = () => {
       toast({
         title: "Erro",
         description: "Adicione pelo menos uma parada.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate that all paradas are properly filled
-    const invalidParadas = formData.paradas.some(parada => 
-      !parada.cidade || !parada.estado || !parada.cep || 
-      !parada.endereco || !parada.numero || !parada.bairro || 
-      !parada.contato || !parada.telefone
-    );
-
-    if (invalidParadas) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios das paradas.",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
@@ -363,497 +340,287 @@ const FreightCompleteForm = () => {
     setIsSubmitting(true);
 
     try {
-      // Get company data
-      const { data: companyData } = await supabase
-        .from('companies')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
+      // Converter dados para formato JSON compatível com Supabase
+      const paradaData = formData.paradas.map(parada => ({
+        id: parada.id,
+        cidade: parada.cidade,
+        estado: parada.estado,
+        cep: parada.cep,
+        endereco: parada.endereco,
+        numero: parada.numero,
+        complemento: parada.complemento || null,
+        bairro: parada.bairro,
+        contato: parada.contato || null,
+        telefone: parada.telefone || null,
+        observacoes: parada.observacoes || null
+      }));
 
-      if (!companyData) {
-        throw new Error('Empresa não encontrada');
-      }
-
-      // Create single freight with all paradas
-      const freightData = {
-        company_id: companyData.id,
-        tipo_frete: formData.tipoFrete,
-        origem_estado: formData.origemEstado,
-        origem_cidade: formData.origemCidade,
-        paradas: formData.paradas as any, // Cast to Json type for Supabase
-        tipo_mercadoria: formData.tipoMercadoria,
-        peso_carga: formData.pesoCarga,
-        valor_carga: formData.valorCarga,
-        data_coleta: formData.dataColeta || null,
-        data_entrega: formData.dataEntrega || null,
-        horario_carregamento: formData.horarioCarregamento || null,
-        tipos_veiculos: formData.tiposVeiculos,
-        tipos_carrocerias: formData.tiposCarrocerias,
-        precisa_ajudante: formData.precisaAjudante,
-        precisa_seguro: formData.precisaSeguro,
-        precisa_rastreador: formData.precisaRastreador,
-        pedagio_pago_por: formData.pedagioPagoPor,
-        pedagio_direcao: formData.pedagioDirecao,
-        observacoes: formData.observacoes,
-        valores_definidos: formData.valoresDefinidos ? {
-          tabelas_preco: formData.tabelasPreco,
-          regras_agendamento: formData.regraAgendamento,
-          beneficios: formData.beneficios
-        } : null,
-        collaborator_ids: [],
-        status: 'pendente',
-        destinos: [] // Keep for compatibility
-      };
-
-      const { data: insertedData, error: freightError } = await supabase
+      const { error } = await supabase
         .from('fretes')
-        .insert([freightData])
-        .select();
+        .insert({
+          company_id: user.id,
+          tipo_frete: 'completo',
+          origem_cidade: formData.origem_cidade,
+          origem_estado: formData.origem_estado,
+          tipo_mercadoria: formData.tipo_mercadoria,
+          peso_carga: parseFloat(formData.peso_carga) || null,
+          valor_carga: parseFloat(formData.valor_carga) || null,
+          data_coleta: formData.data_coleta || null,
+          data_entrega: formData.data_entrega || null,
+          horario_carregamento: formData.horario_carregamento || null,
+          paradas: paradaData,
+          tipos_veiculos: formData.tipos_veiculos,
+          tipos_carrocerias: formData.tipos_carrocerias,
+          precisa_ajudante: formData.precisa_ajudante,
+          precisa_rastreador: formData.precisa_rastreador,
+          precisa_seguro: formData.precisa_seguro,
+          pedagio_pago_por: formData.pedagio_pago_por || null,
+          pedagio_direcao: formData.pedagio_direcao || null,
+          observacoes: formData.observacoes || null,
+          collaborator_ids: [],
+          status: 'pendente'
+        });
 
-      if (freightError) throw freightError;
-
-      // Create mock generated freight data for success dialog
-      const mockGeneratedFreight: GeneratedFreight = {
-        id: insertedData[0].id,
-        codigo_agregamento: 'COMPLETO-' + Date.now().toString().slice(-6),
-        destino_cidade: formData.paradas[0]?.cidade || 'Múltiplas',
-        destino_estado: formData.paradas[0]?.estado || 'Estados'
-      };
-
-      setGeneratedFreights([mockGeneratedFreight]);
+      if (error) throw error;
 
       toast({
         title: "Sucesso!",
         description: "Frete completo criado com sucesso!",
       });
 
-      setShowSuccess(true);
-      
-      // Reset form
-      setFormData({
-        tipoFrete: 'completo',
-        origemEstado: '',
-        origemCidade: '',
-        paradas: [],
-        tipoMercadoria: '',
-        pesoCarga: undefined,
-        valorCarga: undefined,
-        dataColeta: undefined,
-        dataEntrega: undefined,
-        horarioCarregamento: undefined,
-        tiposVeiculos: [],
-        tiposCarrocerias: [],
-        precisaAjudante: false,
-        precisaSeguro: false,
-        precisaRastreador: false,
-        pedagioPagoPor: undefined,
-        pedagioDirecao: undefined,
-        observacoes: undefined,
-        valoresDefinidos: false,
-        tabelasPreco: [],
-        regraAgendamento: [],
-        beneficios: [],
-      });
-
+      navigate('/company-dashboard');
     } catch (error) {
       console.error('Erro ao criar frete:', error);
       toast({
         title: "Erro",
         description: "Erro ao criar frete. Tente novamente.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const vehicleTypes = [
-    "Caminhão",
-    "Carreta",
-    "Bitrem",
-    "Vanderléia",
-    "Rodotrem",
-    "Outro"
-  ];
-
-  const bodyTypes = [
-    "Aberta",
-    "Fechada",
-    "Frigorífica",
-    "Graneleira",
-    "Tanque",
-    "Plataforma",
-    "Sider",
-    "Outra"
-  ];
-
-  const paymentResponsibilityOptions = [
-    { value: 'embarcador', label: 'Embarcador' },
-    { value: 'transportador', label: 'Transportador' }
-  ];
-
-  const tollDirectionOptions = [
-    { value: 'ida', label: 'Ida' },
-    { value: 'volta', label: 'Volta' },
-    { value: 'ida_volta', label: 'Ida e Volta' }
-  ];
+  const handleBack = () => {
+    navigate('/freight-request');
+  };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold flex items-center gap-2">
-            <Package className="h-6 w-6 text-blue-600" />
-            Frete Completo
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Origem Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-green-600" />
-                  Origem
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="origem-estado">Estado de Origem *</Label>
-                    <Input
-                      id="origem-estado"
-                      value={formData.origemEstado}
-                      onChange={(e) => setFormData(prev => ({ ...prev, origemEstado: e.target.value }))}
-                      placeholder="Ex: SP"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="origem-cidade">Cidade de Origem *</Label>
-                    <Input
-                      id="origem-cidade"
-                      value={formData.origemCidade}
-                      onChange={(e) => setFormData(prev => ({ ...prev, origemCidade: e.target.value }))}
-                      placeholder="Ex: São Paulo"
-                      required
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-3">
+              <Button
+                onClick={handleBack}
+                variant="outline"
+                size="sm"
+                className="flex items-center space-x-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Voltar</span>
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold text-gray-800">Frete Completo</h1>
+                <p className="text-sm text-gray-600">Carga completa com múltiplas paradas</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
 
-            {/* Paradas Section */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-red-600" />
-                  Paradas ({formData.paradas.length})
-                </CardTitle>
-                <Button
-                  type="button"
-                  onClick={addParada}
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Adicionar Parada
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {formData.paradas.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <MapPin className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>Nenhuma parada adicionada ainda.</p>
-                    <p className="text-sm">Clique em "Adicionar Parada" para começar.</p>
-                  </div>
-                ) : (
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <SortableContext
-                      items={formData.paradas.map(p => p.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {formData.paradas.map((parada, index) => (
-                        <SortableParadaCard
-                          key={parada.id}
-                          parada={parada}
-                          index={index}
-                          onUpdate={updateParada}
-                          onRemove={removeParada}
-                        />
-                      ))}
-                    </SortableContext>
-                  </DndContext>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Mercadoria Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Package className="h-5 w-5 text-yellow-600" />
-                  Mercadoria
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Informações Básicas */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Informações Básicas</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="tipo-mercadoria">Tipo de Mercadoria *</Label>
+                  <Label htmlFor="origem_cidade">Cidade de Origem *</Label>
                   <Input
-                    id="tipo-mercadoria"
-                    value={formData.tipoMercadoria}
-                    onChange={(e) => setFormData(prev => ({ ...prev, tipoMercadoria: e.target.value }))}
-                    placeholder="Ex: Eletrônicos"
+                    id="origem_cidade"
+                    value={formData.origem_cidade}
+                    onChange={(e) => setFormData(prev => ({...prev, origem_cidade: e.target.value}))}
                     required
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="peso-carga">Peso da Carga (em KG)</Label>
-                    <Input
-                      id="peso-carga"
-                      type="number"
-                      value={formData.pesoCarga || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, pesoCarga: Number(e.target.value) }))}
-                      placeholder="Ex: 1500"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="valor-carga">Valor da Carga (em R$)</Label>
-                    <Input
-                      id="valor-carga"
-                      type="number"
-                      value={formData.valorCarga || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, valorCarga: Number(e.target.value) }))}
-                      placeholder="Ex: 10000"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Datas Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <CalendarDays className="h-5 w-5 text-purple-600" />
-                  Datas
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="data-coleta">Data de Coleta</Label>
-                    <Input
-                      id="data-coleta"
-                      type="date"
-                      value={formData.dataColeta || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, dataColeta: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="data-entrega">Data de Entrega</Label>
-                    <Input
-                      id="data-entrega"
-                      type="date"
-                      value={formData.dataEntrega || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, dataEntrega: e.target.value }))}
-                    />
-                  </div>
-                </div>
                 <div>
-                  <Label htmlFor="horario-carregamento">Horário de Carregamento</Label>
+                  <Label htmlFor="origem_estado">Estado de Origem *</Label>
                   <Input
-                    id="horario-carregamento"
-                    type="time"
-                    value={formData.horarioCarregamento || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, horarioCarregamento: e.target.value }))}
+                    id="origem_estado"
+                    value={formData.origem_estado}
+                    onChange={(e) => setFormData(prev => ({...prev, origem_estado: e.target.value}))}
+                    maxLength={2}
+                    required
                   />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Veículos Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Truck className="h-5 w-5 text-sky-600" />
-                  Veículos
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="tipo_mercadoria">Tipo de Mercadoria *</Label>
+                <Input
+                  id="tipo_mercadoria"
+                  value={formData.tipo_mercadoria}
+                  onChange={(e) => setFormData(prev => ({...prev, tipo_mercadoria: e.target.value}))}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>Tipos de Veículos</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {vehicleTypes.map((type) => (
-                      <div key={type} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`vehicle-type-${type}`}
-                          checked={formData.tiposVeiculos.includes(type)}
-                          onCheckedChange={(checked) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              tiposVeiculos: checked
-                                ? [...prev.tiposVeiculos, type]
-                                : prev.tiposVeiculos.filter((t) => t !== type),
-                            }));
-                          }}
-                        />
-                        <Label htmlFor={`vehicle-type-${type}`}>{type}</Label>
-                      </div>
-                    ))}
-                  </div>
+                  <Label htmlFor="peso_carga">Peso da Carga (kg)</Label>
+                  <Input
+                    id="peso_carga"
+                    type="number"
+                    value={formData.peso_carga}
+                    onChange={(e) => setFormData(prev => ({...prev, peso_carga: e.target.value}))}
+                  />
                 </div>
                 <div>
-                  <Label>Tipos de Carrocerias</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {bodyTypes.map((type) => (
-                      <div key={type} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`body-type-${type}`}
-                          checked={formData.tiposCarrocerias.includes(type)}
-                          onCheckedChange={(checked) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              tiposCarrocerias: checked
-                                ? [...prev.tiposCarrocerias, type]
-                                : prev.tiposCarrocerias.filter((t) => t !== type),
-                            }));
-                          }}
-                        />
-                        <Label htmlFor={`body-type-${type}`}>{type}</Label>
-                      </div>
-                    ))}
-                  </div>
+                  <Label htmlFor="valor_carga">Valor da Carga (R$)</Label>
+                  <Input
+                    id="valor_carga"
+                    type="number"
+                    value={formData.valor_carga}
+                    onChange={(e) => setFormData(prev => ({...prev, valor_carga: e.target.value}))}
+                  />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Adicionais Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Plus className="h-5 w-5 text-orange-600" />
-                  Adicionais
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="precisa-ajudante"
-                    checked={formData.precisaAjudante}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, precisaAjudante: !!checked }))}
-                  />
-                  <Label htmlFor="precisa-ajudante">Precisa de Ajudante?</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="precisa-seguro"
-                    checked={formData.precisaSeguro}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, precisaSeguro: !!checked }))}
-                  />
-                  <Label htmlFor="precisa-seguro">Precisa de Seguro?</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="precisa-rastreador"
-                    checked={formData.precisaRastreador}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, precisaRastreador: !!checked }))}
-                  />
-                  <Label htmlFor="precisa-rastreador">Precisa de Rastreador?</Label>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Pedágios Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-gray-600" />
-                  Pedágios
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+          {/* Paradas */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
                 <div>
-                  <Label>Pedágio Pago Por</Label>
-                  <RadioGroup
-                    defaultValue={formData.pedagioPagoPor}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, pedagioPagoPor: value as any }))}
-                    className="flex flex-col space-y-1"
+                  <CardTitle>Paradas de Entrega</CardTitle>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Adicione as paradas na sequência desejada. Você pode arrastar e soltar para reordenar.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={addParada}
+                  className="flex items-center space-x-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Adicionar Parada</span>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {formData.paradas.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <MapPin className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p>Nenhuma parada adicionada ainda.</p>
+                  <p className="text-sm">Clique em "Adicionar Parada" para começar.</p>
+                </div>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={formData.paradas.map(p => p.id)}
+                    strategy={verticalListSortingStrategy}
                   >
-                    {paymentResponsibilityOptions.map((option) => (
-                      <div key={option.value} className="flex items-center space-x-2">
-                        <RadioGroupItem value={option.value} id={`pedagio-pago-por-${option.value}`} />
-                        <Label htmlFor={`pedagio-pago-por-${option.value}`}>{option.label}</Label>
-                      </div>
+                    {formData.paradas.map((parada, index) => (
+                      <SortableParadaCard
+                        key={parada.id}
+                        parada={parada}
+                        index={index}
+                        onUpdate={updateParada}
+                        onRemove={removeParada}
+                      />
                     ))}
-                  </RadioGroup>
-                </div>
-                <div>
-                  <Label>Direção do Pedágio</Label>
-                  <RadioGroup
-                    defaultValue={formData.pedagioDirecao}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, pedagioDirecao: value as any }))}
-                    className="flex flex-col space-y-1"
-                  >
-                    {tollDirectionOptions.map((option) => (
-                      <div key={option.value} className="flex items-center space-x-2">
-                        <RadioGroupItem value={option.value} id={`pedagio-direcao-${option.value}`} />
-                        <Label htmlFor={`pedagio-direcao-${option.value}`}>{option.label}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </div>
-              </CardContent>
-            </Card>
+                  </SortableContext>
+                </DndContext>
+              )}
+            </CardContent>
+          </Card>
 
-            {/* Observações Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Textarea className="h-5 w-5 text-zinc-600" />
-                  Observações
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="observacoes">Observações Adicionais</Label>
-                  <Textarea
-                    id="observacoes"
-                    placeholder="Informações adicionais sobre o frete..."
-                    rows={3}
-                    value={formData.observacoes || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, observacoes: e.target.value }))}
+          {/* Requisitos do Veículo */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Requisitos do Veículo</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="precisa_ajudante"
+                    checked={formData.precisa_ajudante}
+                    onCheckedChange={(checked) => 
+                      setFormData(prev => ({...prev, precisa_ajudante: checked as boolean}))
+                    }
                   />
+                  <Label htmlFor="precisa_ajudante">Precisa de ajudante</Label>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="precisa_rastreador"
+                    checked={formData.precisa_rastreador}
+                    onCheckedChange={(checked) => 
+                      setFormData(prev => ({...prev, precisa_rastreador: checked as boolean}))
+                    }
+                  />
+                  <Label htmlFor="precisa_rastreador">Precisa de rastreador</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="precisa_seguro"
+                    checked={formData.precisa_seguro}
+                    onCheckedChange={(checked) => 
+                      setFormData(prev => ({...prev, precisa_seguro: checked as boolean}))
+                    }
+                  />
+                  <Label htmlFor="precisa_seguro">Precisa de seguro</Label>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-            <div className="flex justify-end gap-4">
-              <Button type="submit" disabled={isSubmitting} className="min-w-[120px]">
-                {isSubmitting ? "Criando..." : "Criar Frete"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          {/* Observações */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Observações Gerais</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={formData.observacoes}
+                onChange={(e) => setFormData(prev => ({...prev, observacoes: e.target.value}))}
+                placeholder="Informações adicionais sobre o frete..."
+                rows={4}
+              />
+            </CardContent>
+          </Card>
 
-      <FreightSuccessDialog 
-        open={showSuccess} 
-        onOpenChange={setShowSuccess}
-        generatedFreights={generatedFreights}
-        onNewFreight={() => {
-          setShowSuccess(false);
-          // Reset form state if needed
-        }}
-        onBackToDashboard={() => {
-          setShowSuccess(false);
-          // Navigate to dashboard if needed
-        }}
-      />
+          {/* Botões de Ação */}
+          <div className="flex justify-end space-x-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleBack}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting || formData.paradas.length === 0}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isSubmitting ? 'Criando...' : 'Criar Frete Completo'}
+            </Button>
+          </div>
+        </form>
+      </main>
     </div>
   );
 };
