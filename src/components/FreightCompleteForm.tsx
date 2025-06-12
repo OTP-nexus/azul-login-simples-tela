@@ -533,13 +533,43 @@ const FreightCompleteForm = () => {
     }
   };
 
-  const handleSubmit = async () => {
+  // New function to handle opening verification dialog
+  const handleOpenVerificationDialog = () => {
+    // Final validation before showing verification dialog
+    if (!formData.tipo_mercadoria) {
+      toast({
+        title: "Erro de validação",
+        description: "Informe o tipo de mercadoria",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
+    if (selectedVehicles.length === 0) {
+      toast({
+        title: "Erro de validação",
+        description: "Selecione pelo menos um tipo de veículo",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setShowVerificationDialog(true);
+  };
+
+  // Function to handle editing from verification dialog
+  const handleEditFromVerification = () => {
+    setShowVerificationDialog(false);
+    // User stays on current step to edit
+  };
+
+  // Updated submit function for creating multiple freights
+  const handleConfirmFreight = async () => {
     setShowVerificationDialog(false);
     setShowLoadingAnimation(true);
-    setLoading(true);
-
+    
     try {
-      // Get company_id first
       const { data: company, error: companyError } = await supabase
         .from('companies')
         .select('id')
@@ -550,14 +580,13 @@ const FreightCompleteForm = () => {
         throw new Error('Empresa não encontrada');
       }
 
-      // Create separate freights for each destination
-      const freightsToCreate = formData.destinos.map(destino => ({
+      // Prepare base freight data (same for all freights)
+      const baseFreightData = {
         company_id: company.id,
         collaborator_ids: formData.collaborator_ids,
-        origem_cidade: formData.origem_cidade,
+        tipo_frete: 'completo',
         origem_estado: formData.origem_estado,
-        destino_cidade: destino.city,
-        destino_estado: destino.state,
+        origem_cidade: formData.origem_cidade,
         tipo_mercadoria: formData.tipo_mercadoria,
         peso_carga: formData.peso_carga,
         valor_carga: formData.valor_carga,
@@ -573,183 +602,363 @@ const FreightCompleteForm = () => {
         fragil: formData.fragil,
         perigosa: formData.perigosa,
         numero_nota_fiscal: formData.numero_nota_fiscal,
-        horario_carregamento: formData.horario_carregamento,
+        tipos_veiculos: JSON.stringify(formData.tipos_veiculos.filter(v => v.selected)),
+        tipos_carrocerias: JSON.stringify(formData.tipos_carrocerias.filter(b => b.selected)),
+        tabelas_preco: JSON.stringify(formData.vehicle_price_tables),
+        regras_agendamento: JSON.stringify(formData.regras_agendamento),
+        beneficios: JSON.stringify(formData.beneficios),
+        horario_carregamento: formData.horario_carregamento || null,
         precisa_ajudante: formData.precisa_ajudante,
         precisa_rastreador: formData.precisa_rastreador,
         precisa_seguro: formData.precisa_seguro,
-        pedagio_pago_por: formData.pedagio_pago_por,
-        pedagio_direcao: formData.pedagio_direcao,
-        observacoes: formData.observacoes,
-        tipos_veiculos: JSON.stringify(formData.tipos_veiculos.filter(v => v.selected)),
-        tipos_carrocerias: JSON.stringify(formData.tipos_carrocerias.filter(b => b.selected)),
-        regras_agendamento: JSON.stringify(formData.regras_agendamento),
-        beneficios: JSON.stringify(formData.beneficios),
-        valores_definidos: JSON.stringify(formData.vehicle_price_tables),
-        tipo_frete: 'completo' as const,
-        status: 'ativo'
-      }));
+        pedagio_pago_por: formData.pedagio_pago_por || null,
+        pedagio_direcao: formData.pedagio_direcao || null,
+        observacoes: formData.observacoes || null
+      };
 
-      // Insert freights into supabase
-      const { data, error } = await supabase
-        .from('fretes')
-        .insert(freightsToCreate)
-        .select('id, codigo_agregamento, destino_cidade, destino_estado');
+      const createdFreights: GeneratedFreight[] = [];
 
-      if (error) {
-        throw error;
+      // Create one freight for each destination
+      for (const destino of formData.destinos) {
+        const freightData = {
+          ...baseFreightData,
+          destinos: JSON.stringify([destino])
+        };
+
+        const { data: freteData, error: freteError } = await supabase
+          .from('fretes')
+          .insert([freightData])
+          .select()
+          .single();
+
+        if (freteError) {
+          throw freteError;
+        }
+
+        // Add to created freights list
+        createdFreights.push({
+          id: freteData.id,
+          codigo_agregamento: freteData.codigo_agregamento,
+          destino_cidade: destino.city,
+          destino_estado: destino.state
+        });
+
+        // Save price tables for this freight
+        const priceTableInserts = [];
+        for (const vehicleTable of formData.vehicle_price_tables) {
+          for (const range of vehicleTable.ranges) {
+            priceTableInserts.push({
+              frete_id: freteData.id,
+              vehicle_type: vehicleTable.vehicleType,
+              km_start: range.kmStart,
+              km_end: range.kmEnd,
+              price: range.price
+            });
+          }
+        }
+
+        if (priceTableInserts.length > 0) {
+          const { error: priceError } = await supabase
+            .from('freight_price_tables')
+            .insert(priceTableInserts);
+
+          if (priceError) {
+            throw priceError;
+          }
+        }
       }
 
-      // Transform data to match GeneratedFreight interface
-      const transformedData: GeneratedFreight[] = (data || []).map(freight => ({
-        id: freight.id,
-        codigo_agregamento: freight.codigo_agregamento || `FRETE-${freight.id}`,
-        destino_cidade: freight.destino_cidade,
-        destino_estado: freight.destino_estado
-      }));
-
-      setGeneratedFreights(transformedData);
+      setGeneratedFreights(createdFreights);
+      setShowLoadingAnimation(false);
       setShowSuccessDialog(true);
-    } catch (error: any) {
-      console.error('Erro ao criar frete:', error);
+
       toast({
-        title: "Erro ao enviar frete",
-        description: error.message || "Tente novamente",
+        title: "Sucesso!",
+        description: `${createdFreights.length === 1 ? 'Frete criado' : `${createdFreights.length} fretes criados`} com sucesso!`
+      });
+
+    } catch (error: any) {
+      console.error('Erro ao salvar frete:', error);
+      setShowLoadingAnimation(false);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Não foi possível salvar a solicitação. Tente novamente.",
         variant: "destructive"
       });
-    } finally {
-      setLoading(false);
-      setShowLoadingAnimation(false);
     }
   };
+
+  // Function to handle creating new freight from success dialog
+  const handleNewFreight = () => {
+    setShowSuccessDialog(false);
+    setFormData({
+      collaborator_ids: [],
+      origem_cidade: '',
+      origem_estado: '',
+      destinos: [],
+      tipo_mercadoria: '',
+      tipos_veiculos: [...predefinedVehicleTypes],
+      tipos_carrocerias: [...predefinedBodyTypes],
+      vehicle_price_tables: [],
+      regras_agendamento: [],
+      beneficios: [],
+      horario_carregamento: '',
+      precisa_ajudante: false,
+      precisa_rastreador: false,
+      precisa_seguro: false,
+      pedagio_pago_por: '',
+      pedagio_direcao: '',
+      observacoes: '',
+      peso_carga: 0,
+      valor_carga: 0,
+      data_coleta: '',
+      data_entrega: '',
+      urgencia: 'normal',
+      temperatura_controlada: false,
+      equipamento_especial: '',
+      altura_carga: 0,
+      largura_carga: 0,
+      comprimento_carga: 0,
+      empilhavel: false,
+      fragil: false,
+      perigosa: false,
+      numero_nota_fiscal: '',
+      paradas: []
+    });
+    setCurrentStep(1);
+  };
+
+  // Function to handle going back to dashboard from success dialog
+  const handleBackToDashboardFromSuccess = () => {
+    setShowSuccessDialog(false);
+    navigate('/company-dashboard');
+  };
+
+  if (loadingCollaborators) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (collaborators.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
+        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center space-x-3">
+                <Button
+                  onClick={handleBack}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Voltar</span>
+                </Button>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-800">Frete Completo</h1>
+                  <p className="text-sm text-gray-600">Solicitação de frete</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Card className="text-center py-12">
+            <CardContent>
+              <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <User className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                Nenhum colaborador cadastrado
+              </h3>
+              <p className="text-base text-gray-600 mb-6">
+                Para solicitar um frete, você precisa ter pelo menos um colaborador cadastrado como responsável pelo pedido.
+              </p>
+              <div className="flex gap-4 justify-center">
+                <Button
+                  onClick={() => navigate('/collaborator-registration')}
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Cadastrar Colaborador
+                </Button>
+                <Button
+                  onClick={handleBackToDashboard}
+                  variant="outline"
+                >
+                  Voltar ao Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
 
   const selectedCollaborators = getSelectedCollaborators();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBack}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Voltar</span>
-              </Button>
-              <div className="h-6 w-px bg-gray-300" />
-              <h1 className="text-xl font-semibold text-gray-900">Frete Completo</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600">
-                Etapa {currentStep} de {steps.length}
+    <>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
+        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center space-x-3">
+                <Button
+                  onClick={handleBack}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Voltar</span>
+                </Button>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-800">Frete Completo</h1>
+                  <p className="text-sm text-gray-600">Solicitação de frete completo com detalhes específicos</p>
+                </div>
               </div>
-              <Progress value={progressValue} className="w-32" />
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">{steps[currentStep - 1].title}</h2>
-                <p className="text-gray-600 mt-1">{steps[currentStep - 1].description}</p>
-              </div>
-              <div className="flex items-center space-x-8">
-                {steps.map((step, index) => (
-                  <div key={step.number} className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      currentStep === step.number
-                        ? 'bg-blue-600 text-white'
-                        : currentStep > step.number
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      {currentStep > step.number ? (
-                        <CheckCircle className="w-4 h-4" />
-                      ) : (
-                        step.number
-                      )}
-                    </div>
-                    {index < steps.length - 1 && (
-                      <div className={`w-16 h-0.5 ml-4 ${
-                        currentStep > step.number ? 'bg-green-500' : 'bg-gray-200'
-                      }`} />
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Progress Steps */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              {steps.map((step, index) => (
+                <div key={step.number} className="flex items-center">
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
+                    currentStep > step.number 
+                      ? 'bg-green-500 border-green-500 text-white' 
+                      : currentStep === step.number 
+                      ? 'bg-blue-500 border-blue-500 text-white' 
+                      : 'bg-gray-200 border-gray-300 text-gray-500'
+                  }`}>
+                    {currentStep > step.number ? (
+                      <CheckCircle className="w-5 h-5" />
+                    ) : (
+                      step.number
                     )}
                   </div>
-                ))}
-              </div>
+                  <div className="ml-3">
+                    <div className={`text-sm font-medium ${
+                      currentStep >= step.number ? 'text-gray-900' : 'text-gray-500'
+                    }`}>
+                      {step.title}
+                    </div>
+                    <div className="text-xs text-gray-500">{step.description}</div>
+                  </div>
+                  {index < steps.length - 1 && (
+                    <div className={`w-16 h-0.5 mx-4 ${
+                      currentStep > step.number ? 'bg-green-500' : 'bg-gray-300'
+                    }`} />
+                  )}
+                </div>
+              ))}
             </div>
+            <Progress value={progressValue} className="w-full" />
           </div>
 
-          <div className="p-6">
-            <form className="space-y-8">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                  {currentStep === 1 && <User className="w-6 h-6 text-white" />}
+                  {currentStep === 2 && <MapPin className="w-6 h-6 text-white" />}
+                  {currentStep === 3 && <Truck className="w-6 h-6 text-white" />}
+                  {currentStep === 4 && <Package className="w-6 h-6 text-white" />}
+                </div>
+                <div>
+                  <CardTitle className="text-xl text-gray-800">
+                    {steps[currentStep - 1].title}
+                  </CardTitle>
+                  <CardDescription>
+                    {steps[currentStep - 1].description}
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            
+            <CardContent>
               {currentStep === 1 && (
                 <div className="space-y-6">
-                  <div className="text-center">
-                    <User className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Selecione os Colaboradores Responsáveis</h3>
-                    <p className="text-gray-600">Escolha quem será responsável por este frete completo</p>
-                  </div>
-
-                  {loadingCollaborators ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                      <p className="text-gray-600 mt-2">Carregando colaboradores...</p>
-                    </div>
-                  ) : collaborators.length === 0 ? (
-                    <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-                      <User className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-gray-500">Nenhum colaborador encontrado</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-4">
+                    <Label className="text-sm font-medium text-gray-700">
+                      Colaboradores Responsáveis *
+                    </Label>
+                    <p className="text-sm text-gray-600">
+                      Selecione um ou mais colaboradores que serão responsáveis por este pedido de frete.
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto border rounded-lg p-4">
                       {collaborators.map((collaborator) => (
-                        <Card 
-                          key={collaborator.id} 
-                          className={`cursor-pointer transition-all duration-200 border-2 ${
-                            formData.collaborator_ids.includes(collaborator.id)
-                              ? 'border-blue-500 bg-blue-50 shadow-md'
-                              : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                          }`}
-                          onClick={() => handleCollaboratorToggle(collaborator.id)}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <h4 className="font-medium text-gray-900">{collaborator.name}</h4>
-                                <p className="text-sm text-gray-600">{collaborator.sector}</p>
-                                <p className="text-sm text-gray-500">{collaborator.phone}</p>
-                              </div>
-                              <Checkbox
-                                checked={formData.collaborator_ids.includes(collaborator.id)}
-                                onChange={() => handleCollaboratorToggle(collaborator.id)}
-                                className="ml-2"
-                              />
-                            </div>
-                          </CardContent>
-                        </Card>
+                        <div key={collaborator.id} className="flex items-center space-x-3 p-2 border rounded-lg hover:bg-gray-50">
+                          <Checkbox
+                            id={collaborator.id}
+                            checked={formData.collaborator_ids.includes(collaborator.id)}
+                            onCheckedChange={() => handleCollaboratorToggle(collaborator.id)}
+                          />
+                          <label htmlFor={collaborator.id} className="flex-1 cursor-pointer">
+                            <div className="font-medium text-gray-800">{collaborator.name}</div>
+                            <div className="text-sm text-gray-600">{collaborator.sector}</div>
+                            <div className="text-xs text-gray-500">{collaborator.phone}</div>
+                          </label>
+                        </div>
                       ))}
                     </div>
-                  )}
 
-                  {selectedCollaborators.length > 0 && (
-                    <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <h4 className="font-medium text-green-900 mb-2">Colaboradores Selecionados:</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedCollaborators.map((collaborator) => (
-                          <span key={collaborator.id} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                            {collaborator.name}
-                          </span>
-                        ))}
+                    {selectedCollaborators.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-green-700">
+                          Colaboradores Selecionados ({selectedCollaborators.length})
+                        </Label>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedCollaborators.map((collaborator) => (
+                            <div
+                              key={collaborator.id}
+                              className="flex items-center space-x-2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm"
+                            >
+                              <span>{collaborator.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCollaboratorToggle(collaborator.id)}
+                                className="hover:bg-green-200 rounded-full p-1"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+
+                  <div className="flex gap-4 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleBack}
+                      className="flex-1"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                      disabled={formData.collaborator_ids.length === 0}
+                    >
+                      Próximo
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -759,537 +968,893 @@ const FreightCompleteForm = () => {
                   <div className="space-y-4">
                     <Label className="text-lg font-medium text-gray-800">Origem</Label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="origem-estado">Estado de Origem</Label>
+                      <div className="space-y-2">
+                        <Label htmlFor="origem_estado" className="text-sm font-medium text-gray-700">
+                          Estado de Origem *
+                        </Label>
                         <Select 
                           value={formData.origem_estado} 
-                          onValueChange={(value) => handleInputChange('origem_estado', value)}
+                          onValueChange={(value) => {
+                            handleInputChange('origem_estado', value);
+                            handleInputChange('origem_cidade', ''); // Limpar cidade quando mudar estado
+                          }}
                         >
-                          <SelectTrigger id="origem-estado">
+                          <SelectTrigger>
                             <SelectValue placeholder="Selecione o estado" />
                           </SelectTrigger>
                           <SelectContent>
-                            {estados.map((estado) => (
-                              <SelectItem key={estado.sigla} value={estado.sigla}>
-                                {estado.nome}
-                              </SelectItem>
-                            ))}
+                            {loadingEstados ? (
+                              <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                            ) : (
+                              estados.map((estado) => (
+                                <SelectItem key={estado.id} value={estado.sigla}>
+                                  {estado.nome} ({estado.sigla})
+                                </SelectItem>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
-                      <div>
-                        <Label htmlFor="origem-cidade">Cidade de Origem</Label>
+                      <div className="space-y-2">
+                        <Label htmlFor="origem_cidade" className="text-sm font-medium text-gray-700">
+                          Cidade de Origem *
+                        </Label>
                         <Select 
                           value={formData.origem_cidade} 
                           onValueChange={(value) => handleInputChange('origem_cidade', value)}
                           disabled={!formData.origem_estado}
                         >
-                          <SelectTrigger id="origem-cidade">
+                          <SelectTrigger>
                             <SelectValue placeholder="Selecione a cidade" />
                           </SelectTrigger>
                           <SelectContent>
-                            {origemCidades.cidades.map((cidade) => (
-                              <SelectItem key={cidade.nome} value={cidade.nome}>
-                                {cidade.nome}
-                              </SelectItem>
-                            ))}
+                            {origemCidades.loading ? (
+                              <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                            ) : (
+                              origemCidades.cidades.map((cidade) => (
+                                <SelectItem key={cidade.id} value={cidade.nome}>
+                                  {cidade.nome}
+                                </SelectItem>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
                   </div>
 
-                  {/* Destinos */}
+                                    {/* Paradas */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label className="text-lg font-medium text-gray-800">Destinos</Label>
+                      <Label className="text-lg font-medium text-gray-800">Paradas</Label>
                       <Button
                         type="button"
-                        onClick={addDestination}
+                        onClick={addParada}
                         variant="outline"
                         size="sm"
                         className="flex items-center space-x-2"
                       >
                         <Plus className="w-4 h-4" />
-                        <span>Adicionar Destino</span>
+                        <span>Adicionar Parada</span>
                       </Button>
                     </div>
-
-                    {/* Aviso informativo sobre múltiplos destinos */}
+                  
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <div className="flex items-start space-x-3">
                         <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                         <div className="text-sm text-blue-800">
-                          <strong>Informação importante:</strong> Cada destino gerará um pedido de frete separado. 
-                          Para um frete com múltiplas paradas na mesma rota, use o "Frete Agregamento".
+                          <strong>Informação importante:</strong> Todas as paradas fazem parte de um único pedido de frete. Você pode reorganizar a ordem arrastando os cards.
                         </div>
                       </div>
                     </div>
-
-                    {formData.destinos.length === 0 && (
+                  
+                    {formData.paradas.length === 0 && (
                       <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
                         <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-500">Nenhum destino adicionado</p>
+                        <p className="text-gray-500">Nenhuma parada adicionada</p>
+                        <p className="text-sm text-gray-400">Clique em "Adicionar Parada" para começar</p>
                       </div>
                     )}
-
-                    {formData.destinos.map((destino) => (
-                      <div key={destino.id} className="flex items-center space-x-3 p-4 border rounded-lg">
-                        <MapPin className="w-5 h-5 text-gray-600 flex-shrink-0" />
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <Select 
-                            value={destino.state} 
-                            onValueChange={(value) => updateDestination(destino.id, 'state', value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Estado" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {estados.map((estado) => (
-                                <SelectItem key={estado.sigla} value={estado.sigla}>
-                                  {estado.nome}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Select 
-                            value={destino.city} 
-                            onValueChange={(value) => updateDestination(destino.id, 'city', value)}
-                            disabled={!destino.state}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Cidade" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {destinoCidades[destino.id]?.map((cidade: any) => (
-                                <SelectItem key={cidade.nome} value={cidade.nome}>
-                                  {cidade.nome}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={() => removeDestination(destino.id)}
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
+                  
+                    <DndContext
+                      sensors={useSensors(useSensor(PointerSensor))}
+                      collisionDetection={closestCenter}
+                      onDragEnd={({ active, over }) => {
+                        if (active.id !== over?.id) {
+                          const oldIndex = formData.paradas.findIndex(p => p.id === active.id)
+                          const newIndex = formData.paradas.findIndex(p => p.id === over.id)
+                          setFormData(prev => ({
+                            ...prev,
+                            paradas: arrayMove(prev.paradas, oldIndex, newIndex)
+                          }))
+                        }
+                      }}
+                    >
+                      <SortableContext
+                        items={formData.paradas.map(p => p.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {formData.paradas.map((parada) => {
+                          const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+                            id: parada.id,
+                          })
+                  
+                          const style = {
+                            transform: CSS.Transform.toString(transform),
+                            transition,
+                          }
+                  
+                          return (
+                            <div
+                              key={parada.id}
+                              ref={setNodeRef}
+                              style={style}
+                              {...attributes}
+                              {...listeners}
+                              className="flex items-center space-x-3 p-4 border rounded-lg bg-white shadow-sm"
+                            >
+                              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium text-gray-700">Estado</Label>
+                                  <Select 
+                                    value={parada.state} 
+                                    onValueChange={(value) => updateParada(parada.id, 'state', value)}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Selecione o estado" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {loadingEstados ? (
+                                        <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                                      ) : (
+                                        estados.map((estado) => (
+                                          <SelectItem key={estado.id} value={estado.sigla}>
+                                            {estado.nome} ({estado.sigla})
+                                          </SelectItem>
+                                        ))
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium text-gray-700">Cidade</Label>
+                                  <Select 
+                                    value={parada.city} 
+                                    onValueChange={(value) => updateParada(parada.id, 'city', value)}
+                                    disabled={!parada.state}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Selecione a cidade" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {paradaCidades[parada.id] ? (
+                                        paradaCidades[parada.id].map((cidade: any) => (
+                                          <SelectItem key={cidade.id} value={cidade.nome}>
+                                            {cidade.nome}
+                                          </SelectItem>
+                                        ))
+                                      ) : (
+                                        <SelectItem value="disabled" disabled>Selecione um estado primeiro</SelectItem>
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                onClick={() => removeParada(parada.id)}
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )
+                        })}
+                      </SortableContext>
+                    </DndContext>
+                  
+                    <div className="flex gap-4 pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handlePreviousStep}
+                        className="flex-1"
+                      >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Voltar
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleNextStep}
+                        className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                      >
+                        Próximo
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
+
 
               {currentStep === 3 && (
                 <div className="space-y-6">
-                  <div>
-                    <Label className="text-lg font-medium text-gray-800">Tipo de Mercadoria</Label>
-                    <Input
-                      type="text"
-                      value={formData.tipo_mercadoria}
-                      onChange={(e) => handleInputChange('tipo_mercadoria', e.target.value)}
-                      placeholder="Informe o tipo de mercadoria"
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="text-lg font-medium text-gray-800 mb-2">Tipos de Veículos</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-64 overflow-y-auto border rounded p-4">
-                      {formData.tipos_veiculos.map(vehicle => (
-                        <Checkbox
-                          key={vehicle.id}
-                          checked={vehicle.selected}
-                          onCheckedChange={() => toggleVehicleType(vehicle.id)}
-                          id={`vehicle-${vehicle.id}`}
-                        >
-                          <label htmlFor={`vehicle-${vehicle.id}`} className="ml-2 cursor-pointer select-none">
-                            {vehicle.type} ({vehicle.category})
-                          </label>
-                        </Checkbox>
-                      ))}
+                  {/* Informações da Carga */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Informações da Carga</Label>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="tipo_mercadoria" className="text-sm font-medium text-gray-700">
+                          Tipo de Mercadoria *
+                        </Label>
+                        <Input
+                          id="tipo_mercadoria"
+                          type="text"
+                          value={formData.tipo_mercadoria}
+                          onChange={(e) => handleInputChange('tipo_mercadoria', e.target.value)}
+                          placeholder="Ex: Eletrônicos"
+                          required
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <Label className="text-lg font-medium text-gray-800 mb-2">Tipos de Carrocerias</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-64 overflow-y-auto border rounded p-4">
-                      {formData.tipos_carrocerias.map(body => (
-                        <Checkbox
-                          key={body.id}
-                          checked={body.selected}
-                          onCheckedChange={() => toggleBodyType(body.id)}
-                          id={`body-${body.id}`}
-                        >
-                          <label htmlFor={`body-${body.id}`} className="ml-2 cursor-pointer select-none">
-                            {body.type} ({body.category})
-                          </label>
-                        </Checkbox>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-lg font-medium text-gray-800 mb-2">Tabelas de Preço por Veículo</Label>
-                    {formData.vehicle_price_tables.length === 0 && (
-                      <p className="text-gray-500">Nenhuma tabela de preço configurada.</p>
-                    )}
-                    {formData.vehicle_price_tables.map(table => (
-                      <div key={table.vehicleType} className="mb-6 border rounded p-4">
-                        <h4 className="font-semibold mb-2">{table.vehicleType}</h4>
-                        {table.ranges.map(range => (
-                          <div key={range.id} className="grid grid-cols-4 gap-4 items-center mb-2">
-                            <Input
-                              type="number"
-                              value={range.kmStart}
-                              onChange={(e) => updatePriceRange(table.vehicleType, range.id, 'kmStart', Number(e.target.value))}
-                              placeholder="Km Início"
+                  {/* Tipos de Veículos */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Tipos de Veículos *</Label>
+                    
+                    {/* Pesados */}
+                    <div className="space-y-3">
+                      <h4 className="text-md font-semibold text-gray-700">Pesados</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {formData.tipos_veiculos.filter(v => v.category === 'heavy').map((vehicle) => (
+                          <div key={vehicle.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                            <Checkbox
+                              id={`vehicle-${vehicle.id}`}
+                              checked={vehicle.selected}
+                              onCheckedChange={() => toggleVehicleType(vehicle.id)}
                             />
-                            <Input
-                              type="number"
-                              value={range.kmEnd}
-                              onChange={(e) => updatePriceRange(table.vehicleType, range.id, 'kmEnd', Number(e.target.value))}
-                              placeholder="Km Fim"
-                            />
-                            <Input
-                              type="number"
-                              value={range.price}
-                              onChange={(e) => updatePriceRange(table.vehicleType, range.id, 'price', Number(e.target.value))}
-                              placeholder="Preço"
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              onClick={() => removePriceRange(table.vehicleType, range.id)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <X className="w-5 h-5" />
-                            </Button>
+                            <label htmlFor={`vehicle-${vehicle.id}`} className="flex-1 cursor-pointer">
+                              <div className="font-medium text-gray-800">{vehicle.type}</div>
+                            </label>
                           </div>
                         ))}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addPriceRange(table.vehicleType)}
-                        >
-                          Adicionar Faixa de Preço
-                        </Button>
                       </div>
-                    ))}
+                    </div>
+
+                    {/* Médios */}
+                    <div className="space-y-3">
+                      <h4 className="text-md font-semibold text-gray-700">Médios</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {formData.tipos_veiculos.filter(v => v.category === 'medium').map((vehicle) => (
+                          <div key={vehicle.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                            <Checkbox
+                              id={`vehicle-${vehicle.id}`}
+                              checked={vehicle.selected}
+                              onCheckedChange={() => toggleVehicleType(vehicle.id)}
+                            />
+                            <label htmlFor={`vehicle-${vehicle.id}`} className="flex-1 cursor-pointer">
+                              <div className="font-medium text-gray-800">{vehicle.type}</div>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Leves */}
+                    <div className="space-y-3">
+                      <h4 className="text-md font-semibold text-gray-700">Leves</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {formData.tipos_veiculos.filter(v => v.category === 'light').map((vehicle) => (
+                          <div key={vehicle.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                            <Checkbox
+                              id={`vehicle-${vehicle.id}`}
+                              checked={vehicle.selected}
+                              onCheckedChange={() => toggleVehicleType(vehicle.id)}
+                            />
+                            <label htmlFor={`vehicle-${vehicle.id}`} className="flex-1 cursor-pointer">
+                              <div className="font-medium text-gray-800">{vehicle.type}</div>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tipos de Carroceria */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Tipos de Carroceria</Label>
+                    
+                    {/* Abertas */}
+                    <div className="space-y-3">
+                      <h4 className="text-md font-semibold text-gray-700">Abertas</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {formData.tipos_carrocerias.filter(b => b.category === 'open').map((body) => (
+                          <div key={body.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                            <Checkbox
+                              id={`body-${body.id}`}
+                              checked={body.selected}
+                              onCheckedChange={() => toggleBodyType(body.id)}
+                            />
+                            <label htmlFor={`body-${body.id}`} className="flex-1 cursor-pointer">
+                              <div className="font-medium text-gray-800">{body.type}</div>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Fechadas */}
+                    <div className="space-y-3">
+                      <h4 className="text-md font-semibold text-gray-700">Fechadas</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {formData.tipos_carrocerias.filter(b => b.category === 'closed').map((body) => (
+                          <div key={body.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                            <Checkbox
+                              id={`body-${body.id}`}
+                              checked={body.selected}
+                              onCheckedChange={() => toggleBodyType(body.id)}
+                            />
+                            <label htmlFor={`body-${body.id}`} className="flex-1 cursor-pointer">
+                              <div className="font-medium text-gray-800">{body.type}</div>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Especiais */}
+                    <div className="space-y-3">
+                      <h4 className="text-md font-semibold text-gray-700">Especiais</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {formData.tipos_carrocerias.filter(b => b.category === 'special').map((body) => (
+                          <div key={body.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                            <Checkbox
+                              id={`body-${body.id}`}
+                              checked={body.selected}
+                              onCheckedChange={() => toggleBodyType(body.id)}
+                            />
+                            <label htmlFor={`body-${body.id}`} className="flex-1 cursor-pointer">
+                              <div className="font-medium text-gray-800">{body.type}</div>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tabelas de Preço por Veículo */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Tabelas de Preço por Veículo</Label>
+                    
+                    {formData.vehicle_price_tables.length === 0 ? (
+                      <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                        <DollarSign className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-gray-500">Selecione veículos para configurar as tabelas de preço</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {formData.vehicle_price_tables.map((vehicleTable) => (
+                          <div key={vehicleTable.vehicleType} className="border rounded-lg p-4 bg-gray-50">
+                            <div className="flex items-center justify-between mb-4">
+                              <h4 className="text-lg font-semibold text-gray-800">{vehicleTable.vehicleType}</h4>
+                              <Button
+                                type="button"
+                                onClick={() => addPriceRange(vehicleTable.vehicleType)}
+                                variant="outline"
+                                size="sm"
+                                className="flex items-center space-x-2"
+                              >
+                                <Plus className="w-4 h-4" />
+                                <span>Adicionar Faixa</span>
+                              </Button>
+                            </div>
+                            
+                            <div className="space-y-3">
+                              {vehicleTable.ranges.map((range) => (
+                                <div key={range.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-3 bg-white rounded-lg border">
+                                  <div className="space-y-2">
+                                    <Label className="text-sm font-medium text-gray-700">KM Inicial</Label>
+                                    <Input
+                                      type="number"
+                                      value={range.kmStart}
+                                      onChange={(e) => updatePriceRange(vehicleTable.vehicleType, range.id, 'kmStart', parseInt(e.target.value) || 0)}
+                                      min="0"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label className="text-sm font-medium text-gray-700">KM Final</Label>
+                                    <Input
+                                      type="number"
+                                      value={range.kmEnd}
+                                      onChange={(e) => updatePriceRange(vehicleTable.vehicleType, range.id, 'kmEnd', parseInt(e.target.value) || 0)}
+                                      min="0"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label className="text-sm font-medium text-gray-700">Preço (R$)</Label>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={range.price}
+                                      onChange={(e) => updatePriceRange(vehicleTable.vehicleType, range.id, 'price', parseFloat(e.target.value) || 0)}
+                                      min="0"
+                                    />
+                                  </div>
+                                  <div className="flex items-end">
+                                    <Button
+                                      type="button"
+                                      onClick={() => removePriceRange(vehicleTable.vehicleType, range.id)}
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-red-600 hover:text-red-700 w-full"
+                                      disabled={vehicleTable.ranges.length === 1}
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-4 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handlePreviousStep}
+                      className="flex-1"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Voltar
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                    >
+                      Próximo
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
                   </div>
                 </div>
               )}
 
               {currentStep === 4 && (
                 <div className="space-y-6">
-                  <div>
-                    <Label className="text-lg font-medium text-gray-800">Regras de Agendamento</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {schedulingRules.map(rule => (
-                        <Checkbox
-                          key={rule}
-                          checked={formData.regras_agendamento.includes(rule)}
-                          onCheckedChange={() => toggleSchedulingRule(rule)}
-                          id={`rule-${rule}`}
+                  {/* Resumo dos colaboradores */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <Label className="text-sm font-medium text-green-800 mb-2 block">
+                      Colaboradores Responsáveis ({selectedCollaborators.length})
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedCollaborators.map((collaborator) => (
+                        <div
+                          key={collaborator.id}
+                          className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm"
                         >
-                          <label htmlFor={`rule-${rule}`} className="ml-2 cursor-pointer select-none">
-                            {rule}
-                          </label>
-                        </Checkbox>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-lg font-medium text-gray-800">Benefícios</Label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {formData.beneficios.map((benefit, index) => (
-                        <div key={index} className="flex items-center bg-green-100 text-green-800 rounded-full px-3 py-1 text-sm">
-                          {benefit}
-                          <button
-                            type="button"
-                            onClick={() => removeBenefit(index)}
-                            className="ml-2 text-green-600 hover:text-green-800"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
+                          {collaborator.name}
                         </div>
                       ))}
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={addBenefit}>
-                      Adicionar Benefício
-                    </Button>
                   </div>
 
-                  <div>
-                    <Label className="text-lg font-medium text-gray-800">Horário de Carregamento</Label>
-                    <Input
-                      type="time"
-                      value={formData.horario_carregamento}
-                      onChange={(e) => handleInputChange('horario_carregamento', e.target.value)}
-                    />
+                  {/* Informações da Carga Específicas */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Detalhes da Carga</Label>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="peso_carga" className="text-sm font-medium text-gray-700">
+                          Peso da Carga (kg) *
+                        </Label>
+                        <Input
+                          id="peso_carga"
+                          type="number"
+                          step="0.01"
+                          value={formData.peso_carga}
+                          onChange={(e) => handleInputChange('peso_carga', parseFloat(e.target.value) || 0)}
+                          placeholder="Ex: 1500.50"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="valor_carga" className="text-sm font-medium text-gray-700">
+                          Valor da Carga (R$) *
+                        </Label>
+                        <Input
+                          id="valor_carga"
+                          type="number"
+                          step="0.01"
+                          value={formData.valor_carga}
+                          onChange={(e) => handleInputChange('valor_carga', parseFloat(e.target.value) || 0)}
+                          placeholder="Ex: 15000.00"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="data_coleta" className="text-sm font-medium text-gray-700">
+                          Data de Coleta *
+                        </Label>
+                        <Input
+                          id="data_coleta"
+                          type="date"
+                          value={formData.data_coleta}
+                          onChange={(e) => handleInputChange('data_coleta', e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="data_entrega" className="text-sm font-medium text-gray-700">
+                          Data de Entrega *
+                        </Label>
+                        <Input
+                          id="data_entrega"
+                          type="date"
+                          value={formData.data_entrega}
+                          onChange={(e) => handleInputChange('data_entrega', e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Checkbox
-                      checked={formData.precisa_ajudante}
-                      onCheckedChange={(checked) => handleInputChange('precisa_ajudante', checked)}
-                      id="precisa-ajudante"
-                    >
-                      <label htmlFor="precisa-ajudante" className="ml-2 cursor-pointer select-none">
-                        Precisa de Ajudante
-                      </label>
-                    </Checkbox>
-                    <Checkbox
-                      checked={formData.precisa_rastreador}
-                      onCheckedChange={(checked) => handleInputChange('precisa_rastreador', checked)}
-                      id="precisa-rastreador"
-                    >
-                      <label htmlFor="precisa-rastreador" className="ml-2 cursor-pointer select-none">
-                        Precisa de Rastreador
-                      </label>
-                    </Checkbox>
-                    <Checkbox
-                      checked={formData.precisa_seguro}
-                      onCheckedChange={(checked) => handleInputChange('precisa_seguro', checked)}
-                      id="precisa-seguro"
-                    >
-                      <label htmlFor="precisa-seguro" className="ml-2 cursor-pointer select-none">
-                        Precisa de Seguro
-                      </label>
-                    </Checkbox>
+                  {/* Dimensões da Carga */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Dimensões da Carga</Label>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="comprimento_carga" className="text-sm font-medium text-gray-700">
+                          Comprimento (m)
+                        </Label>
+                        <Input
+                          id="comprimento_carga"
+                          type="number"
+                          step="0.01"
+                          value={formData.comprimento_carga}
+                          onChange={(e) => handleInputChange('comprimento_carga', parseFloat(e.target.value) || 0)}
+                          placeholder="Ex: 2.5"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="largura_carga" className="text-sm font-medium text-gray-700">
+                          Largura (m)
+                        </Label>
+                        <Input
+                          id="largura_carga"
+                          type="number"
+                          step="0.01"
+                          value={formData.largura_carga}
+                          onChange={(e) => handleInputChange('largura_carga', parseFloat(e.target.value) || 0)}
+                          placeholder="Ex: 1.2"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="altura_carga" className="text-sm font-medium text-gray-700">
+                          Altura (m)
+                        </Label>
+                        <Input
+                          id="altura_carga"
+                          type="number"
+                          step="0.01"
+                          value={formData.altura_carga}
+                          onChange={(e) => handleInputChange('altura_carga', parseFloat(e.target.value) || 0)}
+                          placeholder="Ex: 1.8"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <Label className="text-lg font-medium text-gray-800">Pedágio Pago Por</Label>
-                    <Input
-                      type="text"
-                      value={formData.pedagio_pago_por}
-                      onChange={(e) => handleInputChange('pedagio_pago_por', e.target.value)}
-                      placeholder="Quem paga o pedágio"
-                    />
+                  {/* Características da Carga */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Características da Carga</Label>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="empilhavel"
+                          checked={formData.empilhavel}
+                          onCheckedChange={(checked) => handleInputChange('empilhavel', checked)}
+                        />
+                        <Label htmlFor="empilhavel" className="text-sm font-medium text-gray-700">
+                          Empilhável
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="fragil"
+                          checked={formData.fragil}
+                          onCheckedChange={(checked) => handleInputChange('fragil', checked)}
+                        />
+                        <Label htmlFor="fragil" className="text-sm font-medium text-gray-700">
+                          Frágil
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="perigosa"
+                          checked={formData.perigosa}
+                          onCheckedChange={(checked) => handleInputChange('perigosa', checked)}
+                        />
+                        <Label htmlFor="perigosa" className="text-sm font-medium text-gray-700">
+                          Carga Perigosa
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="temperatura_controlada"
+                          checked={formData.temperatura_controlada}
+                          onCheckedChange={(checked) => handleInputChange('temperatura_controlada', checked)}
+                        />
+                        <Label htmlFor="temperatura_controlada" className="text-sm font-medium text-gray-700">
+                          Temperatura Controlada
+                        </Label>
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <Label className="text-lg font-medium text-gray-800">Pedágio Direção</Label>
-                    <Input
-                      type="text"
-                      value={formData.pedagio_direcao}
-                      onChange={(e) => handleInputChange('pedagio_direcao', e.target.value)}
-                      placeholder="Direção do pedágio"
-                    />
+                  {/* Urgência e Equipamentos */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Condições Especiais</Label>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">Urgência</Label>
+                        <Select 
+                          value={formData.urgencia} 
+                          onValueChange={(value) => handleInputChange('urgencia', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a urgência" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="baixa">Baixa</SelectItem>
+                            <SelectItem value="normal">Normal</SelectItem>
+                            <SelectItem value="alta">Alta</SelectItem>
+                            <SelectItem value="urgente">Urgente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="equipamento_especial" className="text-sm font-medium text-gray-700">
+                          Equipamento Especial
+                        </Label>
+                        <Input
+                          id="equipamento_especial"
+                          type="text"
+                          value={formData.equipamento_especial}
+                          onChange={(e) => handleInputChange('equipamento_especial', e.target.value)}
+                          placeholder="Ex: Empilhadeira, Guindaste"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="numero_nota_fiscal" className="text-sm font-medium text-gray-700">
+                          Número da Nota Fiscal
+                        </Label>
+                        <Input
+                          id="numero_nota_fiscal"
+                          type="text"
+                          value={formData.numero_nota_fiscal}
+                          onChange={(e) => handleInputChange('numero_nota_fiscal', e.target.value)}
+                          placeholder="Ex: 12345"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <Label className="text-lg font-medium text-gray-800">Observações</Label>
+                  {/* Configurações Operacionais (same as aggregation) */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Configurações Operacionais</Label>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="precisa_ajudante"
+                          checked={formData.precisa_ajudante}
+                          onCheckedChange={(checked) => handleInputChange('precisa_ajudante', checked)}
+                        />
+                        <Label htmlFor="precisa_ajudante" className="text-sm font-medium text-gray-700">
+                          Precisa de ajudante
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="precisa_rastreador"
+                          checked={formData.precisa_rastreador}
+                          onCheckedChange={(checked) => handleInputChange('precisa_rastreador', checked)}
+                        />
+                        <Label htmlFor="precisa_rastreador" className="text-sm font-medium text-gray-700">
+                          Precisa de rastreador
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="precisa_seguro"
+                          checked={formData.precisa_seguro}
+                          onCheckedChange={(checked) => handleInputChange('precisa_seguro', checked)}
+                        />
+                        <Label htmlFor="precisa_seguro" className="text-sm font-medium text-gray-700">
+                          Precisa de seguro
+                        </Label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="horario_carregamento" className="text-sm font-medium text-gray-700">
+                        Horário de Carregamento
+                      </Label>
+                      <Input
+                        id="horario_carregamento"
+                        type="time"
+                        value={formData.horario_carregamento}
+                        onChange={(e) => handleInputChange('horario_carregamento', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Configurações de Pedágio (same as aggregation) */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Configurações de Pedágio</Label>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">Pedágio pago por</Label>
+                        <Select 
+                          value={formData.pedagio_pago_por} 
+                          onValueChange={(value) => handleInputChange('pedagio_pago_por', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione quem paga" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="motorista">Motorista</SelectItem>
+                            <SelectItem value="empresa">Empresa</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">Direção do pedágio</Label>
+                        <Select 
+                          value={formData.pedagio_direcao} 
+                          onValueChange={(value) => handleInputChange('pedagio_direcao', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a direção" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ida">Apenas ida</SelectItem>
+                            <SelectItem value="volta">Apenas volta</SelectItem>
+                            <SelectItem value="ida_volta">Ida e volta</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Regras de Agendamento (same as aggregation) */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Regras de Agendamento</Label>
+                    <div className="space-y-2">
+                      {schedulingRules.map((rule) => (
+                        <div key={rule} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`rule-${rule}`}
+                            checked={formData.regras_agendamento.includes(rule)}
+                            onCheckedChange={() => toggleSchedulingRule(rule)}
+                          />
+                          <Label htmlFor={`rule-${rule}`} className="text-sm text-gray-700">
+                            {rule}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Benefícios (same as aggregation) */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-lg font-medium text-gray-800">Benefícios</Label>
+                      <Button
+                        type="button"
+                        onClick={addBenefit}
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center space-x-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Adicionar Benefício</span>
+                      </Button>
+                    </div>
+
+                    {formData.beneficios.length > 0 && (
+                      <div className="space-y-2">
+                        {formData.beneficios.map((benefit, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                            <span className="text-sm text-gray-700">{benefit}</span>
+                            <Button
+                              type="button"
+                              onClick={() => removeBenefit(index)}
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Observações */}
+                  <div className="space-y-2">
+                    <Label htmlFor="observacoes" className="text-sm font-medium text-gray-700">
+                      Observações
+                    </Label>
                     <Textarea
+                      id="observacoes"
                       value={formData.observacoes}
                       onChange={(e) => handleInputChange('observacoes', e.target.value)}
-                      placeholder="Observações adicionais"
+                      placeholder="Informações adicionais sobre o frete..."
                       rows={4}
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label className="text-lg font-medium text-gray-800">Peso da Carga (kg)</Label>
-                      <Input
-                        type="number"
-                        value={formData.peso_carga}
-                        onChange={(e) => handleInputChange('peso_carga', Number(e.target.value))}
-                        min={0}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-lg font-medium text-gray-800">Valor da Carga (R$)</Label>
-                      <Input
-                        type="number"
-                        value={formData.valor_carga}
-                        onChange={(e) => handleInputChange('valor_carga', Number(e.target.value))}
-                        min={0}
-                        step={0.01}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-lg font-medium text-gray-800">Urgência</Label>
-                      <Select
-                        value={formData.urgencia}
-                        onValueChange={(value) => handleInputChange('urgencia', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a urgência" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="normal">Normal</SelectItem>
-                          <SelectItem value="alta">Alta</SelectItem>
-                          <SelectItem value="urgente">Urgente</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Checkbox
-                      checked={formData.temperatura_controlada}
-                      onCheckedChange={(checked) => handleInputChange('temperatura_controlada', checked)}
-                      id="temperatura-controlada"
+                  {/* Botões */}
+                  <div className="flex gap-4 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handlePreviousStep}
+                      className="flex-1"
+                      disabled={loading}
                     >
-                      <label htmlFor="temperatura-controlada" className="ml-2 cursor-pointer select-none">
-                        Temperatura Controlada
-                      </label>
-                    </Checkbox>
-                    <Checkbox
-                      checked={formData.empilhavel}
-                      onCheckedChange={(checked) => handleInputChange('empilhavel', checked)}
-                      id="empilhavel"
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Voltar
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleOpenVerificationDialog}
+                      disabled={loading}
+                      className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
                     >
-                      <label htmlFor="empilhavel" className="ml-2 cursor-pointer select-none">
-                        Empilhável
-                      </label>
-                    </Checkbox>
-                    <Checkbox
-                      checked={formData.fragil}
-                      onCheckedChange={(checked) => handleInputChange('fragil', checked)}
-                      id="fragil"
-                    >
-                      <label htmlFor="fragil" className="ml-2 cursor-pointer select-none">
-                        Frágil
-                      </label>
-                    </Checkbox>
-                    <Checkbox
-                      checked={formData.perigosa}
-                      onCheckedChange={(checked) => handleInputChange('perigosa', checked)}
-                      id="perigosa"
-                    >
-                      <label htmlFor="perigosa" className="ml-2 cursor-pointer select-none">
-                        Perigosa
-                      </label>
-                    </Checkbox>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label className="text-lg font-medium text-gray-800">Altura da Carga (m)</Label>
-                      <Input
-                        type="number"
-                        value={formData.altura_carga}
-                        onChange={(e) => handleInputChange('altura_carga', Number(e.target.value))}
-                        min={0}
-                        step={0.01}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-lg font-medium text-gray-800">Largura da Carga (m)</Label>
-                      <Input
-                        type="number"
-                        value={formData.largura_carga}
-                        onChange={(e) => handleInputChange('largura_carga', Number(e.target.value))}
-                        min={0}
-                        step={0.01}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-lg font-medium text-gray-800">Comprimento da Carga (m)</Label>
-                      <Input
-                        type="number"
-                        value={formData.comprimento_carga}
-                        onChange={(e) => handleInputChange('comprimento_carga', Number(e.target.value))}
-                        min={0}
-                        step={0.01}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-lg font-medium text-gray-800">Equipamento Especial</Label>
-                    <Input
-                      type="text"
-                      value={formData.equipamento_especial}
-                      onChange={(e) => handleInputChange('equipamento_especial', e.target.value)}
-                      placeholder="Informe se há equipamento especial"
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="text-lg font-medium text-gray-800">Número da Nota Fiscal</Label>
-                    <Input
-                      type="text"
-                      value={formData.numero_nota_fiscal}
-                      onChange={(e) => handleInputChange('numero_nota_fiscal', e.target.value)}
-                      placeholder="Número da nota fiscal"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-lg font-medium text-gray-800">Data de Coleta</Label>
-                      <Input
-                        type="date"
-                        value={formData.data_coleta}
-                        onChange={(e) => handleInputChange('data_coleta', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-lg font-medium text-gray-800">Data de Entrega</Label>
-                      <Input
-                        type="date"
-                        value={formData.data_entrega}
-                        onChange={(e) => handleInputChange('data_entrega', e.target.value)}
-                      />
-                    </div>
+                      <Truck className="w-4 h-4 mr-2" />
+                      Solicitar Frete
+                    </Button>
                   </div>
                 </div>
               )}
-            </form>
-          </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
 
-          <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handlePreviousStep}
-              disabled={currentStep === 1}
-              className="flex items-center space-x-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Anterior</span>
-            </Button>
-            
-            {currentStep < steps.length ? (
-              <Button
-                type="button"
-                onClick={handleNextStep}
-                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700"
-              >
-                <span>Próximo</span>
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                onClick={() => setShowVerificationDialog(true)}
-                className="flex items-center space-x-2 bg-green-600 hover:bg-green-700"
-              >
-                <CheckCircle className="w-4 h-4" />
-                <span>Finalizar Frete</span>
-              </Button>
-            )}
-          </div>
-        </div>
-      </main>
-
-      {/* Dialogs */}
+      {/* Dialog Components */}
       <FreightVerificationDialog
         open={showVerificationDialog}
         onOpenChange={setShowVerificationDialog}
-        onConfirm={handleSubmit}
-        onEdit={() => setShowVerificationDialog(false)}
         formData={formData}
-        collaborators={collaborators || []}
+        collaborators={collaborators}
+        onEdit={handleEditFromVerification}
+        onConfirm={handleConfirmFreight}
         loading={loading}
       />
 
@@ -1300,49 +1865,11 @@ const FreightCompleteForm = () => {
       <FreightSuccessDialog
         open={showSuccessDialog}
         onOpenChange={setShowSuccessDialog}
-        onBackToDashboard={handleBackToDashboard}
-        onNewFreight={() => {
-          setShowSuccessDialog(false);
-          // Reset form or navigate to new freight
-          setCurrentStep(1);
-          setFormData({
-            collaborator_ids: [],
-            origem_cidade: '',
-            origem_estado: '',
-            destinos: [],
-            tipo_mercadoria: '',
-            tipos_veiculos: [...predefinedVehicleTypes],
-            tipos_carrocerias: [...predefinedBodyTypes],
-            vehicle_price_tables: [],
-            regras_agendamento: [],
-            beneficios: [],
-            horario_carregamento: '',
-            precisa_ajudante: false,
-            precisa_rastreador: false,
-            precisa_seguro: false,
-            pedagio_pago_por: '',
-            pedagio_direcao: '',
-            observacoes: '',
-            peso_carga: 0,
-            valor_carga: 0,
-            data_coleta: '',
-            data_entrega: '',
-            urgencia: 'normal',
-            temperatura_controlada: false,
-            equipamento_especial: '',
-            altura_carga: 0,
-            largura_carga: 0,
-            comprimento_carga: 0,
-            empilhavel: false,
-            fragil: false,
-            perigosa: false,
-            numero_nota_fiscal: '',
-            paradas: []
-          });
-        }}
-        generatedFreights={generatedFreights || []}
+        generatedFreights={generatedFreights}
+        onNewFreight={handleNewFreight}
+        onBackToDashboard={handleBackToDashboardFromSuccess}
       />
-    </div>
+    </>
   );
 };
 
