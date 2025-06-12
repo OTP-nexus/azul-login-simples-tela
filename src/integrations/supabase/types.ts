@@ -342,7 +342,6 @@ export type Database = {
           tipos_veiculos: Json | null
           updated_at: string
           valor_carga: number | null
-          valores_definidos: Json | null
         }
         Insert: {
           beneficios?: Json | null
@@ -374,7 +373,6 @@ export type Database = {
           tipos_veiculos?: Json | null
           updated_at?: string
           valor_carga?: number | null
-          valores_definidos?: Json | null
         }
         Update: {
           beneficios?: Json | null
@@ -406,7 +404,6 @@ export type Database = {
           tipos_veiculos?: Json | null
           updated_at?: string
           valor_carga?: number | null
-          valores_definidos?: Json | null
         }
         Relationships: [
           {

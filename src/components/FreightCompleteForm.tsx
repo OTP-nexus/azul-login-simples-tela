@@ -24,8 +24,7 @@ import {
   Users,
   X,
   GripVertical,
-  CheckCircle,
-  DollarSign
+  CheckCircle
 } from 'lucide-react';
 import FreightCompleteVerificationDialog from './FreightCompleteVerificationDialog';
 import FreightCompleteLoadingAnimation from './FreightCompleteLoadingAnimation';
@@ -64,12 +63,6 @@ interface VehiclePriceTable {
   ranges: PriceRange[];
 }
 
-interface ValoresDefinidos {
-  tipo: 'combinar' | 'definido';
-  valor: number | null;
-  observacoes: string | null;
-}
-
 interface FreightCompleteFormData {
   collaborator_ids: string[];
   origem_cidade: string;
@@ -88,7 +81,6 @@ interface FreightCompleteFormData {
   pedagio_pago_por: string;
   pedagio_direcao: string;
   observacoes: string;
-  valores_definidos: ValoresDefinidos;
 }
 
 const FreightCompleteForm = () => {
@@ -114,11 +106,6 @@ const FreightCompleteForm = () => {
     pedagio_pago_por: '',
     pedagio_direcao: '',
     observacoes: '',
-    valores_definidos: {
-      tipo: 'combinar',
-      valor: null,
-      observacoes: null
-    }
   });
 
   const [collaborators, setCollaborators] = useState<any[]>([]);
@@ -126,16 +113,10 @@ const FreightCompleteForm = () => {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generatedFreights, setGeneratedFreights] = useState<{id: string; codigo_completo: string}[]>([]);
-  const [cidadesOrigem, setCidadesOrigem] = useState<string[]>([]);
-  const [cidadesParadas, setCidadesParadas] = useState<{[key: string]: string[]}>({});
-
-  const { cidades: cidadesOrigemData } = useCidades(formData.origem_estado);
-
-  useEffect(() => {
-    if (cidadesOrigemData) {
-      setCidadesOrigem(cidadesOrigemData.map(cidade => cidade.nome));
-    }
-  }, [cidadesOrigemData]);
+  const [selectedCollaborators, setSelectedCollaborators] = useState<string[]>([]);
+  
+  // Hook para cidades baseado no estado de origem
+  const { cidades: cidadesOrigem } = useCidades(formData.origem_estado);
 
   useEffect(() => {
     const fetchCollaborators = async () => {
@@ -156,6 +137,12 @@ const FreightCompleteForm = () => {
     };
     fetchCollaborators();
   }, [user, toast]);
+
+  // Função para buscar cidades por estado
+  const getCidadesPorEstado = (uf: string): string[] => {
+    // Implementação simplificada - você pode melhorar isso
+    return [];
+  };
 
   const handleAddStop = () => {
     const newStop: Stop = {
@@ -189,36 +176,6 @@ const FreightCompleteForm = () => {
       });
       return { ...prev, paradas: updatedStops };
     });
-  };
-
-  const handleCollaboratorToggle = (collaboratorId: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      collaborator_ids: checked 
-        ? [...prev.collaborator_ids, collaboratorId]
-        : prev.collaborator_ids.filter(id => id !== collaboratorId)
-    }));
-  };
-
-  const handleValorTipoChange = (tipo: 'combinar' | 'definido') => {
-    setFormData(prev => ({
-      ...prev,
-      valores_definidos: {
-        ...prev.valores_definidos,
-        tipo,
-        valor: tipo === 'combinar' ? null : prev.valores_definidos.valor
-      }
-    }));
-  };
-
-  const handleValorChange = (valor: number) => {
-    setFormData(prev => ({
-      ...prev,
-      valores_definidos: {
-        ...prev.valores_definidos,
-        valor
-      }
-    }));
   };
 
   const handleSubmit = async (formData: FreightCompleteFormData) => {
@@ -260,7 +217,7 @@ const FreightCompleteForm = () => {
         tipo_frete: 'completo',
         origem_cidade: formData.origem_cidade,
         origem_estado: formData.origem_estado,
-        paradas: formData.paradas as any, // Cast para compatibilidade com Supabase
+        paradas: formData.paradas as any, // Cast para Json
         destinos: [], // Manter vazio para frete completo
         tipo_mercadoria: formData.tipo_mercadoria,
         tipos_veiculos: formData.tipos_veiculos as any,
@@ -275,8 +232,7 @@ const FreightCompleteForm = () => {
         pedagio_direcao: formData.pedagio_direcao || null,
         observacoes: formData.observacoes || null,
         codigo_agregamento: codigoCompleto, // Reutilizar coluna existente para código
-        status: 'pendente',
-        valores_definidos: formData.valores_definidos as any
+        status: 'pendente'
       };
 
       console.log('Dados do frete completo a serem salvos:', freightData);
@@ -350,93 +306,88 @@ const FreightCompleteForm = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Truck className="w-6 h-6 text-blue-600" />
-            <span>Cadastro de Frete Completo</span>
-          </CardTitle>
+          <CardTitle>Cadastro de Frete Completo</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {/* Colaboradores */}
+            {/* Colaboradores selection */}
             <div>
-              <div className="flex items-center space-x-2 mb-3">
-                <Users className="w-5 h-5 text-blue-600" />
-                <Label className="text-lg font-semibold">Colaboradores Responsáveis</Label>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {collaborators.map(collaborator => (
-                  <div key={collaborator.id} className="flex items-center space-x-2 p-3 border rounded-lg">
+              <Label>Colaboradores Responsáveis</Label>
+              <div className="space-y-2">
+                {collaborators.map(collab => (
+                  <div key={collab.id} className="flex items-center space-x-2">
                     <Checkbox
-                      id={`collaborator-${collaborator.id}`}
-                      checked={formData.collaborator_ids.includes(collaborator.id)}
-                      onCheckedChange={(checked) => handleCollaboratorToggle(collaborator.id, checked as boolean)}
+                      id={collab.id}
+                      checked={selectedCollaborators.includes(collab.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedCollaborators(prev => [...prev, collab.id]);
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            collaborator_ids: [...prev.collaborator_ids, collab.id] 
+                          }));
+                        } else {
+                          setSelectedCollaborators(prev => prev.filter(id => id !== collab.id));
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            collaborator_ids: prev.collaborator_ids.filter(id => id !== collab.id) 
+                          }));
+                        }
+                      }}
                     />
-                    <label htmlFor={`collaborator-${collaborator.id}`} className="text-sm font-medium cursor-pointer">
-                      {collaborator.name} - {collaborator.sector}
-                    </label>
+                    <Label htmlFor={collab.id}>
+                      {collab.name} - {collab.sector}
+                    </Label>
                   </div>
                 ))}
               </div>
             </div>
 
-            <Separator />
-
             {/* Origem */}
-            <div>
-              <div className="flex items-center space-x-2 mb-3">
-                <MapPin className="w-5 h-5 text-green-600" />
-                <Label className="text-lg font-semibold">Origem</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Estado de Origem</Label>
+                <Select
+                  value={formData.origem_estado}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, origem_estado: value, origem_cidade: '' }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {estados.map(estado => (
+                      <SelectItem key={estado.sigla} value={estado.sigla}>
+                        {estado.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Estado de Origem</Label>
-                  <Select
-                    value={formData.origem_estado}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, origem_estado: value, origem_cidade: '' }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {estados.map(estado => (
-                        <SelectItem key={estado.sigla} value={estado.sigla}>
-                          {estado.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Cidade de Origem</Label>
-                  <Select
-                    value={formData.origem_cidade}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, origem_cidade: value }))}
-                    disabled={!formData.origem_estado}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a cidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cidadesOrigem.map(cidade => (
-                        <SelectItem key={cidade} value={cidade}>
-                          {cidade}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div>
+                <Label>Cidade de Origem</Label>
+                <Select
+                  value={formData.origem_cidade}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, origem_cidade: value }))}
+                  disabled={!formData.origem_estado}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a cidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formData.origem_estado && cidadesOrigem.map(cidade => (
+                      <SelectItem key={cidade.nome} value={cidade.nome}>
+                        {cidade.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            <Separator />
-
             {/* Paradas */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-2">
-                  <MapPin className="w-5 h-5 text-blue-600" />
-                  <Label className="text-lg font-semibold">Paradas</Label>
-                </div>
+              <div className="flex items-center justify-between mb-2">
+                <Label>Paradas</Label>
                 <Button size="sm" variant="outline" onClick={handleAddStop}>
                   <Plus className="w-4 h-4 mr-2" />
                   Adicionar Parada
@@ -452,91 +403,19 @@ const FreightCompleteForm = () => {
                     stop={stop}
                     estados={estados}
                     onStopChange={handleStopChange}
-                    onRemove={handleRemoveStop}
+                    onRemoveStop={handleRemoveStop}
                   />
                 ))}
               </div>
             </div>
 
-            <Separator />
-
             {/* Tipo de Mercadoria */}
             <div>
-              <div className="flex items-center space-x-2 mb-3">
-                <Package className="w-5 h-5 text-orange-600" />
-                <Label className="text-lg font-semibold">Tipo de Mercadoria</Label>
-              </div>
+              <Label>Tipo de Mercadoria</Label>
               <Input
                 value={formData.tipo_mercadoria}
                 onChange={(e) => setFormData(prev => ({ ...prev, tipo_mercadoria: e.target.value }))}
                 placeholder="Descreva o tipo de mercadoria"
-              />
-            </div>
-
-            <Separator />
-
-            {/* Sistema de Valores */}
-            <div>
-              <div className="flex items-center space-x-2 mb-3">
-                <DollarSign className="w-5 h-5 text-green-600" />
-                <Label className="text-lg font-semibold">Definição de Valores</Label>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <Card 
-                  className={`cursor-pointer transition-all ${
-                    formData.valores_definidos.tipo === 'combinar' 
-                      ? 'ring-2 ring-blue-500 bg-blue-50' 
-                      : 'hover:bg-gray-50'
-                  }`}
-                  onClick={() => handleValorTipoChange('combinar')}
-                >
-                  <CardContent className="p-4 text-center">
-                    <div className="text-lg font-semibold text-gray-800 mb-2">A COMBINAR</div>
-                    <p className="text-sm text-gray-600">Valor será negociado posteriormente</p>
-                  </CardContent>
-                </Card>
-                
-                <Card 
-                  className={`cursor-pointer transition-all ${
-                    formData.valores_definidos.tipo === 'definido' 
-                      ? 'ring-2 ring-blue-500 bg-blue-50' 
-                      : 'hover:bg-gray-50'
-                  }`}
-                  onClick={() => handleValorTipoChange('definido')}
-                >
-                  <CardContent className="p-4 text-center">
-                    <div className="text-lg font-semibold text-gray-800 mb-2">DEFINIR VALOR</div>
-                    <p className="text-sm text-gray-600">Especificar valor oferecido</p>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              {formData.valores_definidos.tipo === 'definido' && (
-                <div className="mt-4">
-                  <Label>Valor Oferecido (R$)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.valores_definidos.valor || ''}
-                    onChange={(e) => handleValorChange(parseFloat(e.target.value) || 0)}
-                    placeholder="Digite o valor oferecido"
-                    className="mt-1"
-                  />
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Observações */}
-            <div>
-              <Label>Observações</Label>
-              <Textarea
-                value={formData.observacoes}
-                onChange={(e) => setFormData(prev => ({ ...prev, observacoes: e.target.value }))}
-                placeholder="Informações adicionais sobre o frete..."
-                rows={3}
               />
             </div>
 
@@ -583,64 +462,61 @@ const FreightCompleteForm = () => {
 };
 
 // Componente separado para o card de parada
-const StopCard = ({ stop, estados, onStopChange, onRemove }: {
+const StopCard = ({ stop, estados, onStopChange, onRemoveStop }: {
   stop: Stop;
   estados: any[];
   onStopChange: (id: string, field: keyof Stop, value: string) => void;
-  onRemove: (id: string) => void;
+  onRemoveStop: (id: string) => void;
 }) => {
   const { cidades } = useCidades(stop.state);
-  const cidadesNomes = cidades.map(cidade => cidade.nome);
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center space-x-4">
-        <div className="flex flex-col w-10 items-center">
-          <GripVertical className="cursor-move text-gray-400" />
-          <span className="text-sm font-semibold">{stop.order}</span>
-        </div>
-        <div className="flex-1 grid grid-cols-2 gap-4">
-          <Select
-            value={stop.state}
-            onValueChange={(value) => onStopChange(stop.id, 'state', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent>
-              {estados.map(estado => (
-                <SelectItem key={estado.sigla} value={estado.sigla}>
-                  {estado.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={stop.city}
-            onValueChange={(value) => onStopChange(stop.id, 'city', value)}
-            disabled={!stop.state}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Cidade" />
-            </SelectTrigger>
-            <SelectContent>
-              {cidadesNomes.map(cidade => (
-                <SelectItem key={cidade} value={cidade}>
-                  {cidade}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onRemove(stop.id)}
-          aria-label="Remover parada"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
+    <Card className="p-4 flex items-center space-x-4">
+      <div className="flex flex-col w-10 items-center">
+        <GripVertical className="cursor-move" />
+        <span className="text-sm font-semibold">{stop.order}</span>
       </div>
+      <div className="flex-1 grid grid-cols-2 gap-4">
+        <Select
+          value={stop.state}
+          onValueChange={(value) => onStopChange(stop.id, 'state', value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Estado" />
+          </SelectTrigger>
+          <SelectContent>
+            {estados.map(estado => (
+              <SelectItem key={estado.sigla} value={estado.sigla}>
+                {estado.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={stop.city}
+          onValueChange={(value) => onStopChange(stop.id, 'city', value)}
+          disabled={!stop.state}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Cidade" />
+          </SelectTrigger>
+          <SelectContent>
+            {stop.state && cidades.map(cidade => (
+              <SelectItem key={cidade.nome} value={cidade.nome}>
+                {cidade.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onRemoveStop(stop.id)}
+        aria-label="Remover parada"
+      >
+        <Trash2 className="w-4 h-4" />
+      </Button>
     </Card>
   );
 };
