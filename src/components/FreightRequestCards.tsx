@@ -18,11 +18,6 @@ const FreightRequestCards = () => {
       return;
     }
     
-    if (freightType === 'FRETE COMPLETO') {
-      navigate('/freight-complete');
-      return;
-    }
-    
     toast({
       title: "Em breve",
       description: `Funcionalidade "${freightType}" será implementada em breve!`,
