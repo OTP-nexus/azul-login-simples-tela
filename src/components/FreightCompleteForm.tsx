@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useEstados, useCidades } from '@/hooks/useIBGE';
+import { useIBGE } from '@/hooks/useIBGE';
 import { generateFreightCompleteCode } from '@/utils/freightCompleteUtils';
 import { 
   Plus, 
@@ -86,7 +85,7 @@ interface FreightCompleteFormData {
 const FreightCompleteForm = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { estados } = useEstados();
+  const { estados, cidadesPorEstado } = useIBGE();
 
   const [formData, setFormData] = useState<FreightCompleteFormData>({
     collaborator_ids: [],
@@ -113,13 +112,6 @@ const FreightCompleteForm = () => {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generatedFreights, setGeneratedFreights] = useState<{id: string; codigo_completo: string}[]>([]);
-
-  // Helper para buscar cidades por estado
-  const { cidades: cidadesOrigem } = useCidades(formData.origem_estado);
-  const cidadesPorEstado = (uf: string, stopId?: string) => {
-    const { cidades } = useCidades(uf);
-    return cidades.map(cidade => cidade.nome);
-  };
 
   useEffect(() => {
     const fetchCollaborators = async () => {
@@ -207,20 +199,20 @@ const FreightCompleteForm = () => {
       // Gerar código único para o frete completo
       const codigoCompleto = await generateFreightCompleteCode();
 
-      // Preparar dados do frete completo (converter arrays para compatibilidade com JSON)
+      // Preparar dados do frete completo
       const freightData = {
         company_id: company.id,
         collaborator_ids: formData.collaborator_ids,
         tipo_frete: 'completo',
         origem_cidade: formData.origem_cidade,
         origem_estado: formData.origem_estado,
-        paradas: formData.paradas as any, // Converter para JSON
+        paradas: formData.paradas, // Nova coluna para frete completo
         destinos: [], // Manter vazio para frete completo
         tipo_mercadoria: formData.tipo_mercadoria,
-        tipos_veiculos: formData.tipos_veiculos as any, // Converter para JSON
-        tipos_carrocerias: formData.tipos_carrocerias as any, // Converter para JSON
-        regras_agendamento: formData.regras_agendamento as any, // Converter para JSON
-        beneficios: formData.beneficios as any, // Converter para JSON
+        tipos_veiculos: formData.tipos_veiculos,
+        tipos_carrocerias: formData.tipos_carrocerias,
+        regras_agendamento: formData.regras_agendamento,
+        beneficios: formData.beneficios,
         horario_carregamento: formData.horario_carregamento || null,
         precisa_ajudante: formData.precisa_ajudante,
         precisa_rastreador: formData.precisa_rastreador,
@@ -237,7 +229,7 @@ const FreightCompleteForm = () => {
       // Inserir o frete completo (será apenas 1 registro)
       const { data: freightInserted, error: freightError } = await supabase
         .from('fretes')
-        .insert(freightData)
+        .insert([freightData])
         .select()
         .single();
 
@@ -315,11 +307,9 @@ const FreightCompleteForm = () => {
             <div>
               <Label>Colaboradores Responsáveis</Label>
               <Select
-                value={formData.collaborator_ids.join(',')}
-                onValueChange={(value) => setFormData(prev => ({ 
-                  ...prev, 
-                  collaborator_ids: value ? value.split(',') : []
-                }))}
+                multiple
+                value={formData.collaborator_ids}
+                onValueChange={(values) => setFormData(prev => ({ ...prev, collaborator_ids: values }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione colaboradores" />
@@ -365,9 +355,9 @@ const FreightCompleteForm = () => {
                     <SelectValue placeholder="Selecione a cidade" />
                   </SelectTrigger>
                   <SelectContent>
-                    {formData.origem_estado && cidadesOrigem.map(cidade => (
-                      <SelectItem key={cidade.nome} value={cidade.nome}>
-                        {cidade.nome}
+                    {formData.origem_estado && cidadesPorEstado(formData.origem_estado).map(cidade => (
+                      <SelectItem key={cidade} value={cidade}>
+                        {cidade}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -379,8 +369,7 @@ const FreightCompleteForm = () => {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label>Paradas</Label>
-                <Button size="sm" variant="outline" onClick={handleAddStop}>
-                  <Plus className="w-4 h-4 mr-2" />
+                <Button size="sm" variant="outline" onClick={handleAddStop} leftIcon={<Plus />}>
                   Adicionar Parada
                 </Button>
               </div>
