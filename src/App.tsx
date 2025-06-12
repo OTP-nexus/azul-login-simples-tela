@@ -16,6 +16,7 @@ import DriverDocumentVerification from "./pages/DriverDocumentVerification";
 import CompanyDashboard from "./pages/CompanyDashboard";
 import FreightRequest from "./pages/FreightRequest";
 import FreightAggregation from "./pages/FreightAggregation";
+import FreightComplete from "./pages/FreightComplete";
 import CollaboratorRegistration from "./pages/CollaboratorRegistration";
 import NotFound from "./pages/NotFound";
 
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/company-dashboard" element={<CompanyDashboard />} />
             <Route path="/freight-request" element={<FreightRequest />} />
             <Route path="/freight-aggregation" element={<FreightAggregation />} />
+            <Route path="/freight-complete" element={<FreightComplete />} />
             <Route path="/collaborator-registration" element={<CollaboratorRegistration />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
