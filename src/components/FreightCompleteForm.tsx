@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,7 +85,7 @@ interface FreightCompleteFormData {
 const FreightCompleteForm = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { estados, cidadesPorEstado, fetchCidadesPorUF } = useIBGE();
+  const { estados, cidadesPorEstado } = useIBGE();
 
   const [formData, setFormData] = useState<FreightCompleteFormData>({
     collaborator_ids: [],
@@ -134,13 +133,6 @@ const FreightCompleteForm = () => {
     fetchCollaborators();
   }, [user, toast]);
 
-  // Carregar cidades quando estado de origem for selecionado
-  useEffect(() => {
-    if (formData.origem_estado) {
-      fetchCidadesPorUF(formData.origem_estado);
-    }
-  }, [formData.origem_estado, fetchCidadesPorUF]);
-
   const handleAddStop = () => {
     const newStop: Stop = {
       id: crypto.randomUUID(),
@@ -167,12 +159,7 @@ const FreightCompleteForm = () => {
     setFormData(prev => {
       const updatedStops = prev.paradas.map(stop => {
         if (stop.id === id) {
-          const updatedStop = { ...stop, [field]: value };
-          // Se mudou o estado, carregar as cidades
-          if (field === 'state' && value) {
-            fetchCidadesPorUF(value);
-          }
-          return updatedStop;
+          return { ...stop, [field]: value };
         }
         return stop;
       });
@@ -212,20 +199,20 @@ const FreightCompleteForm = () => {
       // Gerar código único para o frete completo
       const codigoCompleto = await generateFreightCompleteCode();
 
-      // Preparar dados do frete completo com conversões para Json
+      // Preparar dados do frete completo
       const freightData = {
         company_id: company.id,
         collaborator_ids: formData.collaborator_ids,
         tipo_frete: 'completo',
         origem_cidade: formData.origem_cidade,
         origem_estado: formData.origem_estado,
-        paradas: formData.paradas as any, // Converter para Json
+        paradas: formData.paradas, // Nova coluna para frete completo
         destinos: [], // Manter vazio para frete completo
         tipo_mercadoria: formData.tipo_mercadoria,
-        tipos_veiculos: formData.tipos_veiculos as any, // Converter para Json
-        tipos_carrocerias: formData.tipos_carrocerias as any, // Converter para Json
-        regras_agendamento: formData.regras_agendamento as any, // Converter para Json
-        beneficios: formData.beneficios as any, // Converter para Json
+        tipos_veiculos: formData.tipos_veiculos,
+        tipos_carrocerias: formData.tipos_carrocerias,
+        regras_agendamento: formData.regras_agendamento,
+        beneficios: formData.beneficios,
         horario_carregamento: formData.horario_carregamento || null,
         precisa_ajudante: formData.precisa_ajudante,
         precisa_rastreador: formData.precisa_rastreador,
@@ -242,7 +229,7 @@ const FreightCompleteForm = () => {
       // Inserir o frete completo (será apenas 1 registro)
       const { data: freightInserted, error: freightError } = await supabase
         .from('fretes')
-        .insert(freightData)
+        .insert([freightData])
         .select()
         .single();
 
@@ -304,6 +291,10 @@ const FreightCompleteForm = () => {
     }
   };
 
+  // Additional handlers and JSX for the form UI, including inputs for origem, paradas, tipos_veiculos, etc.
+
+  // For brevity, here is a simplified JSX structure focusing on paradas and submission:
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="max-w-4xl mx-auto">
@@ -316,8 +307,9 @@ const FreightCompleteForm = () => {
             <div>
               <Label>Colaboradores Responsáveis</Label>
               <Select
-                value={formData.collaborator_ids.join(',')}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, collaborator_ids: value ? value.split(',') : [] }))}
+                multiple
+                value={formData.collaborator_ids}
+                onValueChange={(values) => setFormData(prev => ({ ...prev, collaborator_ids: values }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione colaboradores" />
@@ -377,8 +369,7 @@ const FreightCompleteForm = () => {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label>Paradas</Label>
-                <Button size="sm" variant="outline" onClick={handleAddStop}>
-                  <Plus className="w-4 h-4 mr-2" />
+                <Button size="sm" variant="outline" onClick={handleAddStop} leftIcon={<Plus />}>
                   Adicionar Parada
                 </Button>
               </div>
