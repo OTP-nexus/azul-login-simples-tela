@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Truck, User, Plus, X, ArrowRight, CheckCircle, MapPin, Settings, DollarSign, Info } from 'lucide-react';
+import { ArrowLeft, Truck, User, Plus, X, ArrowRight, CheckCircle, MapPin, Settings, DollarSign, Info, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -75,6 +75,21 @@ interface FreightFormData {
   pedagio_pago_por: string;
   pedagio_direcao: string;
   observacoes: string;
+  peso_carga: number;
+  valor_carga: number;
+  data_coleta: string;
+  data_entrega: string;
+  urgencia: string;
+  temperatura_controlada: boolean;
+  equipamento_especial: string;
+  altura_carga: number;
+  largura_carga: number;
+  comprimento_carga: number;
+  empilhavel: boolean;
+  fragil: boolean;
+  perigosa: boolean;
+  numero_nota_fiscal: string;
+  paradas: any[];
 }
 
 interface GeneratedFreight {
@@ -133,7 +148,7 @@ const schedulingRules = [
   'Chegada sem agendamento'
 ];
 
-const FreightAggregationForm = () => {
+const FreightCompleteForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -165,7 +180,22 @@ const FreightAggregationForm = () => {
     precisa_seguro: false,
     pedagio_pago_por: '',
     pedagio_direcao: '',
-    observacoes: ''
+    observacoes: '',
+    peso_carga: 0,
+    valor_carga: 0,
+    data_coleta: '',
+    data_entrega: '',
+    urgencia: 'normal',
+    temperatura_controlada: false,
+    equipamento_especial: '',
+    altura_carga: 0,
+    largura_carga: 0,
+    comprimento_carga: 0,
+    empilhavel: false,
+    fragil: false,
+    perigosa: false,
+    numero_nota_fiscal: '',
+    paradas: []
   });
   
   const { estados, loading: loadingEstados } = useEstados();
@@ -176,7 +206,7 @@ const FreightAggregationForm = () => {
     { number: 1, title: 'Colaboradores', description: 'Selecione os responsáveis' },
     { number: 2, title: 'Origem e Destinos', description: 'Defina as rotas' },
     { number: 3, title: 'Carga e Veículos', description: 'Configure tipos e carga' },
-    { number: 4, title: 'Configurações', description: 'Regras e condições' }
+    { number: 4, title: 'Detalhes do Frete', description: 'Informações específicas' }
   ];
 
   const progressValue = (currentStep / steps.length) * 100;
@@ -554,12 +584,24 @@ const FreightAggregationForm = () => {
       const baseFreightData = {
         company_id: company.id,
         collaborator_ids: formData.collaborator_ids,
-        tipo_frete: 'agregamento',
+        tipo_frete: 'completo',
         origem_estado: formData.origem_estado,
         origem_cidade: formData.origem_cidade,
         tipo_mercadoria: formData.tipo_mercadoria,
-        peso_carga: null,
-        valor_carga: null,
+        peso_carga: formData.peso_carga,
+        valor_carga: formData.valor_carga,
+        data_coleta: formData.data_coleta,
+        data_entrega: formData.data_entrega,
+        urgencia: formData.urgencia,
+        temperatura_controlada: formData.temperatura_controlada,
+        equipamento_especial: formData.equipamento_especial,
+        altura_carga: formData.altura_carga,
+        largura_carga: formData.largura_carga,
+        comprimento_carga: formData.comprimento_carga,
+        empilhavel: formData.empilhavel,
+        fragil: formData.fragil,
+        perigosa: formData.perigosa,
+        numero_nota_fiscal: formData.numero_nota_fiscal,
         tipos_veiculos: JSON.stringify(formData.tipos_veiculos.filter(v => v.selected)),
         tipos_carrocerias: JSON.stringify(formData.tipos_carrocerias.filter(b => b.selected)),
         tabelas_preco: JSON.stringify(formData.vehicle_price_tables),
@@ -666,7 +708,22 @@ const FreightAggregationForm = () => {
       precisa_seguro: false,
       pedagio_pago_por: '',
       pedagio_direcao: '',
-      observacoes: ''
+      observacoes: '',
+      peso_carga: 0,
+      valor_carga: 0,
+      data_coleta: '',
+      data_entrega: '',
+      urgencia: 'normal',
+      temperatura_controlada: false,
+      equipamento_especial: '',
+      altura_carga: 0,
+      largura_carga: 0,
+      comprimento_carga: 0,
+      empilhavel: false,
+      fragil: false,
+      perigosa: false,
+      numero_nota_fiscal: '',
+      paradas: []
     });
     setCurrentStep(1);
   };
@@ -702,7 +759,7 @@ const FreightAggregationForm = () => {
                   <span>Voltar</span>
                 </Button>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-800">Frete de Agregamento</h1>
+                  <h1 className="text-xl font-bold text-gray-800">Frete Completo</h1>
                   <p className="text-sm text-gray-600">Solicitação de frete</p>
                 </div>
               </div>
@@ -763,8 +820,8 @@ const FreightAggregationForm = () => {
                   <span>Voltar</span>
                 </Button>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-800">Frete de Agregamento</h1>
-                  <p className="text-sm text-gray-600">Solicitação de frete para motoristas agregados</p>
+                  <h1 className="text-xl font-bold text-gray-800">Frete Completo</h1>
+                  <p className="text-sm text-gray-600">Solicitação de frete completo com detalhes específicos</p>
                 </div>
               </div>
             </div>
@@ -816,7 +873,7 @@ const FreightAggregationForm = () => {
                   {currentStep === 1 && <User className="w-6 h-6 text-white" />}
                   {currentStep === 2 && <MapPin className="w-6 h-6 text-white" />}
                   {currentStep === 3 && <Truck className="w-6 h-6 text-white" />}
-                  {currentStep === 4 && <Settings className="w-6 h-6 text-white" />}
+                  {currentStep === 4 && <Package className="w-6 h-6 text-white" />}
                 </div>
                 <div>
                   <CardTitle className="text-xl text-gray-800">
@@ -1350,7 +1407,221 @@ const FreightAggregationForm = () => {
                     </div>
                   </div>
 
-                  {/* Configurações Operacionais */}
+                  {/* Informações da Carga Específicas */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Detalhes da Carga</Label>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="peso_carga" className="text-sm font-medium text-gray-700">
+                          Peso da Carga (kg) *
+                        </Label>
+                        <Input
+                          id="peso_carga"
+                          type="number"
+                          step="0.01"
+                          value={formData.peso_carga}
+                          onChange={(e) => handleInputChange('peso_carga', parseFloat(e.target.value) || 0)}
+                          placeholder="Ex: 1500.50"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="valor_carga" className="text-sm font-medium text-gray-700">
+                          Valor da Carga (R$) *
+                        </Label>
+                        <Input
+                          id="valor_carga"
+                          type="number"
+                          step="0.01"
+                          value={formData.valor_carga}
+                          onChange={(e) => handleInputChange('valor_carga', parseFloat(e.target.value) || 0)}
+                          placeholder="Ex: 15000.00"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="data_coleta" className="text-sm font-medium text-gray-700">
+                          Data de Coleta *
+                        </Label>
+                        <Input
+                          id="data_coleta"
+                          type="date"
+                          value={formData.data_coleta}
+                          onChange={(e) => handleInputChange('data_coleta', e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="data_entrega" className="text-sm font-medium text-gray-700">
+                          Data de Entrega *
+                        </Label>
+                        <Input
+                          id="data_entrega"
+                          type="date"
+                          value={formData.data_entrega}
+                          onChange={(e) => handleInputChange('data_entrega', e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dimensões da Carga */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Dimensões da Carga</Label>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="comprimento_carga" className="text-sm font-medium text-gray-700">
+                          Comprimento (m)
+                        </Label>
+                        <Input
+                          id="comprimento_carga"
+                          type="number"
+                          step="0.01"
+                          value={formData.comprimento_carga}
+                          onChange={(e) => handleInputChange('comprimento_carga', parseFloat(e.target.value) || 0)}
+                          placeholder="Ex: 2.5"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="largura_carga" className="text-sm font-medium text-gray-700">
+                          Largura (m)
+                        </Label>
+                        <Input
+                          id="largura_carga"
+                          type="number"
+                          step="0.01"
+                          value={formData.largura_carga}
+                          onChange={(e) => handleInputChange('largura_carga', parseFloat(e.target.value) || 0)}
+                          placeholder="Ex: 1.2"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="altura_carga" className="text-sm font-medium text-gray-700">
+                          Altura (m)
+                        </Label>
+                        <Input
+                          id="altura_carga"
+                          type="number"
+                          step="0.01"
+                          value={formData.altura_carga}
+                          onChange={(e) => handleInputChange('altura_carga', parseFloat(e.target.value) || 0)}
+                          placeholder="Ex: 1.8"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Características da Carga */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Características da Carga</Label>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="empilhavel"
+                          checked={formData.empilhavel}
+                          onCheckedChange={(checked) => handleInputChange('empilhavel', checked)}
+                        />
+                        <Label htmlFor="empilhavel" className="text-sm font-medium text-gray-700">
+                          Empilhável
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="fragil"
+                          checked={formData.fragil}
+                          onCheckedChange={(checked) => handleInputChange('fragil', checked)}
+                        />
+                        <Label htmlFor="fragil" className="text-sm font-medium text-gray-700">
+                          Frágil
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="perigosa"
+                          checked={formData.perigosa}
+                          onCheckedChange={(checked) => handleInputChange('perigosa', checked)}
+                        />
+                        <Label htmlFor="perigosa" className="text-sm font-medium text-gray-700">
+                          Carga Perigosa
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="temperatura_controlada"
+                          checked={formData.temperatura_controlada}
+                          onCheckedChange={(checked) => handleInputChange('temperatura_controlada', checked)}
+                        />
+                        <Label htmlFor="temperatura_controlada" className="text-sm font-medium text-gray-700">
+                          Temperatura Controlada
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Urgência e Equipamentos */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-medium text-gray-800">Condições Especiais</Label>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">Urgência</Label>
+                        <Select 
+                          value={formData.urgencia} 
+                          onValueChange={(value) => handleInputChange('urgencia', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a urgência" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="baixa">Baixa</SelectItem>
+                            <SelectItem value="normal">Normal</SelectItem>
+                            <SelectItem value="alta">Alta</SelectItem>
+                            <SelectItem value="urgente">Urgente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="equipamento_especial" className="text-sm font-medium text-gray-700">
+                          Equipamento Especial
+                        </Label>
+                        <Input
+                          id="equipamento_especial"
+                          type="text"
+                          value={formData.equipamento_especial}
+                          onChange={(e) => handleInputChange('equipamento_especial', e.target.value)}
+                          placeholder="Ex: Empilhadeira, Guindaste"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="numero_nota_fiscal" className="text-sm font-medium text-gray-700">
+                          Número da Nota Fiscal
+                        </Label>
+                        <Input
+                          id="numero_nota_fiscal"
+                          type="text"
+                          value={formData.numero_nota_fiscal}
+                          onChange={(e) => handleInputChange('numero_nota_fiscal', e.target.value)}
+                          placeholder="Ex: 12345"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Configurações Operacionais (same as aggregation) */}
                   <div className="space-y-4">
                     <Label className="text-lg font-medium text-gray-800">Configurações Operacionais</Label>
                     
@@ -1402,7 +1673,7 @@ const FreightAggregationForm = () => {
                     </div>
                   </div>
 
-                  {/* Configurações de Pedágio */}
+                  {/* Configurações de Pedágio (same as aggregation) */}
                   <div className="space-y-4">
                     <Label className="text-lg font-medium text-gray-800">Configurações de Pedágio</Label>
                     
@@ -1442,7 +1713,7 @@ const FreightAggregationForm = () => {
                     </div>
                   </div>
 
-                  {/* Regras de Agendamento */}
+                  {/* Regras de Agendamento (same as aggregation) */}
                   <div className="space-y-4">
                     <Label className="text-lg font-medium text-gray-800">Regras de Agendamento</Label>
                     <div className="space-y-2">
@@ -1461,7 +1732,7 @@ const FreightAggregationForm = () => {
                     </div>
                   </div>
 
-                  {/* Benefícios */}
+                  {/* Benefícios (same as aggregation) */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <Label className="text-lg font-medium text-gray-800">Benefícios</Label>
@@ -1566,4 +1837,4 @@ const FreightAggregationForm = () => {
   );
 };
 
-export default FreightAggregationForm;
+export default FreightCompleteForm;
