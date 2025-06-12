@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { useIBGE } from '@/hooks/useIBGE';
+import { useEstados, useCidades } from '@/hooks/useIBGE';
 import FreightCompleteVerificationDialog from './FreightCompleteVerificationDialog';
 import FreightCompleteLoadingAnimation from './FreightCompleteLoadingAnimation';
 import FreightCompleteSuccessDialog from './FreightCompleteSuccessDialog';
@@ -77,7 +77,7 @@ const FreightCompleteForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { cities, states, loadCities } = useIBGE();
+  const { estados } = useEstados();
 
   // Estados do formulário
   const [currentStepComplete, setCurrentStepComplete] = useState(1);
@@ -87,6 +87,12 @@ const FreightCompleteForm = () => {
   const [showLoadingComplete, setShowLoadingComplete] = useState(false);
   const [showSuccessDialogComplete, setShowSuccessDialogComplete] = useState(false);
   const [generatedFreightsComplete, setGeneratedFreightsComplete] = useState<GeneratedFreightComplete[]>([]);
+  const [selectedStateOrigemComplete, setSelectedStateOrigemComplete] = useState('');
+  const [selectedStateDestinoComplete, setSelectedStateDestinoComplete] = useState('');
+
+  // Hook para cidades baseado no estado selecionado
+  const { cidades: cidadesOrigem } = useCidades(selectedStateOrigemComplete);
+  const { cidades: cidadesDestino } = useCidades(selectedStateDestinoComplete);
 
   const [formDataComplete, setFormDataComplete] = useState<FreightCompleteFormData>({
     collaborators: [],
@@ -251,6 +257,7 @@ const FreightCompleteForm = () => {
       }));
       
       setNewDestinoComplete({ cidade: '', estado: '' });
+      setSelectedStateDestinoComplete('');
     }
   };
 
@@ -394,7 +401,7 @@ const FreightCompleteForm = () => {
           valor_carga: formDataComplete.valorCarga ? parseFloat(formDataComplete.valorCarga) : null,
           tipos_veiculos: formDataComplete.tiposVeiculos,
           tipos_carrocerias: formDataComplete.tiposCarrocerias,
-          tabelas_preco: formDataComplete.tabelasPreco,
+          tabelas_preco: formDataComplete.tabelasPreco as any,
           data_coleta: formDataComplete.dataColeta || null,
           data_entrega: formDataComplete.dataEntrega || null,
           horario_carregamento: formDataComplete.horarioCarregamento || null,
@@ -561,7 +568,6 @@ const FreightCompleteForm = () => {
                       <div className="flex items-center space-x-3">
                         <Checkbox
                           checked={formDataComplete.collaborators.some(c => c.id === collaborator.id)}
-                          readOnly
                         />
                         <div>
                           <p className="font-medium">{collaborator.name}</p>
@@ -603,14 +609,14 @@ const FreightCompleteForm = () => {
                           ...prev,
                           origem: { ...prev.origem, estado: value, cidade: '' }
                         }));
-                        loadCities(value);
+                        setSelectedStateOrigemComplete(value);
                       }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o estado" />
                       </SelectTrigger>
                       <SelectContent>
-                        {states.map((state) => (
+                        {estados.map((state) => (
                           <SelectItem key={state.sigla} value={state.sigla}>
                             {state.nome}
                           </SelectItem>
@@ -634,7 +640,7 @@ const FreightCompleteForm = () => {
                         <SelectValue placeholder="Selecione a cidade" />
                       </SelectTrigger>
                       <SelectContent>
-                        {cities.map((city) => (
+                        {cidadesOrigem.map((city) => (
                           <SelectItem key={city.nome} value={city.nome}>
                             {city.nome}
                           </SelectItem>
@@ -668,14 +674,14 @@ const FreightCompleteForm = () => {
                       value={newDestinoComplete.estado}
                       onValueChange={(value) => {
                         setNewDestinoComplete(prev => ({ ...prev, estado: value, cidade: '' }));
-                        loadCities(value);
+                        setSelectedStateDestinoComplete(value);
                       }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Estado" />
                       </SelectTrigger>
                       <SelectContent>
-                        {states.map((state) => (
+                        {estados.map((state) => (
                           <SelectItem key={state.sigla} value={state.sigla}>
                             {state.nome}
                           </SelectItem>
@@ -696,7 +702,7 @@ const FreightCompleteForm = () => {
                         <SelectValue placeholder="Cidade" />
                       </SelectTrigger>
                       <SelectContent>
-                        {cities.map((city) => (
+                        {cidadesDestino.map((city) => (
                           <SelectItem key={city.nome} value={city.nome}>
                             {city.nome}
                           </SelectItem>
