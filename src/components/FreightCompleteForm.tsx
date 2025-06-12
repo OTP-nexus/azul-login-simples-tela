@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -339,6 +340,21 @@ const FreightCompleteForm = () => {
     setIsSubmitting(true);
 
     try {
+      // Converter dados para formato JSON compatível com Supabase
+      const paradaData = formData.paradas.map(parada => ({
+        id: parada.id,
+        cidade: parada.cidade,
+        estado: parada.estado,
+        cep: parada.cep,
+        endereco: parada.endereco,
+        numero: parada.numero,
+        complemento: parada.complemento || null,
+        bairro: parada.bairro,
+        contato: parada.contato || null,
+        telefone: parada.telefone || null,
+        observacoes: parada.observacoes || null
+      }));
+
       const { error } = await supabase
         .from('fretes')
         .insert({
@@ -352,7 +368,7 @@ const FreightCompleteForm = () => {
           data_coleta: formData.data_coleta || null,
           data_entrega: formData.data_entrega || null,
           horario_carregamento: formData.horario_carregamento || null,
-          paradas: formData.paradas,
+          paradas: paradaData,
           tipos_veiculos: formData.tipos_veiculos,
           tipos_carrocerias: formData.tipos_carrocerias,
           precisa_ajudante: formData.precisa_ajudante,
