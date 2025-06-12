@@ -14,6 +14,7 @@ import DriverRegistration from "./pages/DriverRegistration";
 import DocumentVerification from "./pages/DocumentVerification";
 import DriverDocumentVerification from "./pages/DriverDocumentVerification";
 import CompanyDashboard from "./pages/CompanyDashboard";
+import CompanyProfile from "./pages/CompanyProfile";
 import FreightRequest from "./pages/FreightRequest";
 import FreightAggregation from "./pages/FreightAggregation";
 import FreightComplete from "./pages/FreightComplete";
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/document-verification" element={<DocumentVerification />} />
             <Route path="/driver-document-verification" element={<DriverDocumentVerification />} />
             <Route path="/company-dashboard" element={<CompanyDashboard />} />
+            <Route path="/company-profile" element={<CompanyProfile />} />
             <Route path="/freight-request" element={<FreightRequest />} />
             <Route path="/freight-aggregation" element={<FreightAggregation />} />
             <Route path="/freight-complete" element={<FreightComplete />} />

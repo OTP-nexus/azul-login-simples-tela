@@ -76,3 +76,14 @@ export const useCidades = (uf: string) => {
 
   return { cidades, loading, error };
 };
+
+export const useIBGE = () => {
+  const { estados } = useEstados();
+  
+  const cidadesPorEstado = (uf: string) => {
+    // Retorna uma função que pode ser usada com useCidades
+    return [];
+  };
+
+  return { estados, cidadesPorEstado };
+};
