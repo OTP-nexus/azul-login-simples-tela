@@ -1023,123 +1023,159 @@ const FreightCompleteForm = () => {
                     </div>
                   </div>
 
-                  {/* Destinos */}
+                                    {/* Paradas */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label className="text-lg font-medium text-gray-800">Destinos</Label>
+                      <Label className="text-lg font-medium text-gray-800">Paradas</Label>
                       <Button
                         type="button"
-                        onClick={addDestination}
+                        onClick={addParada}
                         variant="outline"
                         size="sm"
                         className="flex items-center space-x-2"
                       >
                         <Plus className="w-4 h-4" />
-                        <span>Adicionar Destino</span>
+                        <span>Adicionar Parada</span>
                       </Button>
                     </div>
-
-                    {/* Aviso informativo sobre múltiplos destinos */}
+                  
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <div className="flex items-start space-x-3">
                         <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                         <div className="text-sm text-blue-800">
-                          <strong>Informação importante:</strong> Cada destino gerará um pedido de frete separado, com os mesmos dados preenchidos. Isso facilita o seu trabalho e economiza tempo, pois você só precisa preencher as informações uma vez!
+                          <strong>Informação importante:</strong> Todas as paradas fazem parte de um único pedido de frete. Você pode reorganizar a ordem arrastando os cards.
                         </div>
                       </div>
                     </div>
-
-                    {formData.destinos.length === 0 && (
+                  
+                    {formData.paradas.length === 0 && (
                       <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
                         <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-500">Nenhum destino adicionado</p>
-                        <p className="text-sm text-gray-400">Clique em "Adicionar Destino" para começar</p>
+                        <p className="text-gray-500">Nenhuma parada adicionada</p>
+                        <p className="text-sm text-gray-400">Clique em "Adicionar Parada" para começar</p>
                       </div>
                     )}
-
-                    {formData.destinos.map((destino) => (
-                      <div key={destino.id} className="flex items-center space-x-3 p-4 border rounded-lg">
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">Estado</Label>
-                            <Select 
-                              value={destino.state} 
-                              onValueChange={(value) => updateDestination(destino.id, 'state', value)}
+                  
+                    <DndContext
+                      sensors={useSensors(useSensor(PointerSensor))}
+                      collisionDetection={closestCenter}
+                      onDragEnd={({ active, over }) => {
+                        if (active.id !== over?.id) {
+                          const oldIndex = formData.paradas.findIndex(p => p.id === active.id)
+                          const newIndex = formData.paradas.findIndex(p => p.id === over.id)
+                          setFormData(prev => ({
+                            ...prev,
+                            paradas: arrayMove(prev.paradas, oldIndex, newIndex)
+                          }))
+                        }
+                      }}
+                    >
+                      <SortableContext
+                        items={formData.paradas.map(p => p.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {formData.paradas.map((parada) => {
+                          const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+                            id: parada.id,
+                          })
+                  
+                          const style = {
+                            transform: CSS.Transform.toString(transform),
+                            transition,
+                          }
+                  
+                          return (
+                            <div
+                              key={parada.id}
+                              ref={setNodeRef}
+                              style={style}
+                              {...attributes}
+                              {...listeners}
+                              className="flex items-center space-x-3 p-4 border rounded-lg bg-white shadow-sm"
                             >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o estado" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {loadingEstados ? (
-                                  <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                                ) : (
-                                  estados.map((estado) => (
-                                    <SelectItem key={estado.id} value={estado.sigla}>
-                                      {estado.nome} ({estado.sigla})
-                                    </SelectItem>
-                                  ))
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">Cidade</Label>
-                            <Select 
-                              value={destino.city} 
-                              onValueChange={(value) => updateDestination(destino.id, 'city', value)}
-                              disabled={!destino.state}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione a cidade" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {destinoCidades[destino.id] ? (
-                                  destinoCidades[destino.id].map((cidade: any) => (
-                                    <SelectItem key={cidade.id} value={cidade.nome}>
-                                      {cidade.nome}
-                                    </SelectItem>
-                                  ))
-                                ) : (
-                                  <SelectItem value="loading" disabled>Selecione um estado primeiro</SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={() => removeDestination(destino.id)}
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
+                              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium text-gray-700">Estado</Label>
+                                  <Select 
+                                    value={parada.state} 
+                                    onValueChange={(value) => updateParada(parada.id, 'state', value)}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Selecione o estado" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {loadingEstados ? (
+                                        <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                                      ) : (
+                                        estados.map((estado) => (
+                                          <SelectItem key={estado.id} value={estado.sigla}>
+                                            {estado.nome} ({estado.sigla})
+                                          </SelectItem>
+                                        ))
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium text-gray-700">Cidade</Label>
+                                  <Select 
+                                    value={parada.city} 
+                                    onValueChange={(value) => updateParada(parada.id, 'city', value)}
+                                    disabled={!parada.state}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Selecione a cidade" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {paradaCidades[parada.id] ? (
+                                        paradaCidades[parada.id].map((cidade: any) => (
+                                          <SelectItem key={cidade.id} value={cidade.nome}>
+                                            {cidade.nome}
+                                          </SelectItem>
+                                        ))
+                                      ) : (
+                                        <SelectItem value="disabled" disabled>Selecione um estado primeiro</SelectItem>
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                onClick={() => removeParada(parada.id)}
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )
+                        })}
+                      </SortableContext>
+                    </DndContext>
+                  
+                    <div className="flex gap-4 pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handlePreviousStep}
+                        className="flex-1"
+                      >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Voltar
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleNextStep}
+                        className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                      >
+                        Próximo
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="flex gap-4 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handlePreviousStep}
-                      className="flex-1"
-                    >
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Voltar
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleNextStep}
-                      className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
-                    >
-                      Próximo
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </div>
-                </div>
-              )}
 
               {currentStep === 3 && (
                 <div className="space-y-6">
