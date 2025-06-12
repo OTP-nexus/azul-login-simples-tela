@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Truck, User, Plus, X, ArrowRight, CheckCircle, MapPin, Settings, DollarSign, Info } from 'lucide-react';
+import { ArrowLeft, Truck, User, Plus, X, ArrowRight, CheckCircle, MapPin, Settings, DollarSign, Info, GripVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,10 +25,11 @@ interface CollaboratorComplete {
   email?: string;
 }
 
-interface DestinationComplete {
+interface StopComplete {
   id: string;
   state: string;
   city: string;
+  order: number;
 }
 
 interface VehicleTypeComplete {
@@ -61,7 +62,7 @@ interface FreightCompleteFormData {
   collaborator_ids: string[];
   origem_cidade: string;
   origem_estado: string;
-  destinos: DestinationComplete[];
+  paradas: StopComplete[];
   tipo_mercadoria: string;
   tipos_veiculos: VehicleTypeComplete[];
   tipos_carrocerias: BodyTypeComplete[];
@@ -80,8 +81,6 @@ interface FreightCompleteFormData {
 interface GeneratedFreightComplete {
   id: string;
   codigo_completo: string;
-  destino_cidade: string;
-  destino_estado: string;
 }
 
 const predefinedVehicleTypesComplete: VehicleTypeComplete[] = [
@@ -141,6 +140,7 @@ const FreightCompleteForm = () => {
   const [collaborators, setCollaborators] = useState<CollaboratorComplete[]>([]);
   const [loadingCollaborators, setLoadingCollaborators] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
   
   // Dialog states
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
@@ -152,7 +152,7 @@ const FreightCompleteForm = () => {
     collaborator_ids: [],
     origem_cidade: '',
     origem_estado: '',
-    destinos: [],
+    paradas: [],
     tipo_mercadoria: '',
     tipos_veiculos: [...predefinedVehicleTypesComplete],
     tipos_carrocerias: [...predefinedBodyTypesComplete],
@@ -170,11 +170,11 @@ const FreightCompleteForm = () => {
   
   const { estados, loading: loadingEstados } = useEstados();
   const origemCidades = useCidades(formData.origem_estado);
-  const [destinoCidades, setDestinoCidades] = useState<{[key: string]: any}>({});
+  const [paradaCidades, setParadaCidades] = useState<{[key: string]: any}>({});
 
   const steps = [
     { number: 1, title: 'Colaboradores', description: 'Selecione os responsáveis' },
-    { number: 2, title: 'Origem e Destinos', description: 'Defina as rotas' },
+    { number: 2, title: 'Origem e Paradas', description: 'Defina as rotas' },
     { number: 3, title: 'Carga e Veículos', description: 'Configure tipos e carga' },
     { number: 4, title: 'Configurações', description: 'Regras e condições' }
   ];
@@ -253,15 +253,15 @@ const FreightCompleteForm = () => {
     }));
   }, [formData.tipos_veiculos]);
 
-  const fetchCidadesForDestino = async (uf: string, destinoId: string) => {
+  const fetchCidadesForParada = async (uf: string, paradaId: string) => {
     if (!uf) return;
     
     try {
       const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`);
       const cidades = await response.json();
-      setDestinoCidades(prev => ({
+      setParadaCidades(prev => ({
         ...prev,
-        [destinoId]: cidades
+        [paradaId]: cidades
       }));
     } catch (error) {
       console.error('Erro ao buscar cidades:', error);
@@ -292,47 +292,113 @@ const FreightCompleteForm = () => {
     }));
   };
 
-  const addDestination = () => {
-    const newDestination: DestinationComplete = {
+  const addParada = () => {
+    const nextOrder = Math.max(0, ...formData.paradas.map(p => p.order)) + 1;
+    const newParada: StopComplete = {
       id: Date.now().toString(),
       state: '',
-      city: ''
+      city: '',
+      order: nextOrder
     };
     setFormData(prev => ({
       ...prev,
-      destinos: [...prev.destinos, newDestination]
+      paradas: [...prev.paradas, newParada]
     }));
   };
 
-  const removeDestination = (id: string) => {
+  const removeParada = (id: string) => {
+    const paradaToRemove = formData.paradas.find(p => p.id === id);
+    if (!paradaToRemove) return;
+
+    const updatedParadas = formData.paradas
+      .filter(parada => parada.id !== id)
+      .map(parada => ({
+        ...parada,
+        order: parada.order > paradaToRemove.order ? parada.order - 1 : parada.order
+      }));
+
     setFormData(prev => ({
       ...prev,
-      destinos: prev.destinos.filter(dest => dest.id !== id)
+      paradas: updatedParadas
     }));
-    setDestinoCidades(prev => {
+    
+    setParadaCidades(prev => {
       const newState = { ...prev };
       delete newState[id];
       return newState;
     });
   };
 
-  const updateDestination = (id: string, field: 'state' | 'city', value: string) => {
+  const updateParada = (id: string, field: 'state' | 'city', value: string) => {
     setFormData(prev => ({
       ...prev,
-      destinos: prev.destinos.map(dest =>
-        dest.id === id ? { ...dest, [field]: value } : dest
+      paradas: prev.paradas.map(parada =>
+        parada.id === id ? { ...parada, [field]: value } : parada
       )
     }));
 
     if (field === 'state') {
-      fetchCidadesForDestino(value, id);
+      fetchCidadesForParada(value, id);
       setFormData(prev => ({
         ...prev,
-        destinos: prev.destinos.map(dest =>
-          dest.id === id ? { ...dest, city: '' } : dest
+        paradas: prev.paradas.map(parada =>
+          parada.id === id ? { ...parada, city: '' } : parada
         )
       }));
     }
+  };
+
+  // Drag and Drop functions
+  const handleDragStart = (e: React.DragEvent, paradaId: string) => {
+    setDraggedItem(paradaId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetParadaId: string) => {
+    e.preventDefault();
+    
+    if (!draggedItem || draggedItem === targetParadaId) {
+      setDraggedItem(null);
+      return;
+    }
+
+    const draggedParada = formData.paradas.find(p => p.id === draggedItem);
+    const targetParada = formData.paradas.find(p => p.id === targetParadaId);
+
+    if (!draggedParada || !targetParada) {
+      setDraggedItem(null);
+      return;
+    }
+
+    const updatedParadas = [...formData.paradas];
+    const draggedIndex = updatedParadas.findIndex(p => p.id === draggedItem);
+    const targetIndex = updatedParadas.findIndex(p => p.id === targetParadaId);
+
+    // Remove the dragged item and insert it at the target position
+    const [removed] = updatedParadas.splice(draggedIndex, 1);
+    updatedParadas.splice(targetIndex, 0, removed);
+
+    // Update order numbers
+    const reorderedParadas = updatedParadas.map((parada, index) => ({
+      ...parada,
+      order: index + 1
+    }));
+
+    setFormData(prev => ({
+      ...prev,
+      paradas: reorderedParadas
+    }));
+
+    setDraggedItem(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
   };
 
   const toggleVehicleType = (id: string) => {
@@ -353,7 +419,6 @@ const FreightCompleteForm = () => {
     }));
   };
 
-  // Funções para gerenciar tabelas de preço por veículo
   const addPriceRange = (vehicleType: string) => {
     setFormData(prev => ({
       ...prev,
@@ -457,19 +522,19 @@ const FreightCompleteForm = () => {
         });
         return;
       }
-      if (formData.destinos.length === 0) {
+      if (formData.paradas.length === 0) {
         toast({
           title: "Erro de validação",
-          description: "Adicione pelo menos um destino",
+          description: "Adicione pelo menos uma parada",
           variant: "destructive"
         });
         return;
       }
-      const invalidDestinations = formData.destinos.some(dest => !dest.city || !dest.state);
-      if (invalidDestinations) {
+      const invalidParadas = formData.paradas.some(parada => !parada.city || !parada.state);
+      if (invalidParadas) {
         toast({
           title: "Erro de validação",
-          description: "Preencha todos os destinos adicionados",
+          description: "Preencha todas as paradas adicionadas",
           variant: "destructive"
         });
         return;
@@ -503,9 +568,7 @@ const FreightCompleteForm = () => {
     }
   };
 
-  // New function to handle opening verification dialog
   const handleOpenVerificationDialog = () => {
-    // Final validation before showing verification dialog
     if (!formData.tipo_mercadoria) {
       toast({
         title: "Erro de validação",
@@ -528,13 +591,10 @@ const FreightCompleteForm = () => {
     setShowVerificationDialog(true);
   };
 
-  // Function to handle editing from verification dialog
   const handleEditFromVerification = () => {
     setShowVerificationDialog(false);
-    // User stays on current step to edit
   };
 
-  // Updated submit function for creating multiple freights
   const handleConfirmFreight = async () => {
     setShowVerificationDialog(false);
     setShowLoadingAnimation(true);
@@ -550,13 +610,16 @@ const FreightCompleteForm = () => {
         throw new Error('Empresa não encontrada');
       }
 
-      // Prepare base freight data (same for all freights)
-      const baseFreightData = {
+      // Ordenar paradas por ordem antes de salvar
+      const orderedParadas = [...formData.paradas].sort((a, b) => a.order - b.order);
+
+      const freightData = {
         company_id: company.id,
         collaborator_ids: formData.collaborator_ids,
         tipo_frete: 'completo',
         origem_estado: formData.origem_estado,
         origem_cidade: formData.origem_cidade,
+        destinos: JSON.stringify(orderedParadas), // Salva todas as paradas ordenadas
         tipo_mercadoria: formData.tipo_mercadoria,
         peso_carga: null,
         valor_carga: null,
@@ -574,65 +637,52 @@ const FreightCompleteForm = () => {
         observacoes: formData.observacoes || null
       };
 
-      const createdFreights: GeneratedFreightComplete[] = [];
+      const { data: freteData, error: freteError } = await supabase
+        .from('fretes')
+        .insert([freightData])
+        .select()
+        .single();
 
-      // Create one freight for each destination
-      for (const destino of formData.destinos) {
-        const freightData = {
-          ...baseFreightData,
-          destinos: JSON.stringify([destino])
-        };
+      if (freteError) {
+        throw freteError;
+      }
 
-        const { data: freteData, error: freteError } = await supabase
-          .from('fretes')
-          .insert([freightData])
-          .select()
-          .single();
-
-        if (freteError) {
-          throw freteError;
-        }
-
-        // Add to created freights list
-        createdFreights.push({
-          id: freteData.id,
-          codigo_completo: freteData.codigo_agregamento || `CPL-${freteData.id.slice(-8)}`,
-          destino_cidade: destino.city,
-          destino_estado: destino.state
-        });
-
-        // Save price tables for this freight
-        const priceTableInserts = [];
-        for (const vehicleTable of formData.vehicle_price_tables) {
-          for (const range of vehicleTable.ranges) {
-            priceTableInserts.push({
-              frete_id: freteData.id,
-              vehicle_type: vehicleTable.vehicleType,
-              km_start: range.kmStart,
-              km_end: range.kmEnd,
-              price: range.price
-            });
-          }
-        }
-
-        if (priceTableInserts.length > 0) {
-          const { error: priceError } = await supabase
-            .from('freight_price_tables')
-            .insert(priceTableInserts);
-
-          if (priceError) {
-            throw priceError;
-          }
+      // Salvar tabelas de preço
+      const priceTableInserts = [];
+      for (const vehicleTable of formData.vehicle_price_tables) {
+        for (const range of vehicleTable.ranges) {
+          priceTableInserts.push({
+            frete_id: freteData.id,
+            vehicle_type: vehicleTable.vehicleType,
+            km_start: range.kmStart,
+            km_end: range.kmEnd,
+            price: range.price
+          });
         }
       }
 
-      setGeneratedFreights(createdFreights);
+      if (priceTableInserts.length > 0) {
+        const { error: priceError } = await supabase
+          .from('freight_price_tables')
+          .insert(priceTableInserts);
+
+        if (priceError) {
+          throw priceError;
+        }
+      }
+
+      const generatedFreight: GeneratedFreightComplete = {
+        id: freteData.id,
+        codigo_completo: `CPL-${freteData.id.slice(-8)}`
+      };
+
+      setGeneratedFreights([generatedFreight]);
       setShowLoadingAnimation(false);
       setShowSuccessDialog(true);
 
       toast({
         title: "Sucesso!",
-        description: `${createdFreights.length === 1 ? 'Frete criado' : `${createdFreights.length} fretes criados`} com sucesso!`
+        description: "Frete completo criado com sucesso!"
       });
 
     } catch (error: any) {
@@ -646,14 +696,13 @@ const FreightCompleteForm = () => {
     }
   };
 
-  // Function to handle creating new freight from success dialog
   const handleNewFreight = () => {
     setShowSuccessDialog(false);
     setFormData({
       collaborator_ids: [],
       origem_cidade: '',
       origem_estado: '',
-      destinos: [],
+      paradas: [],
       tipo_mercadoria: '',
       tipos_veiculos: [...predefinedVehicleTypesComplete],
       tipos_carrocerias: [...predefinedBodyTypesComplete],
@@ -671,7 +720,6 @@ const FreightCompleteForm = () => {
     setCurrentStep(1);
   };
 
-  // Function to handle going back to dashboard from success dialog
   const handleBackToDashboardFromSuccess = () => {
     setShowSuccessDialog(false);
     navigate('/company-dashboard');
@@ -966,19 +1014,19 @@ const FreightCompleteForm = () => {
                     </div>
                   </div>
 
-                  {/* Destinos */}
+                  {/* Paradas */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label className="text-lg font-medium text-gray-800">Destinos</Label>
+                      <Label className="text-lg font-medium text-gray-800">Paradas</Label>
                       <Button
                         type="button"
-                        onClick={addDestination}
+                        onClick={addParada}
                         variant="outline"
                         size="sm"
                         className="flex items-center space-x-2"
                       >
                         <Plus className="w-4 h-4" />
-                        <span>Adicionar Destino</span>
+                        <span>Adicionar Parada</span>
                       </Button>
                     </div>
 
@@ -986,79 +1034,100 @@ const FreightCompleteForm = () => {
                       <div className="flex items-start space-x-3">
                         <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                         <div className="text-sm text-blue-800">
-                          <strong>Informação importante:</strong> Cada destino gerará um pedido de frete separado, com os mesmos dados preenchidos. Isso facilita o seu trabalho e economiza tempo, pois você só precisa preencher as informações uma vez!
+                          <strong>Frete Completo:</strong> Todas as paradas farão parte de um único pedido de frete. Você pode reorganizar a ordem das paradas arrastando e soltando os cards!
                         </div>
                       </div>
                     </div>
 
-                    {formData.destinos.length === 0 && (
+                    {formData.paradas.length === 0 && (
                       <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
                         <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-500">Nenhum destino adicionado</p>
-                        <p className="text-sm text-gray-400">Clique em "Adicionar Destino" para começar</p>
+                        <p className="text-gray-500">Nenhuma parada adicionada</p>
+                        <p className="text-sm text-gray-400">Clique em "Adicionar Parada" para começar</p>
                       </div>
                     )}
 
-                    {formData.destinos.map((destino) => (
-                      <div key={destino.id} className="flex items-center space-x-3 p-4 border rounded-lg">
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">Estado</Label>
-                            <Select 
-                              value={destino.state} 
-                              onValueChange={(value) => updateDestination(destino.id, 'state', value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o estado" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {loadingEstados ? (
-                                  <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                                ) : (
-                                  estados.map((estado) => (
-                                    <SelectItem key={estado.id} value={estado.sigla}>
-                                      {estado.nome} ({estado.sigla})
-                                    </SelectItem>
-                                  ))
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">Cidade</Label>
-                            <Select 
-                              value={destino.city} 
-                              onValueChange={(value) => updateDestination(destino.id, 'city', value)}
-                              disabled={!destino.state}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione a cidade" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {destinoCidades[destino.id] ? (
-                                  destinoCidades[destino.id].map((cidade: any) => (
-                                    <SelectItem key={cidade.id} value={cidade.nome}>
-                                      {cidade.nome}
-                                    </SelectItem>
-                                  ))
-                                ) : (
-                                  <SelectItem value="loading" disabled>Selecione um estado primeiro</SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={() => removeDestination(destino.id)}
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700"
+                    {formData.paradas
+                      .sort((a, b) => a.order - b.order)
+                      .map((parada) => (
+                        <div
+                          key={parada.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, parada.id)}
+                          onDragOver={handleDragOver}
+                          onDrop={(e) => handleDrop(e, parada.id)}
+                          onDragEnd={handleDragEnd}
+                          className={`flex items-center space-x-3 p-4 border rounded-lg cursor-move transition-all duration-200 ${
+                            draggedItem === parada.id 
+                              ? 'opacity-50 scale-95 bg-blue-50 border-blue-300' 
+                              : 'hover:bg-gray-50 hover:border-gray-400'
+                          }`}
                         >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
+                          <div className="flex items-center space-x-2">
+                            <GripVertical className="w-5 h-5 text-gray-400" />
+                            <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">
+                              {parada.order}
+                            </div>
+                          </div>
+                          
+                          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium text-gray-700">Estado</Label>
+                              <Select 
+                                value={parada.state} 
+                                onValueChange={(value) => updateParada(parada.id, 'state', value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione o estado" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {loadingEstados ? (
+                                    <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                                  ) : (
+                                    estados.map((estado) => (
+                                      <SelectItem key={estado.id} value={estado.sigla}>
+                                        {estado.nome} ({estado.sigla})
+                                      </SelectItem>
+                                    ))
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium text-gray-700">Cidade</Label>
+                              <Select 
+                                value={parada.city} 
+                                onValueChange={(value) => updateParada(parada.id, 'city', value)}
+                                disabled={!parada.state}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione a cidade" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {paradaCidades[parada.id] ? (
+                                    paradaCidades[parada.id].map((cidade: any) => (
+                                      <SelectItem key={cidade.id} value={cidade.nome}>
+                                        {cidade.nome}
+                                      </SelectItem>
+                                    ))
+                                  ) : (
+                                    <SelectItem value="loading" disabled>Selecione um estado primeiro</SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={() => removeParada(parada.id)}
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
                   </div>
 
                   <div className="flex gap-4 pt-4">

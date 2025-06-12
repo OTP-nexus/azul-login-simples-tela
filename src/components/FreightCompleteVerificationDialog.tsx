@@ -10,22 +10,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, User, Truck, Package, Settings, CheckCircle, Edit } from 'lucide-react';
+import { Separator } from "@/components/ui/separator";
+import { Edit, MapPin, User, Truck, DollarSign, Settings, CheckCircle } from 'lucide-react';
 
-interface CollaboratorComplete {
-  id: string;
-  name: string;
-  sector: string;
-  phone: string;
-  email?: string;
-}
-
-interface DestinationComplete {
+interface StopComplete {
   id: string;
   state: string;
   city: string;
+  order: number;
 }
 
 interface VehicleTypeComplete {
@@ -58,7 +50,7 @@ interface FreightCompleteFormData {
   collaborator_ids: string[];
   origem_cidade: string;
   origem_estado: string;
-  destinos: DestinationComplete[];
+  paradas: StopComplete[];
   tipo_mercadoria: string;
   tipos_veiculos: VehicleTypeComplete[];
   tipos_carrocerias: BodyTypeComplete[];
@@ -72,6 +64,14 @@ interface FreightCompleteFormData {
   pedagio_pago_por: string;
   pedagio_direcao: string;
   observacoes: string;
+}
+
+interface CollaboratorComplete {
+  id: string;
+  name: string;
+  sector: string;
+  phone: string;
+  email?: string;
 }
 
 interface FreightCompleteVerificationDialogProps {
@@ -100,267 +100,244 @@ const FreightCompleteVerificationDialog: React.FC<FreightCompleteVerificationDia
   const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
   const selectedBodies = formData.tipos_carrocerias.filter(b => b.selected);
 
-  const getCategoryLabel = (category: string) => {
-    switch(category) {
-      case 'heavy': return 'Pesados';
-      case 'medium': return 'Médios';
-      case 'light': return 'Leves';
-      case 'open': return 'Abertas';
-      case 'closed': return 'Fechadas';
-      case 'special': return 'Especiais';
-      default: return category;
-    }
-  };
+  // Ordenar paradas por ordem
+  const orderedParadas = [...formData.paradas].sort((a, b) => a.order - b.order);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <CheckCircle className="w-6 h-6 text-green-600" />
-            <span>Confirmar Solicitação de Frete Completo</span>
+          <DialogTitle className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-white" />
+            </div>
+            <span>Confirmação do Frete Completo</span>
           </DialogTitle>
           <DialogDescription>
-            Revise todos os dados antes de confirmar. Será criado um frete para cada destino.
+            Revise todos os dados antes de finalizar a solicitação de frete completo.
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] pr-4">
-          <div className="space-y-6">
-            {/* Colaboradores */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center space-x-2 text-base">
-                  <User className="w-5 h-5 text-blue-600" />
-                  <span>Colaboradores Responsáveis ({selectedCollaborators.length})</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {selectedCollaborators.map((collaborator) => (
-                    <Badge key={collaborator.id} variant="secondary" className="px-3 py-1">
-                      {collaborator.name} - {collaborator.sector}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+        <div className="space-y-6">
+          {/* Colaboradores Responsáveis */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <User className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-800">Colaboradores Responsáveis</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {selectedCollaborators.map((collaborator) => (
+                <Badge key={collaborator.id} variant="secondary" className="text-sm">
+                  {collaborator.name} - {collaborator.sector}
+                </Badge>
+              ))}
+            </div>
+          </div>
 
-            {/* Origem e Destinos */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center space-x-2 text-base">
-                  <MapPin className="w-5 h-5 text-green-600" />
-                  <span>Origem e Destinos</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="font-semibold text-sm text-gray-700 mb-2">Origem:</h4>
-                  <Badge variant="outline" className="px-3 py-1">
-                    {formData.origem_cidade} - {formData.origem_estado}
-                  </Badge>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-sm text-gray-700 mb-2">
-                    Destinos ({formData.destinos.length}):
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.destinos.map((destino) => (
-                      <Badge key={destino.id} variant="outline" className="px-3 py-1">
-                        {destino.city} - {destino.state}
-                      </Badge>
-                    ))}
+          <Separator />
+
+          {/* Origem e Paradas */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <MapPin className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-800">Origem e Paradas</h3>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Origem */}
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs font-semibold">O</span>
                   </div>
+                  <span className="text-sm font-medium text-green-800">Origem</span>
                 </div>
-              </CardContent>
-            </Card>
+                <p className="text-sm text-gray-700 ml-8">
+                  {formData.origem_cidade} - {formData.origem_estado}
+                </p>
+              </div>
 
-            {/* Carga e Veículos */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center space-x-2 text-base">
-                  <Package className="w-5 h-5 text-orange-600" />
-                  <span>Carga e Veículos</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="font-semibold text-sm text-gray-700 mb-2">Tipo de Mercadoria:</h4>
-                  <Badge variant="outline" className="px-3 py-1">
-                    {formData.tipo_mercadoria}
-                  </Badge>
-                </div>
-                
-                {selectedVehicles.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-sm text-gray-700 mb-2">
-                      Tipos de Veículos ({selectedVehicles.length}):
-                    </h4>
-                    <div className="space-y-2">
-                      {['heavy', 'medium', 'light'].map(category => {
-                        const vehicles = selectedVehicles.filter(v => v.category === category);
-                        if (vehicles.length === 0) return null;
-                        
-                        return (
-                          <div key={category}>
-                            <span className="text-xs font-medium text-gray-600 mb-1 block">
-                              {getCategoryLabel(category)}:
-                            </span>
-                            <div className="flex flex-wrap gap-1">
-                              {vehicles.map(vehicle => (
-                                <Badge key={vehicle.id} variant="secondary" className="text-xs px-2 py-0.5">
-                                  {vehicle.type}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
+              {/* Paradas */}
+              {orderedParadas.map((parada) => (
+                <div key={parada.id} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs font-semibold">{parada.order}</span>
                     </div>
+                    <span className="text-sm font-medium text-blue-800">Parada {parada.order}</span>
                   </div>
-                )}
+                  <p className="text-sm text-gray-700 ml-8">
+                    {parada.city} - {parada.state}
+                  </p>
+                </div>
+              ))}
+            </div>
 
-                {selectedBodies.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-sm text-gray-700 mb-2">
-                      Tipos de Carroceria ({selectedBodies.length}):
-                    </h4>
-                    <div className="space-y-2">
-                      {['open', 'closed', 'special'].map(category => {
-                        const bodies = selectedBodies.filter(b => b.category === category);
-                        if (bodies.length === 0) return null;
-                        
-                        return (
-                          <div key={category}>
-                            <span className="text-xs font-medium text-gray-600 mb-1 block">
-                              {getCategoryLabel(category)}:
-                            </span>
-                            <div className="flex flex-wrap gap-1">
-                              {bodies.map(body => (
-                                <Badge key={body.id} variant="secondary" className="text-xs px-2 py-0.5">
-                                  {body.type}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800">
+                <strong>Importante:</strong> Será gerado apenas 1 pedido de frete para todas as paradas.
+              </p>
+            </div>
+          </div>
 
-            {/* Tabelas de Preço */}
-            {formData.vehicle_price_tables.length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center space-x-2 text-base">
-                    <Truck className="w-5 h-5 text-purple-600" />
-                    <span>Tabelas de Preço por Veículo</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {formData.vehicle_price_tables.map((table) => (
-                      <div key={table.vehicleType} className="bg-gray-50 rounded-lg p-3">
-                        <h5 className="font-semibold text-sm text-gray-800 mb-2">{table.vehicleType}</h5>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                          {table.ranges.map((range) => (
-                            <div key={range.id} className="bg-white rounded p-2 border">
-                              {range.kmStart} - {range.kmEnd} km: R$ {range.price.toFixed(2)}
-                            </div>
-                          ))}
-                        </div>
+          <Separator />
+
+          {/* Informações da Carga */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <Truck className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-800">Informações da Carga</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-600">Tipo de Mercadoria</label>
+                <p className="text-sm text-gray-800">{formData.tipo_mercadoria}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tipos de Veículos */}
+          <div className="space-y-3">
+            <h4 className="text-md font-semibold text-gray-700">Tipos de Veículos</h4>
+            <div className="flex flex-wrap gap-2">
+              {selectedVehicles.map((vehicle) => (
+                <Badge key={vehicle.id} variant="outline" className="text-sm">
+                  {vehicle.type}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Tipos de Carroceria */}
+          {selectedBodies.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-md font-semibold text-gray-700">Tipos de Carroceria</h4>
+              <div className="flex flex-wrap gap-2">
+                {selectedBodies.map((body) => (
+                  <Badge key={body.id} variant="outline" className="text-sm">
+                    {body.type}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Separator />
+
+          {/* Tabelas de Preço */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <DollarSign className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-800">Tabelas de Preço</h3>
+            </div>
+            
+            <div className="space-y-4">
+              {formData.vehicle_price_tables.map((table) => (
+                <div key={table.vehicleType} className="border rounded-lg p-3">
+                  <h5 className="font-medium text-gray-800 mb-2">{table.vehicleType}</h5>
+                  <div className="space-y-2">
+                    {table.ranges.map((range) => (
+                      <div key={range.id} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">
+                          {range.kmStart} - {range.kmEnd} km
+                        </span>
+                        <span className="font-medium text-gray-800">
+                          R$ {range.price.toFixed(2)}
+                        </span>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Configurações */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center space-x-2 text-base">
-                  <Settings className="w-5 h-5 text-gray-600" />
-                  <span>Configurações</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <h4 className="font-semibold text-gray-700 mb-1">Requisitos:</h4>
-                    <ul className="text-gray-600 space-y-1">
-                      <li>• Ajudante: {formData.precisa_ajudante ? 'Sim' : 'Não'}</li>
-                      <li>• Rastreador: {formData.precisa_rastreador ? 'Sim' : 'Não'}</li>
-                      <li>• Seguro: {formData.precisa_seguro ? 'Sim' : 'Não'}</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-700 mb-1">Pedágio:</h4>
-                    <ul className="text-gray-600 space-y-1">
-                      <li>• Pago por: {formData.pedagio_pago_por || 'Não informado'}</li>
-                      <li>• Direção: {formData.pedagio_direcao || 'Não informado'}</li>
-                    </ul>
-                  </div>
                 </div>
-
-                {formData.horario_carregamento && (
-                  <div>
-                    <h4 className="font-semibold text-sm text-gray-700 mb-1">Horário de Carregamento:</h4>
-                    <Badge variant="outline" className="px-3 py-1">
-                      {formData.horario_carregamento}
-                    </Badge>
-                  </div>
-                )}
-
-                {formData.regras_agendamento.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-sm text-gray-700 mb-2">
-                      Regras de Agendamento ({formData.regras_agendamento.length}):
-                    </h4>
-                    <div className="flex flex-wrap gap-1">
-                      {formData.regras_agendamento.map((regra, index) => (
-                        <Badge key={index} variant="outline" className="text-xs px-2 py-0.5">
-                          {regra}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {formData.beneficios.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-sm text-gray-700 mb-2">
-                      Benefícios ({formData.beneficios.length}):
-                    </h4>
-                    <div className="flex flex-wrap gap-1">
-                      {formData.beneficios.map((beneficio, index) => (
-                        <Badge key={index} variant="outline" className="text-xs px-2 py-0.5">
-                          {beneficio}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {formData.observacoes && (
-                  <div>
-                    <h4 className="font-semibold text-sm text-gray-700 mb-1">Observações:</h4>
-                    <p className="text-sm text-gray-600 bg-gray-50 rounded p-2">
-                      {formData.observacoes}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              ))}
+            </div>
           </div>
-        </ScrollArea>
 
-        <DialogFooter className="flex gap-3">
+          <Separator />
+
+          {/* Configurações */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <Settings className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-800">Configurações</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <label className="font-medium text-gray-600">Precisa de ajudante:</label>
+                <p className="text-gray-800">{formData.precisa_ajudante ? 'Sim' : 'Não'}</p>
+              </div>
+              <div>
+                <label className="font-medium text-gray-600">Precisa de rastreador:</label>
+                <p className="text-gray-800">{formData.precisa_rastreador ? 'Sim' : 'Não'}</p>
+              </div>
+              <div>
+                <label className="font-medium text-gray-600">Precisa de seguro:</label>
+                <p className="text-gray-800">{formData.precisa_seguro ? 'Sim' : 'Não'}</p>
+              </div>
+              {formData.horario_carregamento && (
+                <div>
+                  <label className="font-medium text-gray-600">Horário de carregamento:</label>
+                  <p className="text-gray-800">{formData.horario_carregamento}</p>
+                </div>
+              )}
+              {formData.pedagio_pago_por && (
+                <div>
+                  <label className="font-medium text-gray-600">Pedágio pago por:</label>
+                  <p className="text-gray-800">{formData.pedagio_pago_por}</p>
+                </div>
+              )}
+              {formData.pedagio_direcao && (
+                <div>
+                  <label className="font-medium text-gray-600">Direção do pedágio:</label>
+                  <p className="text-gray-800">{formData.pedagio_direcao}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Regras de Agendamento */}
+          {formData.regras_agendamento.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-md font-semibold text-gray-700">Regras de Agendamento</h4>
+              <div className="flex flex-wrap gap-2">
+                {formData.regras_agendamento.map((rule, index) => (
+                  <Badge key={index} variant="secondary" className="text-sm">
+                    {rule}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Benefícios */}
+          {formData.beneficios.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-md font-semibold text-gray-700">Benefícios</h4>
+              <div className="flex flex-wrap gap-2">
+                {formData.beneficios.map((benefit, index) => (
+                  <Badge key={index} variant="secondary" className="text-sm">
+                    {benefit}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Observações */}
+          {formData.observacoes && (
+            <div className="space-y-3">
+              <h4 className="text-md font-semibold text-gray-700">Observações</h4>
+              <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                {formData.observacoes}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="flex flex-col sm:flex-row gap-3">
           <Button
+            type="button"
             variant="outline"
             onClick={onEdit}
             disabled={loading}
@@ -370,12 +347,13 @@ const FreightCompleteVerificationDialog: React.FC<FreightCompleteVerificationDia
             <span>Editar</span>
           </Button>
           <Button
+            type="button"
             onClick={onConfirm}
             disabled={loading}
             className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white flex items-center space-x-2"
           >
             <CheckCircle className="w-4 h-4" />
-            <span>{loading ? 'Confirmando...' : 'Confirmar Solicitação'}</span>
+            <span>{loading ? 'Processando...' : 'Confirmar Frete'}</span>
           </Button>
         </DialogFooter>
       </DialogContent>
