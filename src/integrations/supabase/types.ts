@@ -326,6 +326,7 @@ export type Database = {
           observacoes: string | null
           origem_cidade: string
           origem_estado: string
+          paradas: Json | null
           pedagio_direcao: string | null
           pedagio_pago_por: string | null
           peso_carga: number | null
@@ -356,6 +357,7 @@ export type Database = {
           observacoes?: string | null
           origem_cidade: string
           origem_estado: string
+          paradas?: Json | null
           pedagio_direcao?: string | null
           pedagio_pago_por?: string | null
           peso_carga?: number | null
@@ -386,6 +388,7 @@ export type Database = {
           observacoes?: string | null
           origem_cidade?: string
           origem_estado?: string
+          paradas?: Json | null
           pedagio_direcao?: string | null
           pedagio_pago_por?: string | null
           peso_carga?: number | null
