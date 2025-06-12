@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,6 +62,13 @@ interface FreightFormData {
   tabelasPreco: PriceTable[];
   regraAgendamento: string[];
   beneficios: string[];
+}
+
+interface GeneratedFreight {
+  id: string;
+  codigo_agregamento: string;
+  destino_cidade: string;
+  destino_estado: string;
 }
 
 interface SortableParadaCardProps {
@@ -228,6 +236,7 @@ const FreightCompleteForm = () => {
   const { user } = useAuth();
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [generatedFreights, setGeneratedFreights] = useState<GeneratedFreight[]>([]);
 
   const [formData, setFormData] = useState<FreightFormData>({
     tipoFrete: 'completo',
@@ -371,7 +380,7 @@ const FreightCompleteForm = () => {
         tipo_frete: formData.tipoFrete,
         origem_estado: formData.origemEstado,
         origem_cidade: formData.origemCidade,
-        paradas: formData.paradas, // Save all stops in the paradas column
+        paradas: formData.paradas as any, // Cast to Json type for Supabase
         tipo_mercadoria: formData.tipoMercadoria,
         peso_carga: formData.pesoCarga,
         valor_carga: formData.valorCarga,
@@ -392,14 +401,26 @@ const FreightCompleteForm = () => {
           beneficios: formData.beneficios
         } : null,
         collaborator_ids: [],
-        status: 'pendente'
+        status: 'pendente',
+        destinos: [] // Keep for compatibility
       };
 
-      const { error: freightError } = await supabase
+      const { data: insertedData, error: freightError } = await supabase
         .from('fretes')
-        .insert([freightData]);
+        .insert([freightData])
+        .select();
 
       if (freightError) throw freightError;
+
+      // Create mock generated freight data for success dialog
+      const mockGeneratedFreight: GeneratedFreight = {
+        id: insertedData[0].id,
+        codigo_agregamento: 'COMPLETO-' + Date.now().toString().slice(-6),
+        destino_cidade: formData.paradas[0]?.cidade || 'Múltiplas',
+        destino_estado: formData.paradas[0]?.estado || 'Estados'
+      };
+
+      setGeneratedFreights([mockGeneratedFreight]);
 
       toast({
         title: "Sucesso!",
@@ -724,7 +745,7 @@ const FreightCompleteForm = () => {
                   <Checkbox
                     id="precisa-ajudante"
                     checked={formData.precisaAjudante}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, precisaAjudante: checked }))}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, precisaAjudante: !!checked }))}
                   />
                   <Label htmlFor="precisa-ajudante">Precisa de Ajudante?</Label>
                 </div>
@@ -732,7 +753,7 @@ const FreightCompleteForm = () => {
                   <Checkbox
                     id="precisa-seguro"
                     checked={formData.precisaSeguro}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, precisaSeguro: checked }))}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, precisaSeguro: !!checked }))}
                   />
                   <Label htmlFor="precisa-seguro">Precisa de Seguro?</Label>
                 </div>
@@ -740,7 +761,7 @@ const FreightCompleteForm = () => {
                   <Checkbox
                     id="precisa-rastreador"
                     checked={formData.precisaRastreador}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, precisaRastreador: checked }))}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, precisaRastreador: !!checked }))}
                   />
                   <Label htmlFor="precisa-rastreador">Precisa de Rastreador?</Label>
                 </div>
@@ -823,7 +844,15 @@ const FreightCompleteForm = () => {
       <FreightSuccessDialog 
         open={showSuccess} 
         onOpenChange={setShowSuccess}
-        message="Seu frete completo foi criado com sucesso!"
+        generatedFreights={generatedFreights}
+        onNewFreight={() => {
+          setShowSuccess(false);
+          // Reset form state if needed
+        }}
+        onBackToDashboard={() => {
+          setShowSuccess(false);
+          // Navigate to dashboard if needed
+        }}
       />
     </div>
   );
