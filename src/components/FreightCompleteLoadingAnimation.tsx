@@ -13,7 +13,7 @@ interface FreightCompleteLoadingAnimationProps {
 const FreightCompleteLoadingAnimation: React.FC<FreightCompleteLoadingAnimationProps> = ({ open }) => {
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md" hideCloseButton>
+      <DialogContent className="sm:max-w-md [&>button]:hidden">
         <div className="flex flex-col items-center justify-center py-8 space-y-6">
           {/* Animated truck */}
           <div className="relative">
