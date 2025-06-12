@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -46,11 +45,25 @@ interface VehiclePriceTable {
   ranges: PriceRange[];
 }
 
+interface Parada {
+  id: string;
+  state: string;
+  city: string;
+  order: number;
+  tempoEstimado?: string;
+  tempoPermanencia?: number; // em minutos
+  tipoOperacao: 'carga' | 'descarga' | 'ambos';
+  pesoEspecifico?: number;
+  volumeEspecifico?: number;
+  observacoes?: string;
+}
+
 interface FreightFormData {
   collaborator_ids: string[];
   origem_cidade: string;
   origem_estado: string;
   destinos: Destination[];
+  paradas: Parada[];
   tipo_mercadoria: string;
   tipos_veiculos: VehicleType[];
   tipos_carrocerias: BodyType[];
@@ -92,13 +105,16 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
   const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
   const selectedBodies = formData.tipos_carrocerias.filter(b => b.selected);
 
+  // Verificar se é frete completo baseado na presença de paradas
+  const isFreteCompleto = formData.paradas && formData.paradas.length > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <CheckCircle className="w-6 h-6 text-blue-600" />
-            <span>Verificação dos Dados do Frete</span>
+            <CheckCircle className="w-6 h-6 text-green-600" />
+            <span>Verificação do {isFreteCompleto ? 'Frete Completo' : 'Frete'}</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -120,29 +136,102 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
 
           <Separator />
 
-          {/* Origem e Destinos */}
+          {/* Origem e Paradas/Destinos */}
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <MapPin className="w-5 h-5 text-green-600" />
-              <h3 className="text-lg font-semibold">Origem e Destinos</h3>
+              <h3 className="text-lg font-semibold">
+                {isFreteCompleto ? 'Origem e Paradas' : 'Origem e Destinos'}
+              </h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3 bg-green-50 rounded-lg border">
                 <h4 className="font-medium text-green-800 mb-1">Origem</h4>
                 <p className="text-green-700">{formData.origem_cidade}/{formData.origem_estado}</p>
               </div>
-              <div className="space-y-2">
-                <h4 className="font-medium text-gray-800">Destinos ({formData.destinos.length})</h4>
-                {formData.destinos.map((destino, index) => (
-                  <div key={destino.id} className="p-2 bg-blue-50 rounded border text-blue-700">
-                    {index + 1}. {destino.city}/{destino.state}
+              
+              {isFreteCompleto ? (
+                <div className="space-y-2">
+                  <h4 className="font-medium text-gray-800">
+                    Paradas Sequenciais ({formData.paradas.length})
+                  </h4>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {formData.paradas.map((parada, index) => (
+                      <div key={parada.id} className="p-3 bg-green-50 rounded border">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Badge className="bg-green-600 text-white text-xs">
+                              {index + 1}
+                            </Badge>
+                            <span className="font-medium text-green-700">
+                              {parada.city}/{parada.state}
+                            </span>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {parada.tipoOperacao}
+                          </Badge>
+                        </div>
+                        <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-green-600">
+                          {parada.tempoPermanencia && (
+                            <div>⏱️ {parada.tempoPermanencia}min</div>
+                          )}
+                          {parada.pesoEspecifico && (
+                            <div>⚖️ {parada.pesoEspecifico}kg</div>
+                          )}
+                          {parada.tempoEstimado && (
+                            <div>🕐 {parada.tempoEstimado}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <h4 className="font-medium text-gray-800">Destinos ({formData.destinos?.length || 0})</h4>
+                  {formData.destinos?.map((destino, index) => (
+                    <div key={destino.id} className="p-2 bg-blue-50 rounded border text-blue-700">
+                      {index + 1}. {destino.city}/{destino.state}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          <Separator />
+          {/* Resumo do Frete Completo */}
+          {isFreteCompleto && formData.paradas.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold text-green-800">Resumo da Rota</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-green-50 rounded-lg">
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-green-600">{formData.paradas.length}</div>
+                    <div className="text-sm text-green-700">Paradas</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-green-600">
+                      {formData.paradas.reduce((sum, p) => sum + (p.pesoEspecifico || 0), 0).toFixed(1)}kg
+                    </div>
+                    <div className="text-sm text-green-700">Peso Total</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-green-600">
+                      {formData.paradas.reduce((sum, p) => sum + (p.volumeEspecifico || 0), 0).toFixed(1)}m³
+                    </div>
+                    <div className="text-sm text-green-700">Volume Total</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-green-600">
+                      {formData.paradas.reduce((sum, p) => sum + (p.tempoPermanencia || 0), 0)}min
+                    </div>
+                    <div className="text-sm text-green-700">Tempo Total</div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Carga */}
           <div className="space-y-3">
@@ -299,12 +388,12 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
           <Button
             onClick={onConfirm}
             disabled={loading}
-            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+            className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
           >
             {loading ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
             ) : (
-              'Concluir Pedido'
+              isFreteCompleto ? 'Concluir Frete Completo' : 'Concluir Pedido'
             )}
           </Button>
         </DialogFooter>
