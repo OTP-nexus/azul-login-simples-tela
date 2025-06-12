@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,13 +86,6 @@ const FreightCompleteForm = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { estados } = useEstados();
-  const { cidades: cidadesOrigem } = useCidades(formData?.origem_estado || '');
-
-  // Função auxiliar para buscar cidades por estado (mantém compatibilidade)
-  const cidadesPorEstado = (estado: string) => {
-    const { cidades } = useCidades(estado);
-    return cidades.map(cidade => cidade.nome);
-  };
 
   const [formData, setFormData] = useState<FreightCompleteFormData>({
     collaborator_ids: [],
@@ -114,6 +106,14 @@ const FreightCompleteForm = () => {
     pedagio_direcao: '',
     observacoes: '',
   });
+
+  const { cidades: cidadesOrigem } = useCidades(formData?.origem_estado || '');
+
+  // Função auxiliar para buscar cidades por estado (mantém compatibilidade)
+  const cidadesPorEstado = (estado: string) => {
+    const { cidades } = useCidades(estado);
+    return cidades.map(cidade => cidade.nome);
+  };
 
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
