@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -490,7 +489,7 @@ const FreightCompleteForm = () => {
   const progressComplete = (currentStepComplete / 4) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -532,8 +531,8 @@ const FreightCompleteForm = () => {
           <Card>
             <CardHeader>
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                  <User className="w-5 h-5 text-orange-600" />
                 </div>
                 <div>
                   <CardTitle>Selecionar Colaboradores</CardTitle>
@@ -560,7 +559,7 @@ const FreightCompleteForm = () => {
                       key={collaborator.id}
                       className={`p-4 border rounded-lg cursor-pointer transition-all ${
                         formDataComplete.collaborators.some(c => c.id === collaborator.id)
-                          ? 'border-blue-500 bg-blue-50'
+                          ? 'border-orange-500 bg-orange-50'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                       onClick={() => toggleCollaboratorComplete(collaborator)}
@@ -656,8 +655,8 @@ const FreightCompleteForm = () => {
             <Card>
               <CardHeader>
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-blue-600" />
+                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-orange-600" />
                   </div>
                   <div>
                     <CardTitle>Destinos da Carga</CardTitle>
@@ -722,10 +721,10 @@ const FreightCompleteForm = () => {
                   </div>
 
                   {/* Aviso informativo sobre múltiplos destinos */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 md:col-span-3">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 md:col-span-3">
                     <div className="flex items-start space-x-3">
-                      <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-blue-800">
+                      <Info className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-orange-800">
                         <strong>Informação importante:</strong> Cada destino gerará um pedido de frete separado, com os mesmos dados preenchidos. Isso facilita o seu trabalho e economiza tempo, pois você só precisa preencher as informações uma vez!
                       </div>
                     </div>
@@ -742,7 +741,7 @@ const FreightCompleteForm = () => {
                 {formDataComplete.destinos.length > 0 && (
                   <div className="space-y-2">
                     {formDataComplete.destinos.map((destino) => (
-                      <div key={destino.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                      <div key={destino.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
                         <span className="font-medium">
                           {destino.cidade} - {destino.estado}
                         </span>
@@ -1240,7 +1239,7 @@ const FreightCompleteForm = () => {
                 key={i}
                 className={`w-3 h-3 rounded-full ${
                   i + 1 === currentStepComplete
-                    ? 'bg-blue-600'
+                    ? 'bg-orange-600'
                     : i + 1 < currentStepComplete
                     ? 'bg-green-500'
                     : 'bg-gray-300'
