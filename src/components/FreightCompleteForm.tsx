@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -176,16 +177,18 @@ const FreightCompleteForm = () => {
     setDestinos(destinos.filter(d => d.id !== id));
   };
 
-  const handleVehicleTypeChange = (vehicleId: string, checked: boolean) => {
+  const handleVehicleTypeChange = (vehicleId: string, checked: boolean | string) => {
+    const isChecked = typeof checked === 'string' ? checked === 'true' : checked;
     const updatedTypes = tiposVeiculos.map(v => 
-      v.id === vehicleId ? { ...v, selected: checked } : v
+      v.id === vehicleId ? { ...v, selected: isChecked } : v
     );
     setTiposVeiculos(updatedTypes);
   };
 
-  const handleBodyTypeChange = (bodyId: string, checked: boolean) => {
+  const handleBodyTypeChange = (bodyId: string, checked: boolean | string) => {
+    const isChecked = typeof checked === 'string' ? checked === 'true' : checked;
     const updatedTypes = tiposCarrocerias.map(b => 
-      b.id === bodyId ? { ...b, selected: checked } : b
+      b.id === bodyId ? { ...b, selected: isChecked } : b
     );
     setTiposCarrocerias(updatedTypes);
   };
@@ -344,7 +347,7 @@ const FreightCompleteForm = () => {
       for (const destino of destinos) {
         const freightData = {
           ...baseFreightData,
-          destinos: [destino]
+          destinos: [destino] as any // Convert to Json type for database
         };
 
         const { data: freight, error: freightError } = await supabase
