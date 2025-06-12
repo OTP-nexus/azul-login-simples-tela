@@ -12,8 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useIBGE } from '../hooks/useIBGE';
-
+import { useEstados, useCidades } from '@/hooks/useIBGE';
 import { generateFreightCompleteCode } from '@/utils/freightCompleteUtils';
 import { 
   Plus, 
@@ -25,7 +24,8 @@ import {
   Users,
   X,
   GripVertical,
-  CheckCircle
+  CheckCircle,
+  DollarSign
 } from 'lucide-react';
 import FreightCompleteVerificationDialog from './FreightCompleteVerificationDialog';
 import FreightCompleteLoadingAnimation from './FreightCompleteLoadingAnimation';
@@ -64,6 +64,12 @@ interface VehiclePriceTable {
   ranges: PriceRange[];
 }
 
+interface ValoresDefinidos {
+  tipo: 'combinar' | 'definido';
+  valor: number | null;
+  observacoes: string | null;
+}
+
 interface FreightCompleteFormData {
   collaborator_ids: string[];
   origem_cidade: string;
@@ -82,12 +88,13 @@ interface FreightCompleteFormData {
   pedagio_pago_por: string;
   pedagio_direcao: string;
   observacoes: string;
+  valores_definidos: ValoresDefinidos;
 }
 
 const FreightCompleteForm = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { estados, cidadesPorEstado } = useIBGE();
+  const { estados } = useEstados();
 
   const [formData, setFormData] = useState<FreightCompleteFormData>({
     collaborator_ids: [],
@@ -107,6 +114,11 @@ const FreightCompleteForm = () => {
     pedagio_pago_por: '',
     pedagio_direcao: '',
     observacoes: '',
+    valores_definidos: {
+      tipo: 'combinar',
+      valor: null,
+      observacoes: null
+    }
   });
 
   const [collaborators, setCollaborators] = useState<any[]>([]);
@@ -114,6 +126,16 @@ const FreightCompleteForm = () => {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generatedFreights, setGeneratedFreights] = useState<{id: string; codigo_completo: string}[]>([]);
+  const [cidadesOrigem, setCidadesOrigem] = useState<string[]>([]);
+  const [cidadesParadas, setCidadesParadas] = useState<{[key: string]: string[]}>({});
+
+  const { cidades: cidadesOrigemData } = useCidades(formData.origem_estado);
+
+  useEffect(() => {
+    if (cidadesOrigemData) {
+      setCidadesOrigem(cidadesOrigemData.map(cidade => cidade.nome));
+    }
+  }, [cidadesOrigemData]);
 
   useEffect(() => {
     const fetchCollaborators = async () => {
@@ -169,12 +191,33 @@ const FreightCompleteForm = () => {
     });
   };
 
-  const handleCollaboratorChange = (collaboratorId: string, checked: boolean) => {
+  const handleCollaboratorToggle = (collaboratorId: string, checked: boolean) => {
     setFormData(prev => ({
       ...prev,
       collaborator_ids: checked 
         ? [...prev.collaborator_ids, collaboratorId]
         : prev.collaborator_ids.filter(id => id !== collaboratorId)
+    }));
+  };
+
+  const handleValorTipoChange = (tipo: 'combinar' | 'definido') => {
+    setFormData(prev => ({
+      ...prev,
+      valores_definidos: {
+        ...prev.valores_definidos,
+        tipo,
+        valor: tipo === 'combinar' ? null : prev.valores_definidos.valor
+      }
+    }));
+  };
+
+  const handleValorChange = (valor: number) => {
+    setFormData(prev => ({
+      ...prev,
+      valores_definidos: {
+        ...prev.valores_definidos,
+        valor
+      }
     }));
   };
 
@@ -210,20 +253,20 @@ const FreightCompleteForm = () => {
       // Gerar código único para o frete completo
       const codigoCompleto = await generateFreightCompleteCode();
 
-      // Preparar dados do frete completo - converter arrays para JSON
+      // Preparar dados do frete completo
       const freightData = {
         company_id: company.id,
         collaborator_ids: formData.collaborator_ids,
         tipo_frete: 'completo',
         origem_cidade: formData.origem_cidade,
         origem_estado: formData.origem_estado,
-        paradas: JSON.parse(JSON.stringify(formData.paradas)), // Converter para Json
-        destinos: JSON.parse(JSON.stringify([])), // Manter vazio para frete completo
+        paradas: formData.paradas as any, // Cast para compatibilidade com Supabase
+        destinos: [], // Manter vazio para frete completo
         tipo_mercadoria: formData.tipo_mercadoria,
-        tipos_veiculos: JSON.parse(JSON.stringify(formData.tipos_veiculos)), // Converter para Json
-        tipos_carrocerias: JSON.parse(JSON.stringify(formData.tipos_carrocerias)), // Converter para Json
-        regras_agendamento: JSON.parse(JSON.stringify(formData.regras_agendamento)), // Converter para Json
-        beneficios: JSON.parse(JSON.stringify(formData.beneficios)), // Converter para Json
+        tipos_veiculos: formData.tipos_veiculos as any,
+        tipos_carrocerias: formData.tipos_carrocerias as any,
+        regras_agendamento: formData.regras_agendamento as any,
+        beneficios: formData.beneficios as any,
         horario_carregamento: formData.horario_carregamento || null,
         precisa_ajudante: formData.precisa_ajudante,
         precisa_rastreador: formData.precisa_rastreador,
@@ -232,12 +275,13 @@ const FreightCompleteForm = () => {
         pedagio_direcao: formData.pedagio_direcao || null,
         observacoes: formData.observacoes || null,
         codigo_agregamento: codigoCompleto, // Reutilizar coluna existente para código
-        status: 'pendente'
+        status: 'pendente',
+        valores_definidos: formData.valores_definidos as any
       };
 
       console.log('Dados do frete completo a serem salvos:', freightData);
 
-      // Inserir o frete completo (inserir objeto único, não array)
+      // Inserir o frete completo (será apenas 1 registro)
       const { data: freightInserted, error: freightError } = await supabase
         .from('fretes')
         .insert(freightData)
@@ -306,30 +350,30 @@ const FreightCompleteForm = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Truck className="w-6 h-6" />
-            Cadastro de Frete Completo
+          <CardTitle className="flex items-center space-x-2">
+            <Truck className="w-6 h-6 text-blue-600" />
+            <span>Cadastro de Frete Completo</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {/* Colaboradores selection */}
+            {/* Colaboradores */}
             <div>
-              <Label className="text-sm font-medium mb-2 block">
-                <Users className="w-4 h-4 inline mr-2" />
-                Colaboradores Responsáveis
-              </Label>
-              <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded-md p-2">
-                {collaborators.map(collab => (
-                  <div key={collab.id} className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 mb-3">
+                <Users className="w-5 h-5 text-blue-600" />
+                <Label className="text-lg font-semibold">Colaboradores Responsáveis</Label>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {collaborators.map(collaborator => (
+                  <div key={collaborator.id} className="flex items-center space-x-2 p-3 border rounded-lg">
                     <Checkbox
-                      id={`collab-${collab.id}`}
-                      checked={formData.collaborator_ids.includes(collab.id)}
-                      onCheckedChange={(checked) => handleCollaboratorChange(collab.id, checked as boolean)}
+                      id={`collaborator-${collaborator.id}`}
+                      checked={formData.collaborator_ids.includes(collaborator.id)}
+                      onCheckedChange={(checked) => handleCollaboratorToggle(collaborator.id, checked as boolean)}
                     />
-                    <Label htmlFor={`collab-${collab.id}`} className="text-sm">
-                      {collab.name} - {collab.sector}
-                    </Label>
+                    <label htmlFor={`collaborator-${collaborator.id}`} className="text-sm font-medium cursor-pointer">
+                      {collaborator.name} - {collaborator.sector}
+                    </label>
                   </div>
                 ))}
               </div>
@@ -339,13 +383,13 @@ const FreightCompleteForm = () => {
 
             {/* Origem */}
             <div>
-              <Label className="text-sm font-medium mb-3 block">
-                <MapPin className="w-4 h-4 inline mr-2" />
-                Origem
-              </Label>
+              <div className="flex items-center space-x-2 mb-3">
+                <MapPin className="w-5 h-5 text-green-600" />
+                <Label className="text-lg font-semibold">Origem</Label>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="origem-estado" className="text-sm">Estado de Origem</Label>
+                  <Label>Estado de Origem</Label>
                   <Select
                     value={formData.origem_estado}
                     onValueChange={(value) => setFormData(prev => ({ ...prev, origem_estado: value, origem_cidade: '' }))}
@@ -363,7 +407,7 @@ const FreightCompleteForm = () => {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="origem-cidade" className="text-sm">Cidade de Origem</Label>
+                  <Label>Cidade de Origem</Label>
                   <Select
                     value={formData.origem_cidade}
                     onValueChange={(value) => setFormData(prev => ({ ...prev, origem_cidade: value }))}
@@ -373,7 +417,7 @@ const FreightCompleteForm = () => {
                       <SelectValue placeholder="Selecione a cidade" />
                     </SelectTrigger>
                     <SelectContent>
-                      {formData.origem_estado && cidadesPorEstado(formData.origem_estado).map(cidade => (
+                      {cidadesOrigem.map(cidade => (
                         <SelectItem key={cidade} value={cidade}>
                           {cidade}
                         </SelectItem>
@@ -389,73 +433,27 @@ const FreightCompleteForm = () => {
             {/* Paradas */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <Label className="text-sm font-medium">
-                  <MapPin className="w-4 h-4 inline mr-2" />
-                  Paradas
-                </Label>
+                <div className="flex items-center space-x-2">
+                  <MapPin className="w-5 h-5 text-blue-600" />
+                  <Label className="text-lg font-semibold">Paradas</Label>
+                </div>
                 <Button size="sm" variant="outline" onClick={handleAddStop}>
                   <Plus className="w-4 h-4 mr-2" />
                   Adicionar Parada
                 </Button>
               </div>
               {formData.paradas.length === 0 && (
-                <p className="text-sm text-gray-500 p-4 text-center border border-dashed rounded-md">
-                  Nenhuma parada adicionada. Clique em "Adicionar Parada" para começar.
-                </p>
+                <p className="text-sm text-gray-500">Nenhuma parada adicionada.</p>
               )}
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {formData.paradas.map((stop) => (
-                  <Card key={stop.id} className="p-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex flex-col w-10 items-center">
-                        <GripVertical className="w-4 h-4 text-gray-400 cursor-move" />
-                        <Badge variant="secondary" className="text-xs mt-1">
-                          {stop.order}
-                        </Badge>
-                      </div>
-                      <div className="flex-1 grid grid-cols-2 gap-4">
-                        <Select
-                          value={stop.state}
-                          onValueChange={(value) => handleStopChange(stop.id, 'state', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Estado" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {estados.map(estado => (
-                              <SelectItem key={estado.sigla} value={estado.sigla}>
-                                {estado.nome}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={stop.city}
-                          onValueChange={(value) => handleStopChange(stop.id, 'city', value)}
-                          disabled={!stop.state}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Cidade" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {stop.state && cidadesPorEstado(stop.state).map(cidade => (
-                              <SelectItem key={cidade} value={cidade}>
-                                {cidade}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveStop(stop.id)}
-                        aria-label="Remover parada"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </Card>
+                  <StopCard
+                    key={stop.id}
+                    stop={stop}
+                    estados={estados}
+                    onStopChange={handleStopChange}
+                    onRemove={handleRemoveStop}
+                  />
                 ))}
               </div>
             </div>
@@ -464,54 +462,92 @@ const FreightCompleteForm = () => {
 
             {/* Tipo de Mercadoria */}
             <div>
-              <Label htmlFor="tipo-mercadoria" className="text-sm font-medium mb-2 block">
-                <Package className="w-4 h-4 inline mr-2" />
-                Tipo de Mercadoria
-              </Label>
+              <div className="flex items-center space-x-2 mb-3">
+                <Package className="w-5 h-5 text-orange-600" />
+                <Label className="text-lg font-semibold">Tipo de Mercadoria</Label>
+              </div>
               <Input
-                id="tipo-mercadoria"
                 value={formData.tipo_mercadoria}
                 onChange={(e) => setFormData(prev => ({ ...prev, tipo_mercadoria: e.target.value }))}
-                placeholder="Descreva o tipo de mercadoria a ser transportada"
+                placeholder="Descreva o tipo de mercadoria"
               />
+            </div>
+
+            <Separator />
+
+            {/* Sistema de Valores */}
+            <div>
+              <div className="flex items-center space-x-2 mb-3">
+                <DollarSign className="w-5 h-5 text-green-600" />
+                <Label className="text-lg font-semibold">Definição de Valores</Label>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <Card 
+                  className={`cursor-pointer transition-all ${
+                    formData.valores_definidos.tipo === 'combinar' 
+                      ? 'ring-2 ring-blue-500 bg-blue-50' 
+                      : 'hover:bg-gray-50'
+                  }`}
+                  onClick={() => handleValorTipoChange('combinar')}
+                >
+                  <CardContent className="p-4 text-center">
+                    <div className="text-lg font-semibold text-gray-800 mb-2">A COMBINAR</div>
+                    <p className="text-sm text-gray-600">Valor será negociado posteriormente</p>
+                  </CardContent>
+                </Card>
+                
+                <Card 
+                  className={`cursor-pointer transition-all ${
+                    formData.valores_definidos.tipo === 'definido' 
+                      ? 'ring-2 ring-blue-500 bg-blue-50' 
+                      : 'hover:bg-gray-50'
+                  }`}
+                  onClick={() => handleValorTipoChange('definido')}
+                >
+                  <CardContent className="p-4 text-center">
+                    <div className="text-lg font-semibold text-gray-800 mb-2">DEFINIR VALOR</div>
+                    <p className="text-sm text-gray-600">Especificar valor oferecido</p>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              {formData.valores_definidos.tipo === 'definido' && (
+                <div className="mt-4">
+                  <Label>Valor Oferecido (R$)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.valores_definidos.valor || ''}
+                    onChange={(e) => handleValorChange(parseFloat(e.target.value) || 0)}
+                    placeholder="Digite o valor oferecido"
+                    className="mt-1"
+                  />
+                </div>
+              )}
             </div>
 
             <Separator />
 
             {/* Observações */}
             <div>
-              <Label htmlFor="observacoes" className="text-sm font-medium mb-2 block">
-                <Settings className="w-4 h-4 inline mr-2" />
-                Observações Adicionais
-              </Label>
+              <Label>Observações</Label>
               <Textarea
-                id="observacoes"
                 value={formData.observacoes}
                 onChange={(e) => setFormData(prev => ({ ...prev, observacoes: e.target.value }))}
-                placeholder="Adicione informações extras sobre o frete completo..."
+                placeholder="Informações adicionais sobre o frete..."
                 rows={3}
               />
             </div>
 
             {/* Submit Button */}
-            <div className="pt-6">
+            <div className="pt-4">
               <Button
                 onClick={() => setShowVerificationDialog(true)}
-                disabled={isSubmitting || !formData.origem_cidade || !formData.tipo_mercadoria}
+                disabled={isSubmitting}
                 className="w-full"
-                size="lg"
               >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                    Processando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Verificar e Enviar Frete Completo
-                  </>
-                )}
+                {isSubmitting ? 'Processando...' : 'Verificar e Enviar'}
               </Button>
             </div>
           </div>
@@ -543,6 +579,69 @@ const FreightCompleteForm = () => {
         }}
       />
     </div>
+  );
+};
+
+// Componente separado para o card de parada
+const StopCard = ({ stop, estados, onStopChange, onRemove }: {
+  stop: Stop;
+  estados: any[];
+  onStopChange: (id: string, field: keyof Stop, value: string) => void;
+  onRemove: (id: string) => void;
+}) => {
+  const { cidades } = useCidades(stop.state);
+  const cidadesNomes = cidades.map(cidade => cidade.nome);
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-center space-x-4">
+        <div className="flex flex-col w-10 items-center">
+          <GripVertical className="cursor-move text-gray-400" />
+          <span className="text-sm font-semibold">{stop.order}</span>
+        </div>
+        <div className="flex-1 grid grid-cols-2 gap-4">
+          <Select
+            value={stop.state}
+            onValueChange={(value) => onStopChange(stop.id, 'state', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
+            <SelectContent>
+              {estados.map(estado => (
+                <SelectItem key={estado.sigla} value={estado.sigla}>
+                  {estado.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={stop.city}
+            onValueChange={(value) => onStopChange(stop.id, 'city', value)}
+            disabled={!stop.state}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Cidade" />
+            </SelectTrigger>
+            <SelectContent>
+              {cidadesNomes.map(cidade => (
+                <SelectItem key={cidade} value={cidade}>
+                  {cidade}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onRemove(stop.id)}
+          aria-label="Remover parada"
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+    </Card>
   );
 };
 
