@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, ArrowRight, Package, Truck, MapPin, FileText } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Package, Truck, MapPin, FileText, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useEstados, useCidades } from '@/hooks/useIBGE';
@@ -22,8 +22,8 @@ const FreightCompleteForm = () => {
   const [selectedOriginState, setSelectedOriginState] = useState('');
   const { cidades: originCities } = useCidades(selectedOriginState);
 
-  // Form data
-  const [formData, setFormData] = useState({
+  // Form data para frete completo
+  const [formDataComplete, setFormDataComplete] = useState({
     // Etapa 1 - Origem
     originState: '',
     originCity: '',
@@ -64,6 +64,11 @@ const FreightCompleteForm = () => {
     unloadingRequirements: ''
   });
 
+  // Dados dos colaboradores para frete completo
+  const [collaboratorsComplete, setCollaboratorsComplete] = useState([
+    { name: '', cpf: '', phone: '' }
+  ]);
+
   const vehicleOptions = [
     'Utilitário', 'Van', 'Caminhão 3/4', 'Caminhão Toco', 
     'Caminhão Truck', 'Carreta', 'Bitrem', 'Rodotrem'
@@ -74,20 +79,20 @@ const FreightCompleteForm = () => {
     'Refrigerada', 'Porta Container', 'Cegonha', 'Prancha'
   ];
 
-  const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleInputChangeComplete = (field: string, value: any) => {
+    setFormDataComplete(prev => ({ ...prev, [field]: value }));
   };
 
   const addDestination = () => {
-    setFormData(prev => ({
+    setFormDataComplete(prev => ({
       ...prev,
       destinations: [...prev.destinations, { state: '', city: '' }]
     }));
   };
 
   const removeDestination = (index: number) => {
-    if (formData.destinations.length > 1) {
-      setFormData(prev => ({
+    if (formDataComplete.destinations.length > 1) {
+      setFormDataComplete(prev => ({
         ...prev,
         destinations: prev.destinations.filter((_, i) => i !== index)
       }));
@@ -95,12 +100,28 @@ const FreightCompleteForm = () => {
   };
 
   const updateDestination = (index: number, field: string, value: string) => {
-    setFormData(prev => ({
+    setFormDataComplete(prev => ({
       ...prev,
       destinations: prev.destinations.map((dest, i) => 
         i === index ? { ...dest, [field]: value } : dest
       )
     }));
+  };
+
+  const addCollaboratorComplete = () => {
+    setCollaboratorsComplete(prev => [...prev, { name: '', cpf: '', phone: '' }]);
+  };
+
+  const removeCollaboratorComplete = (index: number) => {
+    if (collaboratorsComplete.length > 1) {
+      setCollaboratorsComplete(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateCollaboratorComplete = (index: number, field: string, value: string) => {
+    setCollaboratorsComplete(prev =>
+      prev.map((collab, i) => i === index ? { ...collab, [field]: value } : collab)
+    );
   };
 
   const nextStep = () => {
@@ -115,10 +136,11 @@ const FreightCompleteForm = () => {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmitComplete = async () => {
     try {
-      // Aqui será implementada a lógica de salvamento
-      console.log('Dados do frete completo:', formData);
+      // Aqui será implementada a lógica de salvamento para frete completo
+      console.log('Dados do frete completo:', formDataComplete);
+      console.log('Colaboradores do frete completo:', collaboratorsComplete);
       
       toast({
         title: "Sucesso!",
@@ -147,7 +169,7 @@ const FreightCompleteForm = () => {
           <Label>Estado de Origem</Label>
           <Select onValueChange={(value) => {
             setSelectedOriginState(value);
-            handleInputChange('originState', value);
+            handleInputChangeComplete('originState', value);
           }}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione o estado" />
@@ -164,7 +186,7 @@ const FreightCompleteForm = () => {
         
         <div>
           <Label>Cidade de Origem</Label>
-          <Select onValueChange={(value) => handleInputChange('originCity', value)}>
+          <Select onValueChange={(value) => handleInputChangeComplete('originCity', value)}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione a cidade" />
             </SelectTrigger>
@@ -183,8 +205,8 @@ const FreightCompleteForm = () => {
         <Label>Tipo de Mercadoria</Label>
         <Input
           placeholder="Ex: Eletrônicos, Alimentos, Produtos químicos..."
-          value={formData.mercadoriaType}
-          onChange={(e) => handleInputChange('mercadoriaType', e.target.value)}
+          value={formDataComplete.mercadoriaType}
+          onChange={(e) => handleInputChangeComplete('mercadoriaType', e.target.value)}
         />
       </div>
 
@@ -194,8 +216,8 @@ const FreightCompleteForm = () => {
           <Input
             type="number"
             placeholder="0"
-            value={formData.weightKg}
-            onChange={(e) => handleInputChange('weightKg', e.target.value)}
+            value={formDataComplete.weightKg}
+            onChange={(e) => handleInputChangeComplete('weightKg', e.target.value)}
           />
         </div>
         
@@ -204,8 +226,8 @@ const FreightCompleteForm = () => {
           <Input
             type="number"
             placeholder="0,00"
-            value={formData.valueReais}
-            onChange={(e) => handleInputChange('valueReais', e.target.value)}
+            value={formDataComplete.valueReais}
+            onChange={(e) => handleInputChangeComplete('valueReais', e.target.value)}
           />
         </div>
       </div>
@@ -224,11 +246,11 @@ const FreightCompleteForm = () => {
         </Button>
       </div>
       
-      {formData.destinations.map((destination, index) => (
+      {formDataComplete.destinations.map((destination, index) => (
         <Card key={index} className="p-4">
           <div className="flex items-center justify-between mb-4">
             <h4 className="font-medium">Destino {index + 1}</h4>
-            {formData.destinations.length > 1 && (
+            {formDataComplete.destinations.length > 1 && (
               <Button
                 onClick={() => removeDestination(index)}
                 variant="ghost"
@@ -289,12 +311,12 @@ const FreightCompleteForm = () => {
             <div key={vehicle} className="flex items-center space-x-2">
               <Checkbox
                 id={vehicle}
-                checked={formData.vehicleTypes.includes(vehicle)}
+                checked={formDataComplete.vehicleTypes.includes(vehicle)}
                 onCheckedChange={(checked) => {
                   if (checked) {
-                    handleInputChange('vehicleTypes', [...formData.vehicleTypes, vehicle]);
+                    handleInputChangeComplete('vehicleTypes', [...formDataComplete.vehicleTypes, vehicle]);
                   } else {
-                    handleInputChange('vehicleTypes', formData.vehicleTypes.filter(v => v !== vehicle));
+                    handleInputChangeComplete('vehicleTypes', formDataComplete.vehicleTypes.filter(v => v !== vehicle));
                   }
                 }}
               />
@@ -311,12 +333,12 @@ const FreightCompleteForm = () => {
             <div key={bodyType} className="flex items-center space-x-2">
               <Checkbox
                 id={bodyType}
-                checked={formData.bodyTypes.includes(bodyType)}
+                checked={formDataComplete.bodyTypes.includes(bodyType)}
                 onCheckedChange={(checked) => {
                   if (checked) {
-                    handleInputChange('bodyTypes', [...formData.bodyTypes, bodyType]);
+                    handleInputChangeComplete('bodyTypes', [...formDataComplete.bodyTypes, bodyType]);
                   } else {
-                    handleInputChange('bodyTypes', formData.bodyTypes.filter(bt => bt !== bodyType));
+                    handleInputChangeComplete('bodyTypes', formDataComplete.bodyTypes.filter(bt => bt !== bodyType));
                   }
                 }}
               />
@@ -331,14 +353,14 @@ const FreightCompleteForm = () => {
           <Label>Horário de Carregamento</Label>
           <Input
             type="time"
-            value={formData.loadingTime}
-            onChange={(e) => handleInputChange('loadingTime', e.target.value)}
+            value={formDataComplete.loadingTime}
+            onChange={(e) => handleInputChangeComplete('loadingTime', e.target.value)}
           />
         </div>
         
         <div>
           <Label>Quem paga o pedágio?</Label>
-          <Select onValueChange={(value) => handleInputChange('tollPaidBy', value)}>
+          <Select onValueChange={(value) => handleInputChangeComplete('tollPaidBy', value)}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
@@ -355,8 +377,8 @@ const FreightCompleteForm = () => {
         <div className="flex items-center space-x-2">
           <Checkbox
             id="needsHelper"
-            checked={formData.needsHelper}
-            onCheckedChange={(checked) => handleInputChange('needsHelper', checked)}
+            checked={formDataComplete.needsHelper}
+            onCheckedChange={(checked) => handleInputChangeComplete('needsHelper', checked)}
           />
           <Label htmlFor="needsHelper">Precisa de ajudante</Label>
         </div>
@@ -364,8 +386,8 @@ const FreightCompleteForm = () => {
         <div className="flex items-center space-x-2">
           <Checkbox
             id="needsInsurance"
-            checked={formData.needsInsurance}
-            onCheckedChange={(checked) => handleInputChange('needsInsurance', checked)}
+            checked={formDataComplete.needsInsurance}
+            onCheckedChange={(checked) => handleInputChangeComplete('needsInsurance', checked)}
           />
           <Label htmlFor="needsInsurance">Precisa de seguro</Label>
         </div>
@@ -373,11 +395,80 @@ const FreightCompleteForm = () => {
         <div className="flex items-center space-x-2">
           <Checkbox
             id="needsTracker"
-            checked={formData.needsTracker}
-            onCheckedChange={(checked) => handleInputChange('needsTracker', checked)}
+            checked={formDataComplete.needsTracker}
+            onCheckedChange={(checked) => handleInputChangeComplete('needsTracker', checked)}
           />
           <Label htmlFor="needsTracker">Precisa de rastreador</Label>
         </div>
+      </div>
+
+      {/* Seção Colaboradores */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Users className="w-6 h-6 text-orange-600" />
+            <h4 className="text-lg font-medium">Colaboradores</h4>
+          </div>
+          <Button onClick={addCollaboratorComplete} variant="outline" size="sm">
+            + Adicionar Colaborador
+          </Button>
+        </div>
+        
+        {collaboratorsComplete.map((collaborator, index) => (
+          <Card key={index} className="p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h5 className="font-medium">Colaborador {index + 1}</h5>
+              {collaboratorsComplete.length > 1 && (
+                <Button
+                  onClick={() => removeCollaboratorComplete(index)}
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700"
+                >
+                  Remover
+                </Button>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>Nome Completo</Label>
+                <Input
+                  placeholder="Digite o nome"
+                  value={collaborator.name}
+                  onChange={(e) => updateCollaboratorComplete(index, 'name', e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <Label>CPF</Label>
+                <Input
+                  placeholder="000.000.000-00"
+                  value={collaborator.cpf}
+                  onChange={(e) => updateCollaboratorComplete(index, 'cpf', e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <Label>Telefone</Label>
+                <Input
+                  placeholder="(00) 00000-0000"
+                  value={collaborator.phone}
+                  onChange={(e) => updateCollaboratorComplete(index, 'phone', e.target.value)}
+                />
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <div>
+        <Label>Observações</Label>
+        <Textarea
+          placeholder="Informações adicionais sobre o transporte..."
+          value={formDataComplete.observations}
+          onChange={(e) => handleInputChangeComplete('observations', e.target.value)}
+        />
       </div>
     </div>
   );
@@ -399,8 +490,8 @@ const FreightCompleteForm = () => {
               type="number"
               step="0.1"
               placeholder="0.0"
-              value={formData.cargoLength}
-              onChange={(e) => handleInputChange('cargoLength', e.target.value)}
+              value={formDataComplete.cargoLength}
+              onChange={(e) => handleInputChangeComplete('cargoLength', e.target.value)}
             />
           </div>
           <div>
@@ -409,8 +500,8 @@ const FreightCompleteForm = () => {
               type="number"
               step="0.1"
               placeholder="0.0"
-              value={formData.cargoWidth}
-              onChange={(e) => handleInputChange('cargoWidth', e.target.value)}
+              value={formDataComplete.cargoWidth}
+              onChange={(e) => handleInputChangeComplete('cargoWidth', e.target.value)}
             />
           </div>
           <div>
@@ -419,8 +510,8 @@ const FreightCompleteForm = () => {
               type="number"
               step="0.1"
               placeholder="0.0"
-              value={formData.cargoHeight}
-              onChange={(e) => handleInputChange('cargoHeight', e.target.value)}
+              value={formDataComplete.cargoHeight}
+              onChange={(e) => handleInputChangeComplete('cargoHeight', e.target.value)}
             />
           </div>
         </div>
@@ -434,12 +525,12 @@ const FreightCompleteForm = () => {
             <div key={equipment} className="flex items-center space-x-2">
               <Checkbox
                 id={equipment}
-                checked={formData.specialEquipment.includes(equipment)}
+                checked={formDataComplete.specialEquipment.includes(equipment)}
                 onCheckedChange={(checked) => {
                   if (checked) {
-                    handleInputChange('specialEquipment', [...formData.specialEquipment, equipment]);
+                    handleInputChangeComplete('specialEquipment', [...formDataComplete.specialEquipment, equipment]);
                   } else {
-                    handleInputChange('specialEquipment', formData.specialEquipment.filter(eq => eq !== equipment));
+                    handleInputChangeComplete('specialEquipment', formDataComplete.specialEquipment.filter(eq => eq !== equipment));
                   }
                 }}
               />
@@ -453,7 +544,7 @@ const FreightCompleteForm = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label>Controle de Temperatura</Label>
-          <Select onValueChange={(value) => handleInputChange('temperatureControl', value)}>
+          <Select onValueChange={(value) => handleInputChangeComplete('temperatureControl', value)}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
@@ -468,7 +559,7 @@ const FreightCompleteForm = () => {
         
         <div>
           <Label>Nível de Urgência</Label>
-          <Select onValueChange={(value) => handleInputChange('urgencyLevel', value)}>
+          <Select onValueChange={(value) => handleInputChangeComplete('urgencyLevel', value)}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
@@ -487,8 +578,8 @@ const FreightCompleteForm = () => {
         <Label>Restrições de Horário</Label>
         <Textarea
           placeholder="Ex: Coleta apenas das 8h às 17h, entrega somente em horário comercial..."
-          value={formData.timeRestrictions}
-          onChange={(e) => handleInputChange('timeRestrictions', e.target.value)}
+          value={formDataComplete.timeRestrictions}
+          onChange={(e) => handleInputChangeComplete('timeRestrictions', e.target.value)}
         />
       </div>
 
@@ -496,8 +587,8 @@ const FreightCompleteForm = () => {
         <Label>Documentação Especial</Label>
         <Textarea
           placeholder="Ex: Nota fiscal específica, licenças, autorizações especiais..."
-          value={formData.specialDocuments}
-          onChange={(e) => handleInputChange('specialDocuments', e.target.value)}
+          value={formDataComplete.specialDocuments}
+          onChange={(e) => handleInputChangeComplete('specialDocuments', e.target.value)}
         />
       </div>
 
@@ -505,8 +596,8 @@ const FreightCompleteForm = () => {
         <Label>Restrições de Acesso</Label>
         <Textarea
           placeholder="Ex: Local de difícil acesso, necessita agendamento, portaria restrita..."
-          value={formData.accessRestrictions}
-          onChange={(e) => handleInputChange('accessRestrictions', e.target.value)}
+          value={formDataComplete.accessRestrictions}
+          onChange={(e) => handleInputChangeComplete('accessRestrictions', e.target.value)}
         />
       </div>
 
@@ -514,17 +605,8 @@ const FreightCompleteForm = () => {
         <Label>Requisitos para Descarregamento</Label>
         <Textarea
           placeholder="Ex: Necessita de ajudantes, equipamentos específicos, cuidados especiais..."
-          value={formData.unloadingRequirements}
-          onChange={(e) => handleInputChange('unloadingRequirements', e.target.value)}
-        />
-      </div>
-
-      <div>
-        <Label>Observações Gerais</Label>
-        <Textarea
-          placeholder="Informações adicionais importantes..."
-          value={formData.observations}
-          onChange={(e) => handleInputChange('observations', e.target.value)}
+          value={formDataComplete.unloadingRequirements}
+          onChange={(e) => handleInputChangeComplete('unloadingRequirements', e.target.value)}
         />
       </div>
     </div>
@@ -614,7 +696,7 @@ const FreightCompleteForm = () => {
                 </Button>
               ) : (
                 <Button
-                  onClick={handleSubmit}
+                  onClick={handleSubmitComplete}
                   className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
                 >
                   Solicitar Frete Completo
