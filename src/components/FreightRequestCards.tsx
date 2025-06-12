@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,11 @@ const FreightRequestCards = () => {
     
     if (freightType === 'AGREGAMENTO') {
       navigate('/freight-aggregation');
+      return;
+    }
+    
+    if (freightType === 'FRETE COMPLETO') {
+      navigate('/freight-complete');
       return;
     }
     
