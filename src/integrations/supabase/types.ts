@@ -62,7 +62,6 @@ export type Database = {
           created_at: string | null
           id: string
           is_transporter: boolean
-          logo_url: string | null
           neighborhood: string
           number: string
           phone: string
@@ -82,7 +81,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_transporter?: boolean
-          logo_url?: string | null
           neighborhood: string
           number: string
           phone: string
@@ -102,7 +100,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_transporter?: boolean
-          logo_url?: string | null
           neighborhood?: string
           number?: string
           phone?: string
@@ -329,7 +326,6 @@ export type Database = {
           observacoes: string | null
           origem_cidade: string
           origem_estado: string
-          paradas: Json | null
           pedagio_direcao: string | null
           pedagio_pago_por: string | null
           peso_carga: number | null
@@ -345,7 +341,6 @@ export type Database = {
           tipos_veiculos: Json | null
           updated_at: string
           valor_carga: number | null
-          valores_definidos: Json | null
         }
         Insert: {
           beneficios?: Json | null
@@ -361,7 +356,6 @@ export type Database = {
           observacoes?: string | null
           origem_cidade: string
           origem_estado: string
-          paradas?: Json | null
           pedagio_direcao?: string | null
           pedagio_pago_por?: string | null
           peso_carga?: number | null
@@ -377,7 +371,6 @@ export type Database = {
           tipos_veiculos?: Json | null
           updated_at?: string
           valor_carga?: number | null
-          valores_definidos?: Json | null
         }
         Update: {
           beneficios?: Json | null
@@ -393,7 +386,6 @@ export type Database = {
           observacoes?: string | null
           origem_cidade?: string
           origem_estado?: string
-          paradas?: Json | null
           pedagio_direcao?: string | null
           pedagio_pago_por?: string | null
           peso_carga?: number | null
@@ -409,7 +401,6 @@ export type Database = {
           tipos_veiculos?: Json | null
           updated_at?: string
           valor_carga?: number | null
-          valores_definidos?: Json | null
         }
         Relationships: [
           {
