@@ -93,28 +93,79 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     return new Date(date).toLocaleString('pt-BR');
   };
 
-  // Helper function to safely render array items
-  const renderArrayItems = (items: any[]) => {
+  // Função melhorada para renderizar itens de array com mais detalhes
+  const renderDetailedArrayItems = (items: any[], emptyMessage: string = 'Não especificado') => {
+    console.log('Renderizando items:', items);
+    
     if (!Array.isArray(items) || items.length === 0) {
-      return <p className="text-gray-500 italic">Não especificado</p>;
+      return <p className="text-gray-500 italic">{emptyMessage}</p>;
     }
 
-    return items.map((item: any, index: number) => {
-      let displayText = '';
-      if (typeof item === 'string') {
-        displayText = item;
-      } else if (typeof item === 'object' && item !== null) {
-        displayText = item.type || item.name || item.label || JSON.stringify(item);
-      } else {
-        displayText = String(item);
-      }
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+        {items.map((item: any, index: number) => {
+          let displayText = '';
+          let subtitle = '';
 
-      return (
-        <Badge key={index} variant="outline" className="mr-1 mb-1">
-          {displayText}
-        </Badge>
-      );
-    });
+          if (typeof item === 'string') {
+            displayText = item;
+          } else if (typeof item === 'object' && item !== null) {
+            // Tenta diferentes propriedades que podem conter o texto principal
+            displayText = item.label || item.name || item.type || item.title || item.description || '';
+            
+            // Tenta obter informações adicionais para subtitle
+            if (item.capacity) subtitle = `Capacidade: ${item.capacity}`;
+            else if (item.weight) subtitle = `Peso: ${item.weight}`;
+            else if (item.size) subtitle = `Tamanho: ${item.size}`;
+            else if (item.category) subtitle = `Categoria: ${item.category}`;
+            
+            // Se não conseguiu extrair texto, usa JSON como fallback
+            if (!displayText) {
+              displayText = JSON.stringify(item);
+            }
+          } else {
+            displayText = String(item);
+          }
+
+          return (
+            <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="text-sm font-medium text-blue-900">{displayText}</div>
+              {subtitle && (
+                <div className="text-xs text-blue-600 mt-1">{subtitle}</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Função específica para renderizar badges simples
+  const renderSimpleBadges = (items: any[], emptyMessage: string = 'Não especificado') => {
+    if (!Array.isArray(items) || items.length === 0) {
+      return <p className="text-gray-500 italic">{emptyMessage}</p>;
+    }
+
+    return (
+      <div className="flex flex-wrap gap-2">
+        {items.map((item: any, index: number) => {
+          let displayText = '';
+          if (typeof item === 'string') {
+            displayText = item;
+          } else if (typeof item === 'object' && item !== null) {
+            displayText = item.type || item.name || item.label || item.description || JSON.stringify(item);
+          } else {
+            displayText = String(item);
+          }
+
+          return (
+            <Badge key={index} variant="outline" className="mr-1 mb-1">
+              {displayText}
+            </Badge>
+          );
+        })}
+      </div>
+    );
   };
 
   // Helper function to render pricing tables for agregamento
@@ -149,22 +200,26 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
       return <p className="text-gray-500 italic">Nenhum benefício definido</p>;
     }
 
-    return freight.beneficios.map((beneficio: any, index: number) => {
-      let displayText = '';
-      if (typeof beneficio === 'string') {
-        displayText = beneficio;
-      } else if (typeof beneficio === 'object' && beneficio !== null) {
-        displayText = beneficio.type || beneficio.name || beneficio.description || JSON.stringify(beneficio);
-      } else {
-        displayText = String(beneficio);
-      }
+    return (
+      <div className="flex flex-wrap gap-2">
+        {freight.beneficios.map((beneficio: any, index: number) => {
+          let displayText = '';
+          if (typeof beneficio === 'string') {
+            displayText = beneficio;
+          } else if (typeof beneficio === 'object' && beneficio !== null) {
+            displayText = beneficio.type || beneficio.name || beneficio.description || JSON.stringify(beneficio);
+          } else {
+            displayText = String(beneficio);
+          }
 
-      return (
-        <Badge key={index} variant="secondary" className="mr-1 mb-1 bg-blue-100 text-blue-800">
-          {displayText}
-        </Badge>
-      );
-    });
+          return (
+            <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-800">
+              {displayText}
+            </Badge>
+          );
+        })}
+      </div>
+    );
   };
 
   // Helper function to render scheduling rules for agregamento
@@ -330,18 +385,14 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-6">
                 <div>
-                  <p className="text-sm text-gray-500 mb-2">Tipos de Veículos</p>
-                  <div className="space-y-1">
-                    {renderArrayItems(freight.tipos_veiculos)}
-                  </div>
+                  <p className="text-sm text-gray-500 mb-3">Tipos de Veículos Aceitos</p>
+                  {renderDetailedArrayItems(freight.tipos_veiculos, 'Nenhum tipo de veículo especificado')}
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 mb-2">Tipos de Carrocerias</p>
-                  <div className="space-y-1">
-                    {renderArrayItems(freight.tipos_carrocerias)}
-                  </div>
+                  <p className="text-sm text-gray-500 mb-3">Tipos de Carrocerias Aceitas</p>
+                  {renderDetailedArrayItems(freight.tipos_carrocerias, 'Nenhum tipo de carroceria especificado')}
                 </div>
               </div>
             </CardContent>
