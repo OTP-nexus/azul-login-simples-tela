@@ -206,8 +206,47 @@ const FreightCompleteForm = () => {
     navigate('/freight-request');
   };
 
+  // Convert formData to the format expected by FreightVerificationDialog
+  const convertedFormData = {
+    collaborator_ids: formData.selectedCollaborators,
+    origem_cidade: formData.origem.cidade,
+    origem_estado: formData.origem.estado,
+    destinos: [{ id: '1', state: formData.destino.estado, city: formData.destino.cidade }],
+    tipo_mercadoria: formData.tipoMercadoria,
+    tipos_veiculos: formData.tiposVeiculos.map((type, index) => ({
+      id: index.toString(),
+      type,
+      category: 'heavy' as const,
+      selected: true
+    })),
+    tipos_carrocerias: formData.tiposCarrocerias.map((type, index) => ({
+      id: index.toString(),
+      type,
+      category: 'closed' as const,
+      selected: true
+    })),
+    vehicle_price_tables: [{
+      vehicleType: 'Frete Completo',
+      ranges: [{
+        id: '1',
+        kmStart: 0,
+        kmEnd: 9999,
+        price: formData.valorFrete ? parseFloat(formData.valorFrete) : 0
+      }]
+    }],
+    regras_agendamento: [],
+    beneficios: formData.beneficios,
+    horario_carregamento: '',
+    precisa_ajudante: formData.precisaAjudante,
+    precisa_rastreador: formData.precisaRastreador,
+    precisa_seguro: formData.precisaSeguro,
+    pedagio_pago_por: formData.pedagioPagoPor,
+    pedagio_direcao: formData.pedagioDirecao,
+    observacoes: formData.observacoes
+  };
+
   if (isSubmitting) {
-    return <FreightLoadingAnimation />;
+    return <FreightLoadingAnimation open={true} />;
   }
 
   return (
@@ -718,18 +757,24 @@ const FreightCompleteForm = () => {
 
       <FreightVerificationDialog
         open={showVerificationDialog}
-        onClose={() => setShowVerificationDialog(false)}
+        onOpenChange={setShowVerificationDialog}
+        formData={convertedFormData}
+        collaborators={collaborators || []}
+        onEdit={() => setShowVerificationDialog(false)}
         onConfirm={() => {
           setShowVerificationDialog(false);
           setShowSuccessDialog(true);
         }}
+        loading={false}
       />
 
       <FreightSuccessDialog
         open={showSuccessDialog}
-        onClose={() => {
-          setShowSuccessDialog(false);
-          navigate('/company-dashboard');
+        onOpenChange={(open) => {
+          setShowSuccessDialog(open);
+          if (!open) {
+            navigate('/company-dashboard');
+          }
         }}
         freightCode={freightCode}
         freightType="Frete Completo"
