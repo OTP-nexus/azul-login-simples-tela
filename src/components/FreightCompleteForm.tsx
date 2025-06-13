@@ -402,13 +402,20 @@ const FreightCompleteForm = () => {
         status: 'pendente'
       };
 
+      console.log('Dados do frete a serem salvos:', freightData);
+
       const { data, error } = await supabase
         .from('fretes')
         .insert([freightData])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao salvar frete:', error);
+        throw error;
+      }
+
+      console.log('Frete salvo com sucesso:', data);
 
       // Criar um frete para cada parada
       const generatedFreightsList = formData.paradas.map((parada, index) => ({
@@ -433,7 +440,7 @@ const FreightCompleteForm = () => {
       setShowVerificationDialog(false);
       toast({
         title: "Erro",
-        description: "Erro ao criar frete. Tente novamente.",
+        description: `Erro ao criar frete: ${error.message}`,
         variant: "destructive",
       });
     }
@@ -455,15 +462,7 @@ const FreightCompleteForm = () => {
     tipo_mercadoria: 'Geral',
     tipos_veiculos: formData.tiposVeiculos,
     tipos_carrocerias: formData.tiposCarrocerias,
-    vehicle_price_tables: formData.tipoValor === 'valor' ? [{
-      vehicleType: 'Frete Completo',
-      ranges: [{
-        id: '1',
-        kmStart: 0,
-        kmEnd: 9999,
-        price: formData.valorOfertado ? parseFloat(formData.valorOfertado) : 0
-      }]
-    }] : [],
+    vehicle_price_tables: [],
     regras_agendamento: [],
     beneficios: [],
     horario_carregamento: formData.horarioColeta,
@@ -472,7 +471,9 @@ const FreightCompleteForm = () => {
     precisa_seguro: formData.precisaSeguro,
     pedagio_pago_por: formData.pedagioPagoPor,
     pedagio_direcao: formData.pedagioDirecao,
-    observacoes: formData.observacoes
+    observacoes: formData.observacoes,
+    tipo_valor: formData.tipoValor,
+    valor_definido: formData.valorOfertado ? parseFloat(formData.valorOfertado) : undefined
   };
 
   if (isSubmitting) {

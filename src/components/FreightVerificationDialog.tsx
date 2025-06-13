@@ -64,6 +64,8 @@ interface FreightFormData {
   pedagio_pago_por: string;
   pedagio_direcao: string;
   observacoes: string;
+  valor_definido?: number;
+  tipo_valor?: string;
 }
 
 interface FreightVerificationDialogProps {
@@ -188,32 +190,26 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
 
           <Separator />
 
-          {/* Tabelas de Preço */}
-          {formData.vehicle_price_tables.length > 0 && (
-            <>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <DollarSign className="w-5 h-5 text-green-600" />
-                  <h3 className="text-lg font-semibold">Tabelas de Preço</h3>
-                </div>
-                <div className="space-y-3">
-                  {formData.vehicle_price_tables.map((table) => (
-                    <div key={table.vehicleType} className="p-3 bg-green-50 rounded-lg border">
-                      <h4 className="font-medium text-green-800 mb-2">{table.vehicleType}</h4>
-                      <div className="space-y-1">
-                        {table.ranges.map((range) => (
-                          <div key={range.id} className="text-sm text-green-700">
-                            {range.kmStart}km - {range.kmEnd}km: R$ {range.price.toFixed(2)}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          {/* Valor do Frete */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <DollarSign className="w-5 h-5 text-green-600" />
+              <h3 className="text-lg font-semibold">Valor do Frete</h3>
+            </div>
+            <div className="p-3 bg-green-50 rounded-lg border">
+              <div className="text-green-700">
+                {formData.tipo_valor === 'valor' && formData.valor_definido ? (
+                  <span className="font-medium text-lg">
+                    R$ {formData.valor_definido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                ) : (
+                  <span className="font-medium text-lg text-purple-700">A Combinar</span>
+                )}
               </div>
-              <Separator />
-            </>
-          )}
+            </div>
+          </div>
+
+          <Separator />
 
           {/* Configurações */}
           <div className="space-y-3">
