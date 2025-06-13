@@ -125,7 +125,7 @@ const LogoUpload: React.FC<LogoUploadProps> = ({ currentLogoUrl, onLogoUpdate })
               <img
                 src={previewUrl}
                 alt="Logo da empresa"
-                className="w-full h-full object-contain p-2"
+                className="max-w-full max-h-full object-contain"
               />
             ) : (
               <div className="text-center text-gray-500">
