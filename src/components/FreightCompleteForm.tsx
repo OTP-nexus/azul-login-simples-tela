@@ -18,20 +18,24 @@ import FreightSuccessDialog from './FreightSuccessDialog';
 import { useEstados, useCidades } from '@/hooks/useIBGE';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
-// Vehicle types by category - same as FreightAggregationForm
+// Vehicle types by category - updated with all types
 const vehicleTypes = {
   heavy: [
-    { id: 'carreta', type: 'Carreta (Cavalo + Carreta)', category: 'heavy' as const },
-    { id: 'truck', type: 'Truck', category: 'heavy' as const },
+    { id: 'carreta', type: 'Carreta', category: 'heavy' as const },
+    { id: 'carreta-ls', type: 'Carreta LS', category: 'heavy' as const },
+    { id: 'vanderleia', type: 'Vanderléia', category: 'heavy' as const },
     { id: 'bitrem', type: 'Bitrem', category: 'heavy' as const },
     { id: 'rodotrem', type: 'Rodotrem', category: 'heavy' as const }
   ],
   medium: [
-    { id: 'vuc', type: 'VUC (Veículo Urbano de Carga)', category: 'medium' as const },
-    { id: 'toco', type: 'Toco', category: 'medium' as const },
-    { id: 'truck-bau', type: 'Truck Baú', category: 'medium' as const }
+    { id: 'truck', type: 'Truck', category: 'medium' as const },
+    { id: 'bitruck', type: 'Bitruck', category: 'medium' as const },
+    { id: 'toco', type: 'Toco', category: 'medium' as const }
   ],
   light: [
+    { id: 'fiorino', type: 'Fiorino', category: 'light' as const },
+    { id: 'vlc', type: 'VLC', category: 'light' as const },
+    { id: 'tres-quartos', type: '3/4', category: 'light' as const },
     { id: 'van', type: 'Van', category: 'light' as const },
     { id: 'hr', type: 'HR (Hyundai HR)', category: 'light' as const },
     { id: 'utilitario', type: 'Utilitário', category: 'light' as const },
@@ -40,20 +44,31 @@ const vehicleTypes = {
   ]
 };
 
-// Body types by category - same as FreightAggregationForm
+// Body types by category - updated with all types
 const bodyTypes = {
-  closed: [
-    { id: 'bau', type: 'Baú', category: 'closed' as const },
-    { id: 'sider', type: 'Sider', category: 'closed' as const },
-    { id: 'refrigerado', type: 'Refrigerado', category: 'closed' as const }
-  ],
   open: [
     { id: 'graneleiro', type: 'Graneleiro', category: 'open' as const },
+    { id: 'grade-baixa', type: 'Grade Baixa', category: 'open' as const },
+    { id: 'prancha', type: 'Prancha', category: 'open' as const },
     { id: 'cacamba', type: 'Caçamba', category: 'open' as const },
-    { id: 'prancha', type: 'Prancha', category: 'open' as const }
+    { id: 'plataforma', type: 'Plataforma', category: 'open' as const }
+  ],
+  closed: [
+    { id: 'sider', type: 'Sider', category: 'closed' as const },
+    { id: 'bau', type: 'Baú', category: 'closed' as const },
+    { id: 'bau-frigorifico', type: 'Baú Frigorífico', category: 'closed' as const },
+    { id: 'bau-refrigerado', type: 'Baú Refrigerado', category: 'closed' as const }
   ],
   special: [
+    { id: 'silo', type: 'Silo', category: 'special' as const },
+    { id: 'cegonheiro', type: 'Cegonheiro', category: 'special' as const },
+    { id: 'gaiola', type: 'Gaiola', category: 'special' as const },
     { id: 'tanque', type: 'Tanque', category: 'special' as const },
+    { id: 'bug-porta-container', type: 'Bug Porta Container', category: 'special' as const },
+    { id: 'munk', type: 'Munk', category: 'special' as const },
+    { id: 'apenas-cavalo', type: 'Apenas Cavalo', category: 'special' as const },
+    { id: 'cavaqueira', type: 'Cavaqueira', category: 'special' as const },
+    { id: 'hopper', type: 'Hopper', category: 'special' as const },
     { id: 'cegonha', type: 'Cegonha', category: 'special' as const },
     { id: 'porta-container', type: 'Porta Container', category: 'special' as const }
   ]
@@ -311,7 +326,7 @@ const FreightCompleteForm = () => {
         tipo_mercadoria: 'Geral', // Default value required by schema
         paradas: formData.paradas,
         data_coleta: formData.dataColeta || null,
-        horario_carregamento: formData.horarioColeta || null, // Use correct field name
+        horario_carregamento: formData.horarioColeta || null,
         peso_carga: formData.peso ? parseFloat(formData.peso) : null,
         tipos_veiculos: formData.tiposVeiculos,
         tipos_carrocerias: formData.tiposCarrocerias,
@@ -705,7 +720,7 @@ const FreightCompleteForm = () => {
           </div>
         )}
 
-        {/* Etapa 3 - Carga e Veículos (REFORMULADA) */}
+        {/* Etapa 3 - Carga e Veículos (UPDATED WITH ALL TYPES) */}
         {currentStep === 3 && (
           <div className="space-y-6">
             {/* Data e Horário de Coleta */}
@@ -814,7 +829,7 @@ const FreightCompleteForm = () => {
               </CardContent>
             </Card>
 
-            {/* Tipos de Veículos */}
+            {/* Tipos de Veículos - UPDATED WITH ALL VEHICLE TYPES */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -830,7 +845,7 @@ const FreightCompleteForm = () => {
                   {/* Veículos Pesados */}
                   <div>
                     <h4 className="font-medium text-gray-700 mb-3">Veículos Pesados</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {vehicleTypes.heavy.map((vehicle) => (
                         <div
                           key={vehicle.id}
@@ -850,7 +865,7 @@ const FreightCompleteForm = () => {
                   {/* Veículos Médios */}
                   <div>
                     <h4 className="font-medium text-gray-700 mb-3">Veículos Médios</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {vehicleTypes.medium.map((vehicle) => (
                         <div
                           key={vehicle.id}
@@ -870,7 +885,7 @@ const FreightCompleteForm = () => {
                   {/* Veículos Leves */}
                   <div>
                     <h4 className="font-medium text-gray-700 mb-3">Veículos Leves</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {vehicleTypes.light.map((vehicle) => (
                         <div
                           key={vehicle.id}
@@ -890,7 +905,7 @@ const FreightCompleteForm = () => {
               </CardContent>
             </Card>
 
-            {/* Tipos de Carroceria */}
+            {/* Tipos de Carroceria - UPDATED WITH ALL BODY TYPES */}
             <Card>
               <CardHeader>
                 <CardTitle>Tipos de Carroceria *</CardTitle>
@@ -900,11 +915,11 @@ const FreightCompleteForm = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {/* Carrocerias Fechadas */}
+                  {/* Carrocerias Abertas */}
                   <div>
-                    <h4 className="font-medium text-gray-700 mb-3">Carrocerias Fechadas</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {bodyTypes.closed.map((body) => (
+                    <h4 className="font-medium text-gray-700 mb-3">Carrocerias Abertas</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {bodyTypes.open.map((body) => (
                         <div
                           key={body.id}
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
@@ -920,11 +935,11 @@ const FreightCompleteForm = () => {
                     </div>
                   </div>
 
-                  {/* Carrocerias Abertas */}
+                  {/* Carrocerias Fechadas */}
                   <div>
-                    <h4 className="font-medium text-gray-700 mb-3">Carrocerias Abertas</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {bodyTypes.open.map((body) => (
+                    <h4 className="font-medium text-gray-700 mb-3">Carrocerias Fechadas</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {bodyTypes.closed.map((body) => (
                         <div
                           key={body.id}
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
@@ -943,7 +958,7 @@ const FreightCompleteForm = () => {
                   {/* Carrocerias Especiais */}
                   <div>
                     <h4 className="font-medium text-gray-700 mb-3">Carrocerias Especiais</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {bodyTypes.special.map((body) => (
                         <div
                           key={body.id}
@@ -1027,6 +1042,7 @@ const FreightCompleteForm = () => {
           </div>
         )}
 
+        {/* Etapa 4 - Configurações */}
         {currentStep === 4 && (
           <div className="space-y-6">
             <Card>
