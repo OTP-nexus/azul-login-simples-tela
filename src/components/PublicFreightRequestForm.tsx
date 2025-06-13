@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -174,9 +174,27 @@ const PublicFreightRequestForm = () => {
     setFormData(prev => ({ ...prev, solicitanteNome: formatNameInput(value) }));
   };
 
-  // Handler para formatação do telefone
+  // Adicionar useEffect para validação imediata dos telefones
+  useEffect(() => {
+    if (formData.solicitanteTelefone && formData.solicitanteConfirmarTelefone) {
+      if (formData.solicitanteTelefone !== formData.solicitanteConfirmarTelefone) {
+        console.log('❌ VALIDAÇÃO: Os telefones não são iguais!');
+        console.log('Telefone 1:', formData.solicitanteTelefone);
+        console.log('Telefone 2:', formData.solicitanteConfirmarTelefone);
+      } else {
+        console.log('✅ VALIDAÇÃO: Os telefones são iguais!');
+        console.log('Telefone confirmado:', formData.solicitanteTelefone);
+      }
+    }
+  }, [formData.solicitanteTelefone, formData.solicitanteConfirmarTelefone]);
+
+  // Handler para formatação do telefone com validação imediata
   const handleTelefoneChange = (field: 'solicitanteTelefone' | 'solicitanteConfirmarTelefone', value: string) => {
-    setFormData(prev => ({ ...prev, [field]: formatPhoneInput(value) }));
+    const formattedValue = formatPhoneInput(value);
+    setFormData(prev => ({ ...prev, [field]: formattedValue }));
+    
+    // Log imediato da mudança
+    console.log(`📱 TELEFONE ALTERADO (${field}):`, formattedValue);
   };
 
   const validateStep = (step: number): boolean => {
