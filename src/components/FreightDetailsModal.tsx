@@ -22,7 +22,10 @@ import {
   AlertTriangle,
   FileText,
   RotateCcw,
-  Combine
+  Combine,
+  Calculator,
+  Route,
+  Settings
 } from "lucide-react";
 import FreightStatusBadge from './FreightStatusBadge';
 import type { ActiveFreight } from '@/hooks/useActiveFreights';
@@ -97,12 +100,10 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     }
 
     return items.map((item: any, index: number) => {
-      // Handle different item types
       let displayText = '';
       if (typeof item === 'string') {
         displayText = item;
       } else if (typeof item === 'object' && item !== null) {
-        // If it's an object, try to extract a meaningful display value
         displayText = item.type || item.name || item.label || JSON.stringify(item);
       } else {
         displayText = String(item);
@@ -112,6 +113,80 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
         <Badge key={index} variant="outline" className="mr-1 mb-1">
           {displayText}
         </Badge>
+      );
+    });
+  };
+
+  // Helper function to render pricing tables for agregamento
+  const renderPricingTables = () => {
+    if (!freight.tabelas_preco || freight.tabelas_preco.length === 0) {
+      return <p className="text-gray-500 italic">Nenhuma tabela de preços definida</p>;
+    }
+
+    return freight.tabelas_preco.map((tabela: any, index: number) => (
+      <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
+        <div className="grid grid-cols-3 gap-2 text-sm">
+          <div>
+            <p className="text-gray-600">Tipo de Veículo</p>
+            <p className="font-medium">{tabela.vehicle_type || 'Não especificado'}</p>
+          </div>
+          <div>
+            <p className="text-gray-600">Distância (km)</p>
+            <p className="font-medium">{tabela.km_start || 0} - {tabela.km_end || 0} km</p>
+          </div>
+          <div>
+            <p className="text-gray-600">Valor</p>
+            <p className="font-medium text-green-600">{formatValue(tabela.price)}</p>
+          </div>
+        </div>
+      </div>
+    ));
+  };
+
+  // Helper function to render benefits for agregamento
+  const renderBenefits = () => {
+    if (!freight.beneficios || freight.beneficios.length === 0) {
+      return <p className="text-gray-500 italic">Nenhum benefício definido</p>;
+    }
+
+    return freight.beneficios.map((beneficio: any, index: number) => {
+      let displayText = '';
+      if (typeof beneficio === 'string') {
+        displayText = beneficio;
+      } else if (typeof beneficio === 'object' && beneficio !== null) {
+        displayText = beneficio.type || beneficio.name || beneficio.description || JSON.stringify(beneficio);
+      } else {
+        displayText = String(beneficio);
+      }
+
+      return (
+        <Badge key={index} variant="secondary" className="mr-1 mb-1 bg-blue-100 text-blue-800">
+          {displayText}
+        </Badge>
+      );
+    });
+  };
+
+  // Helper function to render scheduling rules for agregamento
+  const renderSchedulingRules = () => {
+    if (!freight.regras_agendamento || freight.regras_agendamento.length === 0) {
+      return <p className="text-gray-500 italic">Nenhuma regra de agendamento definida</p>;
+    }
+
+    return freight.regras_agendamento.map((regra: any, index: number) => {
+      let displayText = '';
+      if (typeof regra === 'string') {
+        displayText = regra;
+      } else if (typeof regra === 'object' && regra !== null) {
+        displayText = regra.rule || regra.description || regra.type || JSON.stringify(regra);
+      } else {
+        displayText = String(regra);
+      }
+
+      return (
+        <div key={index} className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+          <p className="text-sm text-orange-800">{displayText}</p>
+        </div>
       );
     });
   };
@@ -272,11 +347,61 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
             </CardContent>
           </Card>
 
+          {/* Seções específicas para Agregamento */}
+          {freight.tipo_frete === 'agregamento' && (
+            <>
+              {/* Tabelas de Preços */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Calculator className="w-5 h-5" />
+                    <span>Tabelas de Preços</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {renderPricingTables()}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Benefícios */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Users className="w-5 h-5" />
+                    <span>Benefícios Oferecidos</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {renderBenefits()}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Regras de Agendamento */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Route className="w-5 h-5" />
+                    <span>Regras de Agendamento</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {renderSchedulingRules()}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
           {/* Configurações e Extras */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <AlertTriangle className="w-5 h-5" />
+                <Settings className="w-5 h-5" />
                 <span>Configurações e Extras</span>
               </CardTitle>
             </CardHeader>
