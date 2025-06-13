@@ -396,7 +396,7 @@ const FreightCompleteForm = () => {
         precisa_rastreador: formData.precisaRastreador,
         precisa_seguro: formData.precisaSeguro,
         pedagio_pago_por: formData.pedagioPagoPor,
-        pedagio_direcao: formData.pedagioDirecao,
+        pedagio_direcao: formData.pedagioPagoPor === 'motorista' ? null : formData.pedagioDirecao || null,
         observacoes: formData.observacoes,
         collaborator_ids: formData.selectedCollaborators,
         status: 'pendente'
