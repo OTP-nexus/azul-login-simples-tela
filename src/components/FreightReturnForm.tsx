@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ArrowLeft, ArrowRight, Users, MapPin, Truck, Settings, Calendar, Package, DollarSign, Plus, X, GripVertical, AlertCircle, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Users, MapPin, Truck, Settings, Calendar, Package, DollarSign, Plus, X, GripVertical, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +18,7 @@ import FreightSuccessDialog from './FreightSuccessDialog';
 import { useEstados, useCidades } from '@/hooks/useIBGE';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { useFreightFormValidation, FreightFormData } from '@/hooks/useFreightFormValidation';
-import { formatCurrency, formatNumericInput, formatWeight, parseCurrencyValue, limitTextInput } from '@/utils/freightFormatters';
+import { formatCurrency, formatNumericInput, formatWeight, parseCurrencyValue, validateNumericInput, limitTextInput } from '@/utils/freightFormatters';
 import { ErrorMessage } from '@/components/ui/error-message';
 
 const vehicleTypes = {
@@ -291,6 +291,49 @@ const FreightReturnForm = () => {
     });
   };
 
+  const steps = [
+    { number: 1, title: 'Colaboradores', icon: Users, description: 'Selecione os responsáveis' },
+    { number: 2, title: 'Origem e Paradas', icon: MapPin, description: 'Locais de coleta e paradas' },
+    { number: 3, title: 'Carga e Veículos', icon: Truck, description: 'Especificações da carga' },
+    { number: 4, title: 'Configurações', icon: Settings, description: 'Detalhes finais' }
+  ];
+
+  const handleNext = () => {
+    clearErrors();
+    
+    let isValid = false;
+    
+    switch (currentStep) {
+      case 1:
+        isValid = validateStep1(formData);
+        break;
+      case 2:
+        isValid = validateStep2(formData);
+        break;
+      case 3:
+        isValid = validateStep3(formData);
+        break;
+      case 4:
+        isValid = validateStep4(formData);
+        if (isValid) {
+          setShowVerificationDialog(true);
+          return;
+        }
+        break;
+    }
+    
+    if (isValid && currentStep < 4) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    clearErrors();
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
   const checkForDuplicateParada = (estado: string, cidade: string, currentId: string): boolean => {
     return formData.paradas.some(parada => 
       parada.id !== currentId && 
@@ -333,7 +376,7 @@ const FreightReturnForm = () => {
 
       const freightData = {
         company_id: company.id,
-        tipo_frete: 'frete_de_retorno', // Única diferença do frete completo
+        tipo_frete: 'frete_de_retorno',
         origem_estado: formData.origem.estado,
         origem_cidade: formData.origem.cidade,
         destinos: destinos,
@@ -353,7 +396,7 @@ const FreightReturnForm = () => {
         precisa_rastreador: formData.precisaRastreador,
         precisa_seguro: formData.precisaSeguro,
         pedagio_pago_por: formData.pedagioPagoPor,
-        pedagio_direcao: formData.pedagioPagoPor === 'motorista' ? null : formData.pedagioDirecao || null,
+        pedagio_direcao: formData.pedagioPagoPor === 'motorista' ? null : formData.pedagioDirecao,
         observacoes: formData.observacoes,
         collaborator_ids: formData.selectedCollaborators,
         status: 'pendente'
@@ -407,49 +450,6 @@ const FreightReturnForm = () => {
     navigate('/freight-request');
   };
 
-  const steps = [
-    { number: 1, title: 'Colaboradores', icon: Users, description: 'Selecione os responsáveis' },
-    { number: 2, title: 'Origem e Paradas', icon: MapPin, description: 'Locais de coleta e paradas' },
-    { number: 3, title: 'Carga e Veículos', icon: Truck, description: 'Especificações da carga' },
-    { number: 4, title: 'Configurações', icon: Settings, description: 'Detalhes finais' }
-  ];
-
-  const handleNext = () => {
-    clearErrors();
-    
-    let isValid = false;
-    
-    switch (currentStep) {
-      case 1:
-        isValid = validateStep1(formData);
-        break;
-      case 2:
-        isValid = validateStep2(formData);
-        break;
-      case 3:
-        isValid = validateStep3(formData);
-        break;
-      case 4:
-        isValid = validateStep4(formData);
-        if (isValid) {
-          setShowVerificationDialog(true);
-          return;
-        }
-        break;
-    }
-    
-    if (isValid && currentStep < 4) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    clearErrors();
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
   const convertedFormData = {
     collaborator_ids: formData.selectedCollaborators,
     origem_cidade: formData.origem.cidade,
@@ -470,7 +470,7 @@ const FreightReturnForm = () => {
     precisa_rastreador: formData.precisaRastreador,
     precisa_seguro: formData.precisaSeguro,
     pedagio_pago_por: formData.pedagioPagoPor,
-    pedagio_direcao: formData.pedagioDirecao,
+    pedagio_direcao: formData.pedagioPagoPor === 'motorista' ? null : formData.pedagioDirecao,
     observacoes: formData.observacoes,
     tipo_valor: formData.tipoValor,
     valor_definido: formData.valorOfertado ? parseFloat(formData.valorOfertado) : undefined
@@ -481,7 +481,7 @@ const FreightReturnForm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-amber-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -510,10 +510,10 @@ const FreightReturnForm = () => {
             {steps.map((step, index) => (
               <div key={step.number} className="flex items-center">
                 <div className={`flex items-center space-x-2 ${
-                  currentStep >= step.number ? 'text-amber-600' : 'text-gray-400'
+                  currentStep >= step.number ? 'text-blue-600' : 'text-gray-400'
                 }`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    currentStep >= step.number ? 'bg-amber-600 text-white' : 'bg-gray-200'
+                    currentStep >= step.number ? 'bg-blue-600 text-white' : 'bg-gray-200'
                   }`}>
                     <step.icon className="w-4 h-4" />
                   </div>
@@ -524,7 +524,7 @@ const FreightReturnForm = () => {
                 </div>
                 {index < steps.length - 1 && (
                   <div className={`w-8 sm:w-16 h-0.5 mx-2 sm:mx-4 ${
-                    currentStep > step.number ? 'bg-amber-600' : 'bg-gray-200'
+                    currentStep > step.number ? 'bg-blue-600' : 'bg-gray-200'
                   }`} />
                 )}
               </div>
@@ -565,7 +565,7 @@ const FreightReturnForm = () => {
                       key={collaborator.id}
                       className={`border rounded-lg p-4 cursor-pointer transition-all ${
                         formData.selectedCollaborators.includes(collaborator.id)
-                          ? 'border-amber-500 bg-amber-50'
+                          ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                       onClick={() => {
@@ -599,7 +599,7 @@ const FreightReturnForm = () => {
             <Card className={errors.origem ? 'border-red-300' : ''}>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <MapPin className="w-5 h-5 text-amber-600" />
+                  <MapPin className="w-5 h-5 text-green-600" />
                   <span>Origem *</span>
                 </CardTitle>
                 <CardDescription>
@@ -702,7 +702,7 @@ const FreightReturnForm = () => {
                                     ref={provided.innerRef}
                                     {...provided.draggableProps}
                                     className={`border rounded-lg p-4 transition-all ${
-                                      snapshot.isDragging ? 'shadow-lg scale-105 bg-white border-amber-300 rotate-2' : 'hover:shadow-md'
+                                      snapshot.isDragging ? 'shadow-lg scale-105 bg-white border-blue-300 rotate-2' : 'hover:shadow-md'
                                     } ${
                                       isDuplicate ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'
                                     }`}
@@ -925,7 +925,7 @@ const FreightReturnForm = () => {
                           key={vehicle.id}
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
                             formData.tiposVeiculos.some(v => v.id === vehicle.id)
-                              ? 'border-amber-500 bg-amber-50'
+                              ? 'border-blue-500 bg-blue-50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                           onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
@@ -944,7 +944,7 @@ const FreightReturnForm = () => {
                           key={vehicle.id}
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
                             formData.tiposVeiculos.some(v => v.id === vehicle.id)
-                              ? 'border-amber-500 bg-amber-50'
+                              ? 'border-blue-500 bg-blue-50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                           onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
@@ -963,7 +963,7 @@ const FreightReturnForm = () => {
                           key={vehicle.id}
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
                             formData.tiposVeiculos.some(v => v.id === vehicle.id)
-                              ? 'border-amber-500 bg-amber-50'
+                              ? 'border-blue-500 bg-blue-50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                           onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
@@ -995,7 +995,7 @@ const FreightReturnForm = () => {
                           key={body.id}
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
                             formData.tiposCarrocerias.some(b => b.id === body.id)
-                              ? 'border-amber-500 bg-amber-50'
+                              ? 'border-blue-500 bg-blue-50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                           onClick={() => toggleBodyType(body.id, body.type, body.category)}
@@ -1014,7 +1014,7 @@ const FreightReturnForm = () => {
                           key={body.id}
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
                             formData.tiposCarrocerias.some(b => b.id === body.id)
-                              ? 'border-amber-500 bg-amber-50'
+                              ? 'border-blue-500 bg-blue-50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                           onClick={() => toggleBodyType(body.id, body.type, body.category)}
@@ -1033,7 +1033,7 @@ const FreightReturnForm = () => {
                           key={body.id}
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
                             formData.tiposCarrocerias.some(b => b.id === body.id)
-                              ? 'border-amber-500 bg-amber-50'
+                              ? 'border-blue-500 bg-blue-50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                           onClick={() => toggleBodyType(body.id, body.type, body.category)}
@@ -1087,14 +1087,14 @@ const FreightReturnForm = () => {
                     <Label htmlFor="valor" className="cursor-pointer flex-1">
                       <div className={`border rounded-lg p-4 transition-all ${
                         formData.tipoValor === 'valor' 
-                          ? 'border-amber-500 bg-amber-50' 
-                          : 'border-gray-200 hover:border-amber-300 hover:bg-amber-25'
+                          ? 'border-green-500 bg-green-50' 
+                          : 'border-gray-200 hover:border-green-300 hover:bg-green-25'
                       }`}>
                         <h3 className={`font-medium ${
-                          formData.tipoValor === 'valor' ? 'text-amber-800' : 'text-gray-800'
+                          formData.tipoValor === 'valor' ? 'text-green-800' : 'text-gray-800'
                         }`}>Valor Fixo</h3>
                         <p className={`text-sm ${
-                          formData.tipoValor === 'valor' ? 'text-amber-600' : 'text-gray-500'
+                          formData.tipoValor === 'valor' ? 'text-green-600' : 'text-gray-500'
                         }`}>Definir um valor específico para o frete</p>
                       </div>
                     </Label>
