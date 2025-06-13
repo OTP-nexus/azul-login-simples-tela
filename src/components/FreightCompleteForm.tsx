@@ -18,6 +18,47 @@ import FreightSuccessDialog from './FreightSuccessDialog';
 import { useEstados, useCidades } from '@/hooks/useIBGE';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
+// Vehicle types by category - same as FreightAggregationForm
+const vehicleTypes = {
+  heavy: [
+    { id: 'carreta', type: 'Carreta (Cavalo + Carreta)', category: 'heavy' as const },
+    { id: 'truck', type: 'Truck', category: 'heavy' as const },
+    { id: 'bitrem', type: 'Bitrem', category: 'heavy' as const },
+    { id: 'rodotrem', type: 'Rodotrem', category: 'heavy' as const }
+  ],
+  medium: [
+    { id: 'vuc', type: 'VUC (Veículo Urbano de Carga)', category: 'medium' as const },
+    { id: 'toco', type: 'Toco', category: 'medium' as const },
+    { id: 'truck-bau', type: 'Truck Baú', category: 'medium' as const }
+  ],
+  light: [
+    { id: 'van', type: 'Van', category: 'light' as const },
+    { id: 'hr', type: 'HR (Hyundai HR)', category: 'light' as const },
+    { id: 'utilitario', type: 'Utilitário', category: 'light' as const },
+    { id: 'kombi', type: 'Kombi', category: 'light' as const },
+    { id: 'moto', type: 'Moto', category: 'light' as const }
+  ]
+};
+
+// Body types by category - same as FreightAggregationForm
+const bodyTypes = {
+  closed: [
+    { id: 'bau', type: 'Baú', category: 'closed' as const },
+    { id: 'sider', type: 'Sider', category: 'closed' as const },
+    { id: 'refrigerado', type: 'Refrigerado', category: 'closed' as const }
+  ],
+  open: [
+    { id: 'graneleiro', type: 'Graneleiro', category: 'open' as const },
+    { id: 'cacamba', type: 'Caçamba', category: 'open' as const },
+    { id: 'prancha', type: 'Prancha', category: 'open' as const }
+  ],
+  special: [
+    { id: 'tanque', type: 'Tanque', category: 'special' as const },
+    { id: 'cegonha', type: 'Cegonha', category: 'special' as const },
+    { id: 'porta-container', type: 'Porta Container', category: 'special' as const }
+  ]
+};
+
 const FreightCompleteForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -47,8 +88,8 @@ const FreightCompleteForm = () => {
       comprimento: ''
     },
     peso: '',
-    tiposVeiculos: [] as string[],
-    tiposCarrocerias: [] as string[],
+    tiposVeiculos: [] as Array<{ id: string; type: string; category: 'heavy' | 'medium' | 'light'; selected: boolean }>,
+    tiposCarrocerias: [] as Array<{ id: string; type: string; category: 'closed' | 'open' | 'special'; selected: boolean }>,
     tipoValor: '', // 'combinar' ou 'valor'
     valorOfertado: '',
     
@@ -177,37 +218,43 @@ const FreightCompleteForm = () => {
     });
   };
 
+  // Vehicle selection functions
+  const toggleVehicleType = (vehicleId: string, type: string, category: 'heavy' | 'medium' | 'light') => {
+    const existing = formData.tiposVeiculos.find(v => v.id === vehicleId);
+    if (existing) {
+      setFormData({
+        ...formData,
+        tiposVeiculos: formData.tiposVeiculos.filter(v => v.id !== vehicleId)
+      });
+    } else {
+      setFormData({
+        ...formData,
+        tiposVeiculos: [...formData.tiposVeiculos, { id: vehicleId, type, category, selected: true }]
+      });
+    }
+  };
+
+  // Body type selection functions
+  const toggleBodyType = (bodyId: string, type: string, category: 'closed' | 'open' | 'special') => {
+    const existing = formData.tiposCarrocerias.find(b => b.id === bodyId);
+    if (existing) {
+      setFormData({
+        ...formData,
+        tiposCarrocerias: formData.tiposCarrocerias.filter(b => b.id !== bodyId)
+      });
+    } else {
+      setFormData({
+        ...formData,
+        tiposCarrocerias: [...formData.tiposCarrocerias, { id: bodyId, type, category, selected: true }]
+      });
+    }
+  };
+
   const steps = [
     { number: 1, title: 'Colaboradores', icon: Users, description: 'Selecione os responsáveis' },
     { number: 2, title: 'Origem e Paradas', icon: MapPin, description: 'Locais de coleta e paradas' },
     { number: 3, title: 'Carga e Veículos', icon: Truck, description: 'Especificações da carga' },
     { number: 4, title: 'Configurações', icon: Settings, description: 'Detalhes finais' }
-  ];
-
-  // Vehicle types from aggregation freight
-  const vehicleTypes = [
-    'Carreta (Cavalo + Carreta)',
-    'Truck', 
-    'VUC (Veículo Urbano de Carga)',
-    'Utilitário',
-    'Van',
-    'HR (Hyundai HR)',
-    'Kombi',
-    'Moto'
-  ];
-
-  // Body types from aggregation freight
-  const bodyTypes = [
-    'Baú',
-    'Sider',
-    'Graneleiro',
-    'Caçamba',
-    'Prancha',
-    'Refrigerado',
-    'Tanque',
-    'Cegonha',
-    'Bitrem',
-    'Rodotrem'
   ];
 
   const benefitOptions = [
@@ -248,20 +295,32 @@ const FreightCompleteForm = () => {
 
       if (!company) throw new Error('Empresa não encontrada');
 
+      // Convert paradas to destinos format
+      const destinos = formData.paradas.map((parada, index) => ({
+        id: parada.id || index.toString(),
+        state: parada.estado,
+        city: parada.cidade
+      }));
+
       const freightData = {
         company_id: company.id,
         tipo_frete: 'frete_completo',
         origem_estado: formData.origem.estado,
         origem_cidade: formData.origem.cidade,
+        destinos: destinos,
+        tipo_mercadoria: 'Geral', // Default value required by schema
         paradas: formData.paradas,
         data_coleta: formData.dataColeta || null,
-        horario_coleta: formData.horarioColeta || null,
-        dimensoes: formData.dimensoes,
+        horario_carregamento: formData.horarioColeta || null, // Use correct field name
         peso_carga: formData.peso ? parseFloat(formData.peso) : null,
         tipos_veiculos: formData.tiposVeiculos,
         tipos_carrocerias: formData.tiposCarrocerias,
-        tipo_valor: formData.tipoValor,
-        valor_ofertado: formData.valorOfertado ? parseFloat(formData.valorOfertado) : null,
+        valores_definidos: formData.tipoValor === 'valor' ? {
+          tipo: 'valor_fixo',
+          valor: formData.valorOfertado ? parseFloat(formData.valorOfertado) : 0
+        } : {
+          tipo: 'a_combinar'
+        },
         precisa_ajudante: formData.precisaAjudante,
         precisa_rastreador: formData.precisaRastreador,
         pedagio_pago_por: formData.pedagioPagoPor,
@@ -316,19 +375,9 @@ const FreightCompleteForm = () => {
       state: parada.estado, 
       city: parada.cidade 
     })),
-    tipo_mercadoria: '',
-    tipos_veiculos: formData.tiposVeiculos.map((type, index) => ({
-      id: index.toString(),
-      type,
-      category: 'heavy' as const,
-      selected: true
-    })),
-    tipos_carrocerias: formData.tiposCarrocerias.map((type, index) => ({
-      id: index.toString(),
-      type,
-      category: 'closed' as const,
-      selected: true
-    })),
+    tipo_mercadoria: 'Geral',
+    tipos_veiculos: formData.tiposVeiculos,
+    tipos_carrocerias: formData.tiposCarrocerias,
     vehicle_price_tables: [{
       vehicleType: 'Frete Completo',
       ranges: [{
@@ -777,33 +826,66 @@ const FreightCompleteForm = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {vehicleTypes.map((type) => (
-                    <div
-                      key={type}
-                      className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                        formData.tiposVeiculos.includes(type)
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => {
-                        const selected = formData.tiposVeiculos.includes(type);
-                        if (selected) {
-                          setFormData({
-                            ...formData,
-                            tiposVeiculos: formData.tiposVeiculos.filter(t => t !== type)
-                          });
-                        } else {
-                          setFormData({
-                            ...formData,
-                            tiposVeiculos: [...formData.tiposVeiculos, type]
-                          });
-                        }
-                      }}
-                    >
-                      <p className="text-sm font-medium">{type}</p>
+                <div className="space-y-6">
+                  {/* Veículos Pesados */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Veículos Pesados</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {vehicleTypes.heavy.map((vehicle) => (
+                        <div
+                          key={vehicle.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposVeiculos.some(v => v.id === vehicle.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
+                        >
+                          <p className="text-sm font-medium">{vehicle.type}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Veículos Médios */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Veículos Médios</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {vehicleTypes.medium.map((vehicle) => (
+                        <div
+                          key={vehicle.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposVeiculos.some(v => v.id === vehicle.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
+                        >
+                          <p className="text-sm font-medium">{vehicle.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Veículos Leves */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Veículos Leves</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {vehicleTypes.light.map((vehicle) => (
+                        <div
+                          key={vehicle.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposVeiculos.some(v => v.id === vehicle.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
+                        >
+                          <p className="text-sm font-medium">{vehicle.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -817,33 +899,66 @@ const FreightCompleteForm = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {bodyTypes.map((type) => (
-                    <div
-                      key={type}
-                      className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                        formData.tiposCarrocerias.includes(type)
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => {
-                        const selected = formData.tiposCarrocerias.includes(type);
-                        if (selected) {
-                          setFormData({
-                            ...formData,
-                            tiposCarrocerias: formData.tiposCarrocerias.filter(t => t !== type)
-                          });
-                        } else {
-                          setFormData({
-                            ...formData,
-                            tiposCarrocerias: [...formData.tiposCarrocerias, type]
-                          });
-                        }
-                      }}
-                    >
-                      <p className="text-sm font-medium">{type}</p>
+                <div className="space-y-6">
+                  {/* Carrocerias Fechadas */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Carrocerias Fechadas</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {bodyTypes.closed.map((body) => (
+                        <div
+                          key={body.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposCarrocerias.some(b => b.id === body.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleBodyType(body.id, body.type, body.category)}
+                        >
+                          <p className="text-sm font-medium">{body.type}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Carrocerias Abertas */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Carrocerias Abertas</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {bodyTypes.open.map((body) => (
+                        <div
+                          key={body.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposCarrocerias.some(b => b.id === body.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleBodyType(body.id, body.type, body.category)}
+                        >
+                          <p className="text-sm font-medium">{body.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Carrocerias Especiais */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Carrocerias Especiais</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {bodyTypes.special.map((body) => (
+                        <div
+                          key={body.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposCarrocerias.some(b => b.id === body.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleBodyType(body.id, body.type, body.category)}
+                        >
+                          <p className="text-sm font-medium">{body.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
