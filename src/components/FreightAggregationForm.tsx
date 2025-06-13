@@ -168,6 +168,8 @@ const FreightAggregationForm = () => {
     observacoes: ''
   });
   
+  const [newBenefit, setNewBenefit] = useState('');
+  
   const { estados, loading: loadingEstados } = useEstados();
   const origemCidades = useCidades(formData.origem_estado);
   const [destinoCidades, setDestinoCidades] = useState<{[key: string]: any}>({});
@@ -407,12 +409,12 @@ const FreightAggregationForm = () => {
   };
 
   const addBenefit = () => {
-    const benefit = prompt('Digite o benefício:');
-    if (benefit && benefit.trim()) {
+    if (newBenefit && newBenefit.trim()) {
       setFormData(prev => ({
         ...prev,
-        beneficios: [...prev.beneficios, benefit.trim()]
+        beneficios: [...prev.beneficios, newBenefit.trim()]
       }));
+      setNewBenefit(''); // Limpar o input após adicionar
     }
   };
 
@@ -1463,36 +1465,65 @@ const FreightAggregationForm = () => {
 
                   {/* Benefícios */}
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-lg font-medium text-gray-800">Benefícios</Label>
+                    <Label className="text-lg font-medium text-gray-800">Benefícios</Label>
+                    
+                    {/* Input para adicionar benefício */}
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        value={newBenefit}
+                        onChange={(e) => setNewBenefit(e.target.value)}
+                        placeholder="Digite um benefício (ex: Vale alimentação, Plano de saúde...)"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addBenefit();
+                          }
+                        }}
+                        className="flex-1"
+                      />
                       <Button
                         type="button"
                         onClick={addBenefit}
                         variant="outline"
                         size="sm"
                         className="flex items-center space-x-2"
+                        disabled={!newBenefit.trim()}
                       >
                         <Plus className="w-4 h-4" />
-                        <span>Adicionar Benefício</span>
+                        <span>Adicionar</span>
                       </Button>
                     </div>
 
-                    {formData.beneficios.length > 0 && (
+                    {/* Lista de benefícios */}
+                    {formData.beneficios.length > 0 ? (
                       <div className="space-y-2">
-                        {formData.beneficios.map((benefit, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                            <span className="text-sm text-gray-700">{benefit}</span>
-                            <Button
-                              type="button"
-                              onClick={() => removeBenefit(index)}
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
+                        <Label className="text-sm font-medium text-gray-700">
+                          Benefícios Adicionados ({formData.beneficios.length})
+                        </Label>
+                        <div className="space-y-2">
+                          {formData.beneficios.map((benefit, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                              <span className="text-sm text-gray-700 flex-1">{benefit}</span>
+                              <Button
+                                type="button"
+                                onClick={() => removeBenefit(index)}
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
+                        <div className="text-gray-500">
+                          <p>Nenhum benefício adicionado</p>
+                          <p className="text-sm text-gray-400">Digite no campo acima para adicionar benefícios</p>
+                        </div>
                       </div>
                     )}
                   </div>
