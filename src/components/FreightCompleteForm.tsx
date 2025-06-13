@@ -574,14 +574,15 @@ const FreightCompleteForm = () => {
                                     ref={provided.innerRef}
                                     {...provided.draggableProps}
                                     className={`border border-gray-200 rounded-lg p-4 bg-gray-50 transition-all ${
-                                      snapshot.isDragging ? 'shadow-lg scale-105 bg-white border-blue-300' : 'hover:shadow-md'
+                                      snapshot.isDragging ? 'shadow-lg scale-105 bg-white border-blue-300 rotate-2' : 'hover:shadow-md'
                                     }`}
+                                    style={provided.draggableProps.style}
                                   >
                                     <div className="flex items-center justify-between mb-3">
                                       <div className="flex items-center space-x-2">
                                         <div
                                           {...provided.dragHandleProps}
-                                          className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                                          className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-1"
                                         >
                                           <GripVertical className="w-4 h-4" />
                                         </div>
