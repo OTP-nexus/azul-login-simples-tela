@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useEstados, useCidades } from '@/hooks/useIBGE';
+import { useEstados } from '@/hooks/useIBGE';
 import { ChevronLeft, ChevronRight, Package, MapPin, Clock, User, Home, Check } from 'lucide-react';
 
 interface ItemDetalhado {
@@ -18,15 +18,22 @@ interface ItemDetalhado {
   quantidade: number;
 }
 
+interface Cidade {
+  id: number;
+  nome: string;
+}
+
 const PublicFreightRequestForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  // IBGE hooks para origem e destino
+  // Estados e cidades
   const { estados } = useEstados();
-  const { cidades: cidadesOrigem, loading: loadingCidadesOrigem } = useCidades('');
-  const { cidades: cidadesDestino, loading: loadingCidadesDestino } = useCidades('');
+  const [cidadesOrigem, setCidadesOrigem] = useState<Cidade[]>([]);
+  const [cidadesDestino, setCidadesDestino] = useState<Cidade[]>([]);
+  const [loadingCidadesOrigem, setLoadingCidadesOrigem] = useState(false);
+  const [loadingCidadesDestino, setLoadingCidadesDestino] = useState(false);
 
   // Estados do formulário
   const [formData, setFormData] = useState({
@@ -69,6 +76,61 @@ const PublicFreightRequestForm = () => {
     solicitanteTelefone: '',
     solicitanteConfirmarTelefone: ''
   });
+
+  // Função para carregar cidades
+  const loadCidades = async (uf: string, tipo: 'origem' | 'destino') => {
+    if (!uf) {
+      if (tipo === 'origem') {
+        setCidadesOrigem([]);
+      } else {
+        setCidadesDestino([]);
+      }
+      return;
+    }
+
+    try {
+      if (tipo === 'origem') {
+        setLoadingCidadesOrigem(true);
+      } else {
+        setLoadingCidadesDestino(true);
+      }
+
+      const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (tipo === 'origem') {
+          setCidadesOrigem(data);
+        } else {
+          setCidadesDestino(data);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar cidades:', error);
+      toast({
+        title: "Erro ao carregar cidades",
+        description: "Tente novamente em alguns instantes",
+        variant: "destructive"
+      });
+    } finally {
+      if (tipo === 'origem') {
+        setLoadingCidadesOrigem(false);
+      } else {
+        setLoadingCidadesDestino(false);
+      }
+    }
+  };
+
+  // Handlers para mudança de estado
+  const handleEstadoOrigemChange = (value: string) => {
+    setFormData(prev => ({ ...prev, origemEstado: value, origemCidade: '' }));
+    loadCidades(value, 'origem');
+  };
+
+  const handleEstadoDestinoChange = (value: string) => {
+    setFormData(prev => ({ ...prev, destinoEstado: value, destinoCidade: '' }));
+    loadCidades(value, 'destino');
+  };
 
   const addItem = () => {
     const newItem: ItemDetalhado = {
@@ -295,7 +357,7 @@ const PublicFreightRequestForm = () => {
                   <div className="space-y-4">
                     <div>
                       <Label className="text-base font-medium">Estado *</Label>
-                      <Select value={formData.origemEstado} onValueChange={(value) => setFormData(prev => ({ ...prev, origemEstado: value, origemCidade: '' }))}>
+                      <Select value={formData.origemEstado} onValueChange={handleEstadoOrigemChange}>
                         <SelectTrigger className="h-12 text-base">
                           <SelectValue placeholder="Escolha o estado" />
                         </SelectTrigger>
@@ -311,9 +373,21 @@ const PublicFreightRequestForm = () => {
                     
                     <div>
                       <Label className="text-base font-medium">Cidade *</Label>
-                      <Select value={formData.origemCidade} onValueChange={(value) => setFormData(prev => ({ ...prev, origemCidade: value }))}>
+                      <Select 
+                        value={formData.origemCidade} 
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, origemCidade: value }))}
+                        disabled={!formData.origemEstado || loadingCidadesOrigem}
+                      >
                         <SelectTrigger className="h-12 text-base">
-                          <SelectValue placeholder="Escolha a cidade" />
+                          <SelectValue 
+                            placeholder={
+                              !formData.origemEstado 
+                                ? "Primeiro escolha o estado" 
+                                : loadingCidadesOrigem 
+                                ? "Carregando cidades..." 
+                                : "Escolha a cidade"
+                            } 
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {cidadesOrigem.map(city => (
@@ -385,7 +459,7 @@ const PublicFreightRequestForm = () => {
                   <div className="space-y-4">
                     <div>
                       <Label className="text-base font-medium">Estado *</Label>
-                      <Select value={formData.destinoEstado} onValueChange={(value) => setFormData(prev => ({ ...prev, destinoEstado: value, destinoCidade: '' }))}>
+                      <Select value={formData.destinoEstado} onValueChange={handleEstadoDestinoChange}>
                         <SelectTrigger className="h-12 text-base">
                           <SelectValue placeholder="Escolha o estado" />
                         </SelectTrigger>
@@ -401,9 +475,21 @@ const PublicFreightRequestForm = () => {
                     
                     <div>
                       <Label className="text-base font-medium">Cidade *</Label>
-                      <Select value={formData.destinoCidade} onValueChange={(value) => setFormData(prev => ({ ...prev, destinoCidade: value }))}>
+                      <Select 
+                        value={formData.destinoCidade} 
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, destinoCidade: value }))}
+                        disabled={!formData.destinoEstado || loadingCidadesDestino}
+                      >
                         <SelectTrigger className="h-12 text-base">
-                          <SelectValue placeholder="Escolha a cidade" />
+                          <SelectValue 
+                            placeholder={
+                              !formData.destinoEstado 
+                                ? "Primeiro escolha o estado" 
+                                : loadingCidadesDestino 
+                                ? "Carregando cidades..." 
+                                : "Escolha a cidade"
+                            } 
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {cidadesDestino.map(city => (
