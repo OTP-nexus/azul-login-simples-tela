@@ -19,6 +19,7 @@ import { useEstados, useCidades } from '@/hooks/useIBGE';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { useFreightFormValidation, FreightFormData } from '@/hooks/useFreightFormValidation';
 import { formatCurrency, formatNumericInput, formatWeight, parseCurrencyValue, validateNumericInput, limitTextInput } from '@/utils/freightFormatters';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 const vehicleTypes = {
   heavy: [
