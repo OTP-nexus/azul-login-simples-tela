@@ -90,6 +90,32 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     return new Date(date).toLocaleString('pt-BR');
   };
 
+  // Helper function to safely render array items
+  const renderArrayItems = (items: any[]) => {
+    if (!Array.isArray(items) || items.length === 0) {
+      return <p className="text-gray-500 italic">Não especificado</p>;
+    }
+
+    return items.map((item: any, index: number) => {
+      // Handle different item types
+      let displayText = '';
+      if (typeof item === 'string') {
+        displayText = item;
+      } else if (typeof item === 'object' && item !== null) {
+        // If it's an object, try to extract a meaningful display value
+        displayText = item.type || item.name || item.label || JSON.stringify(item);
+      } else {
+        displayText = String(item);
+      }
+
+      return (
+        <Badge key={index} variant="outline" className="mr-1 mb-1">
+          {displayText}
+        </Badge>
+      );
+    });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -233,29 +259,13 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
                 <div>
                   <p className="text-sm text-gray-500 mb-2">Tipos de Veículos</p>
                   <div className="space-y-1">
-                    {freight.tipos_veiculos && freight.tipos_veiculos.length > 0 ? (
-                      freight.tipos_veiculos.map((veiculo: string, index: number) => (
-                        <Badge key={index} variant="outline" className="mr-1">
-                          {veiculo}
-                        </Badge>
-                      ))
-                    ) : (
-                      <p className="text-gray-500 italic">Não especificado</p>
-                    )}
+                    {renderArrayItems(freight.tipos_veiculos)}
                   </div>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 mb-2">Tipos de Carrocerias</p>
                   <div className="space-y-1">
-                    {freight.tipos_carrocerias && freight.tipos_carrocerias.length > 0 ? (
-                      freight.tipos_carrocerias.map((carroceria: string, index: number) => (
-                        <Badge key={index} variant="outline" className="mr-1">
-                          {carroceria}
-                        </Badge>
-                      ))
-                    ) : (
-                      <p className="text-gray-500 italic">Não especificado</p>
-                    )}
+                    {renderArrayItems(freight.tipos_carrocerias)}
                   </div>
                 </div>
               </div>
