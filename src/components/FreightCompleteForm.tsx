@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -597,22 +596,26 @@ const FreightCompleteForm = () => {
         open={showVerificationDialog}
         onOpenChange={setShowVerificationDialog}
         formData={{
-          selectedCollaborators: [],
-          origem: formData.origem,
-          paradas: formData.paradas.map((p, index) => ({ ...p, id: index.toString() })),
-          dataColeta: formData.dataColeta,
-          horarioColeta: formData.horarioColeta,
-          dimensoes: { altura: '', largura: '', comprimento: '' },
-          peso: formData.peso,
-          tiposVeiculos: formData.tiposVeiculos,
-          tiposCarrocerias: formData.tiposCarrocerias,
-          tipoValor: formData.tipoValor,
-          valorOfertado: formData.valorOfertado,
-          pedagioPagoPor: formData.pedagioPagoPor,
-          pedagioDirecao: formData.pedagioDirecao,
-          precisaSeguro: formData.precisaSeguro,
-          precisaAjudante: formData.precisaAjudante,
-          precisaRastreador: formData.precisaRastreador,
+          collaborator_ids: [],
+          origem_cidade: formData.origem.cidade,
+          origem_estado: formData.origem.estado,
+          destinos: formData.paradas.map((p, index) => ({ 
+            id: index.toString(), 
+            state: p.estado, 
+            city: p.cidade 
+          })),
+          tipo_mercadoria: 'Geral',
+          tipos_veiculos: formData.tiposVeiculos,
+          tipos_carrocerias: formData.tiposCarrocerias,
+          vehicle_price_tables: [],
+          regras_agendamento: [],
+          beneficios: [],
+          horario_carregamento: formData.horarioColeta,
+          precisa_ajudante: formData.precisaAjudante,
+          precisa_rastreador: formData.precisaRastreador,
+          precisa_seguro: formData.precisaSeguro,
+          pedagio_pago_por: formData.pedagioPagoPor,
+          pedagio_direcao: formData.pedagioDirecao,
           observacoes: formData.observacoes
         }}
         collaborators={[]}
