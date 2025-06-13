@@ -1,13 +1,15 @@
 
-import LoginForm from "@/components/LoginForm";
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
-  console.log('Index page is rendering');
-  return (
-    <div className="min-h-screen">
-      <LoginForm />
-    </div>
-  );
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    navigate('/', { replace: true });
+  }, [navigate]);
+
+  return null;
 };
 
 export default Index;
