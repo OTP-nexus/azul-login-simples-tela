@@ -316,7 +316,7 @@ const FreightCompleteForm = () => {
       case 4:
         isValid = validateStep4(formData);
         if (isValid) {
-          handleSubmit();
+          setShowVerificationDialog(true);
           return;
         }
         break;
@@ -367,6 +367,13 @@ const FreightCompleteForm = () => {
         city: parada.cidade
       }));
 
+      const valoresDefinidos = formData.tipoValor === 'valor' ? {
+        tipo: 'valor_fixo',
+        valor: formData.valorOfertado ? parseFloat(formData.valorOfertado) : 0
+      } : {
+        tipo: 'a_combinar'
+      };
+
       const freightData = {
         company_id: company.id,
         tipo_frete: 'frete_completo',
@@ -374,18 +381,17 @@ const FreightCompleteForm = () => {
         origem_cidade: formData.origem.cidade,
         destinos: destinos,
         tipo_mercadoria: 'Geral',
-        paradas: formData.paradas,
+        paradas: formData.paradas.map(parada => ({
+          estado: parada.estado,
+          cidade: parada.cidade,
+          ordem: formData.paradas.indexOf(parada) + 1
+        })),
         data_coleta: formData.dataColeta || null,
         horario_carregamento: formData.horarioColeta || null,
         peso_carga: formData.peso ? parseFloat(formData.peso.replace(/\./g, '')) : null,
         tipos_veiculos: formData.tiposVeiculos,
         tipos_carrocerias: formData.tiposCarrocerias,
-        valores_definidos: formData.tipoValor === 'valor' ? {
-          tipo: 'valor_fixo',
-          valor: formData.valorOfertado ? parseFloat(formData.valorOfertado) : 0
-        } : {
-          tipo: 'a_combinar'
-        },
+        valores_definidos: valoresDefinidos,
         precisa_ajudante: formData.precisaAjudante,
         precisa_rastreador: formData.precisaRastreador,
         precisa_seguro: formData.precisaSeguro,
@@ -404,19 +410,27 @@ const FreightCompleteForm = () => {
 
       if (error) throw error;
 
-      const generatedFreight = {
+      // Criar um frete para cada parada
+      const generatedFreightsList = formData.paradas.map((parada, index) => ({
         id: data.id,
-        codigo_agregamento: data.id,
-        destino_cidade: formData.paradas.length > 0 ? formData.paradas[0].cidade : '',
-        destino_estado: formData.paradas.length > 0 ? formData.paradas[0].estado : ''
-      };
+        codigo_agregamento: data.codigo_agregamento || `FRT-${Date.now()}-${index}`,
+        destino_cidade: parada.cidade,
+        destino_estado: parada.estado
+      }));
 
-      setGeneratedFreights([generatedFreight]);
+      setGeneratedFreights(generatedFreightsList);
       setIsSubmitting(false);
-      setShowVerificationDialog(true);
+      setShowVerificationDialog(false);
+      setShowSuccessDialog(true);
+
+      toast({
+        title: "Sucesso!",
+        description: "Frete completo criado com sucesso.",
+      });
     } catch (error) {
       console.error('Erro ao criar frete:', error);
       setIsSubmitting(false);
+      setShowVerificationDialog(false);
       toast({
         title: "Erro",
         description: "Erro ao criar frete. Tente novamente.",
@@ -441,7 +455,7 @@ const FreightCompleteForm = () => {
     tipo_mercadoria: 'Geral',
     tipos_veiculos: formData.tiposVeiculos,
     tipos_carrocerias: formData.tiposCarrocerias,
-    vehicle_price_tables: [{
+    vehicle_price_tables: formData.tipoValor === 'valor' ? [{
       vehicleType: 'Frete Completo',
       ranges: [{
         id: '1',
@@ -449,7 +463,7 @@ const FreightCompleteForm = () => {
         kmEnd: 9999,
         price: formData.valorOfertado ? parseFloat(formData.valorOfertado) : 0
       }]
-    }],
+    }] : [],
     regras_agendamento: [],
     beneficios: [],
     horario_carregamento: formData.horarioColeta,
@@ -1236,7 +1250,7 @@ const FreightCompleteForm = () => {
             className="flex items-center space-x-2"
             disabled={isSubmitting}
           >
-            <span>{currentStep === 4 ? 'Finalizar' : 'Próximo'}</span>
+            <span>{currentStep === 4 ? 'Verificar Dados' : 'Próximo'}</span>
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
@@ -1248,11 +1262,8 @@ const FreightCompleteForm = () => {
         formData={convertedFormData}
         collaborators={collaborators || []}
         onEdit={() => setShowVerificationDialog(false)}
-        onConfirm={() => {
-          setShowVerificationDialog(false);
-          setShowSuccessDialog(true);
-        }}
-        loading={false}
+        onConfirm={handleSubmit}
+        loading={isSubmitting}
       />
 
       <FreightSuccessDialog
