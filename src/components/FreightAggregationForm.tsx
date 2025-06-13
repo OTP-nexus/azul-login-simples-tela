@@ -16,6 +16,8 @@ import { supabase } from '@/integrations/supabase/client';
 import FreightVerificationDialog from './FreightVerificationDialog';
 import FreightLoadingAnimation from './FreightLoadingAnimation';
 import FreightSuccessDialog from './FreightSuccessDialog';
+import { ValidatedInput } from './ValidatedInput';
+import { formatCurrency, parseCurrencyValue, formatNumericInput } from '@/utils/freightFormatters';
 
 interface Collaborator {
   id: string;
@@ -355,7 +357,7 @@ const FreightAggregationForm = () => {
     }));
   };
 
-  // Funções para gerenciar tabelas de preço por veículo
+  // Enhanced functions for managing price tables with automatic formatting
   const addPriceRange = (vehicleType: string) => {
     setFormData(prev => ({
       ...prev,
@@ -367,8 +369,8 @@ const FreightAggregationForm = () => {
                 ...table.ranges,
                 {
                   id: Date.now().toString(),
-                  kmStart: 0,
-                  kmEnd: 100,
+                  kmStart: table.ranges.length > 0 ? table.ranges[table.ranges.length - 1].kmEnd : 0,
+                  kmEnd: table.ranges.length > 0 ? table.ranges[table.ranges.length - 1].kmEnd + 100 : 100,
                   price: 0
                 }
               ]
@@ -395,17 +397,47 @@ const FreightAggregationForm = () => {
   const updatePriceRange = (vehicleType: string, rangeId: string, field: keyof PriceRange, value: any) => {
     setFormData(prev => ({
       ...prev,
-      vehicle_price_tables: prev.vehicle_price_tables.map(table =>
-        table.vehicleType === vehicleType
-          ? {
-              ...table,
-              ranges: table.ranges.map(range =>
-                range.id === rangeId ? { ...range, [field]: value } : range
-              )
+      vehicle_price_tables: prev.vehicle_price_tables.map(table => {
+        if (table.vehicleType === vehicleType) {
+          const updatedRanges = table.ranges.map((range, index) => {
+            if (range.id === rangeId) {
+              const updatedRange = { ...range, [field]: value };
+              // If kmEnd changed, update kmStart of next range
+              if (field === 'kmEnd' && index < table.ranges.length - 1) {
+                const nextRange = table.ranges[index + 1];
+                return [updatedRange, { ...nextRange, kmStart: value }];
+              }
+              return updatedRange;
             }
-          : table
-      )
+            return range;
+          }).flat();
+          return { ...table, ranges: updatedRanges };
+        }
+        return table;
+      })
     }));
+  };
+
+  // Currency formatter for price inputs
+  const formatPriceInput = (value: string): string => {
+    // Remove all non-digit characters
+    const cleanValue = value.replace(/\D/g, '');
+    
+    if (!cleanValue) return '';
+    
+    // Convert to number and format
+    const numValue = parseFloat(cleanValue) / 100;
+    
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2
+    }).format(numValue);
+  };
+
+  const parsePriceValue = (formattedValue: string): number => {
+    const cleanValue = formattedValue.replace(/[^\d,]/g, '').replace(',', '.');
+    return parseFloat(cleanValue) || 0;
   };
 
   const addBenefit = () => {
@@ -1247,9 +1279,14 @@ const FreightAggregationForm = () => {
                     </div>
                   </div>
 
-                  {/* Tabelas de Preço por Veículo */}
+                  {/* Tabelas de Preço por Veículo com Formatação Automática */}
                   <div className="space-y-4">
-                    <Label className="text-lg font-medium text-gray-800">Tabelas de Preço por Veículo</Label>
+                    <div className="flex items-center space-x-2">
+                      <Label className="text-lg font-medium text-gray-800">Tabelas de Preço por Veículo</Label>
+                      <div className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded">
+                        Formatação automática habilitada
+                      </div>
+                    </div>
                     
                     {formData.vehicle_price_tables.length === 0 ? (
                       <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
@@ -1275,15 +1312,22 @@ const FreightAggregationForm = () => {
                             </div>
                             
                             <div className="space-y-3">
-                              {vehicleTable.ranges.map((range) => (
+                              {vehicleTable.ranges.map((range, index) => (
                                 <div key={range.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-3 bg-white rounded-lg border">
                                   <div className="space-y-2">
-                                    <Label className="text-sm font-medium text-gray-700">KM Inicial</Label>
+                                    <Label className="text-sm font-medium text-gray-700">
+                                      KM Inicial
+                                      {index > 0 && (
+                                        <span className="text-xs text-blue-600 ml-1">(Auto)</span>
+                                      )}
+                                    </Label>
                                     <Input
                                       type="number"
                                       value={range.kmStart}
                                       onChange={(e) => updatePriceRange(vehicleTable.vehicleType, range.id, 'kmStart', parseInt(e.target.value) || 0)}
                                       min="0"
+                                      disabled={index > 0}
+                                      className={index > 0 ? "bg-gray-100" : ""}
                                     />
                                   </div>
                                   <div className="space-y-2">
@@ -1292,17 +1336,27 @@ const FreightAggregationForm = () => {
                                       type="number"
                                       value={range.kmEnd}
                                       onChange={(e) => updatePriceRange(vehicleTable.vehicleType, range.id, 'kmEnd', parseInt(e.target.value) || 0)}
-                                      min="0"
+                                      min={range.kmStart + 1}
                                     />
                                   </div>
                                   <div className="space-y-2">
-                                    <Label className="text-sm font-medium text-gray-700">Preço (R$)</Label>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      value={range.price}
-                                      onChange={(e) => updatePriceRange(vehicleTable.vehicleType, range.id, 'price', parseFloat(e.target.value) || 0)}
-                                      min="0"
+                                    <Label className="text-sm font-medium text-gray-700">
+                                      Preço
+                                      <span className="text-xs text-green-600 ml-1">(R$)</span>
+                                    </Label>
+                                    <ValidatedInput
+                                      id={`price-${range.id}`}
+                                      name={`price-${range.id}`}
+                                      label=""
+                                      value={formatPriceInput(range.price.toString())}
+                                      onChange={(e) => {
+                                        const numericValue = parsePriceValue(e.target.value);
+                                        updatePriceRange(vehicleTable.vehicleType, range.id, 'price', numericValue);
+                                      }}
+                                      formatter={(value) => formatPriceInput(value)}
+                                      placeholder="R$ 0,00"
+                                      icon={<DollarSign className="w-4 h-4" />}
+                                      className="text-green-700 font-medium"
                                     />
                                   </div>
                                   <div className="flex items-end">
