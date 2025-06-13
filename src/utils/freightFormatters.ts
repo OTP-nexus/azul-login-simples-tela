@@ -59,3 +59,26 @@ export const validateNumericInput = (value: string, min: number = 0, max?: numbe
 export const limitTextInput = (value: string, maxLength: number): string => {
   return value.slice(0, maxLength);
 };
+
+// Enhanced price formatting function that handles zero values correctly
+export const formatPriceInput = (value: string): string => {
+  // Remove all non-digit characters
+  const cleanValue = value.replace(/\D/g, '');
+  
+  // Return empty string only if no digits were entered
+  if (cleanValue === '') return '';
+  
+  // Convert to number and format (allowing zero values)
+  const numValue = parseFloat(cleanValue) / 100;
+  
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2
+  }).format(numValue);
+};
+
+export const parsePriceValue = (formattedValue: string): number => {
+  const cleanValue = formattedValue.replace(/[^\d,]/g, '').replace(',', '.');
+  return parseFloat(cleanValue) || 0;
+};

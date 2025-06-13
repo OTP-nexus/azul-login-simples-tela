@@ -17,7 +17,7 @@ import FreightVerificationDialog from './FreightVerificationDialog';
 import FreightLoadingAnimation from './FreightLoadingAnimation';
 import FreightSuccessDialog from './FreightSuccessDialog';
 import { ValidatedInput } from './ValidatedInput';
-import { formatCurrency, parseCurrencyValue, formatNumericInput } from '@/utils/freightFormatters';
+import { formatPriceInput, parsePriceValue } from '@/utils/freightFormatters';
 
 interface Collaborator {
   id: string;
@@ -437,28 +437,6 @@ const FreightAggregationForm = () => {
         return table;
       })
     }));
-  };
-
-  // Enhanced price formatting functions
-  const formatPriceInput = (value: string): string => {
-    // Remove all non-digit characters
-    const cleanValue = value.replace(/\D/g, '');
-    
-    if (!cleanValue) return '';
-    
-    // Convert to number and format
-    const numValue = parseFloat(cleanValue) / 100;
-    
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 2
-    }).format(numValue);
-  };
-
-  const parsePriceValue = (formattedValue: string): number => {
-    const cleanValue = formattedValue.replace(/[^\d,]/g, '').replace(',', '.');
-    return parseFloat(cleanValue) || 0;
   };
 
   const addBenefit = () => {
@@ -1436,12 +1414,12 @@ const FreightAggregationForm = () => {
                                       id={`price-${range.id}`}
                                       name={`price-${range.id}`}
                                       label=""
-                                      value={formatPriceInput(range.price.toString())}
+                                      value={formatPriceInput((range.price * 100).toString())}
                                       onChange={(e) => {
                                         const numericValue = parsePriceValue(e.target.value);
                                         updatePriceRange(vehicleTable.vehicleType, range.id, 'price', numericValue);
                                       }}
-                                      formatter={(value) => formatPriceInput(value)}
+                                      formatter={formatPriceInput}
                                       placeholder="R$ 0,00"
                                       icon={<DollarSign className="w-4 h-4" />}
                                       className="text-green-700 font-medium"
