@@ -1,882 +1,1243 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, ArrowRight, MapPin, Package, Truck, DollarSign, FileText, Settings } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ArrowLeft, ArrowRight, Users, MapPin, Truck, Settings, Calendar, Package, DollarSign, Plus, X, GripVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import FreightLoadingAnimation from './FreightLoadingAnimation';
+import FreightVerificationDialog from './FreightVerificationDialog';
 import FreightSuccessDialog from './FreightSuccessDialog';
+import { useEstados, useCidades } from '@/hooks/useIBGE';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
-interface FormData {
-  // Etapa 1 - Origem e Destino
-  origem: {
-    cep: string;
-    endereco: string;
-    cidade: string;
-    estado: string;
-  };
-  destinos: Array<{
-    cep: string;
-    endereco: string;
-    cidade: string;
-    estado: string;
-  }>;
-  // Etapa 2 - Carga
-  tipoCarga: string;
-  peso: string;
-  dimensoes: {
-    comprimento: string;
-    largura: string;
-    altura: string;
-  };
-  valor: string;
-  observacoesCarga: string;
-  // Etapa 3 - Veículo
-  tipoVeiculo: string;
-  tipoCarroceria: string;
-  // Etapa 4 - Valor e Condições
-  tipoValor: string;
-  valorFrete: string;
-  quemPagaPedagio: string;
-  direcaoPedagio: string;
-  precisaAjudante: boolean;
-  precisaRastreador: boolean;
-  precisaSeguro: boolean;
-  observacoes: string;
-}
+// Vehicle types by category - updated with all types
+const vehicleTypes = {
+  heavy: [
+    { id: 'carreta', type: 'Carreta', category: 'heavy' as const },
+    { id: 'carreta-ls', type: 'Carreta LS', category: 'heavy' as const },
+    { id: 'vanderleia', type: 'Vanderléia', category: 'heavy' as const },
+    { id: 'bitrem', type: 'Bitrem', category: 'heavy' as const },
+    { id: 'rodotrem', type: 'Rodotrem', category: 'heavy' as const }
+  ],
+  medium: [
+    { id: 'truck', type: 'Truck', category: 'medium' as const },
+    { id: 'bitruck', type: 'Bitruck', category: 'medium' as const },
+    { id: 'toco', type: 'Toco', category: 'medium' as const }
+  ],
+  light: [
+    { id: 'fiorino', type: 'Fiorino', category: 'light' as const },
+    { id: 'vlc', type: 'VLC', category: 'light' as const },
+    { id: 'tres-quartos', type: '3/4', category: 'light' as const },
+    { id: 'van', type: 'Van', category: 'light' as const },
+    { id: 'hr', type: 'HR (Hyundai HR)', category: 'light' as const },
+    { id: 'utilitario', type: 'Utilitário', category: 'light' as const },
+    { id: 'kombi', type: 'Kombi', category: 'light' as const },
+    { id: 'moto', type: 'Moto', category: 'light' as const }
+  ]
+};
 
-const tiposVeiculos = [
-  { value: "van", label: "Van" },
-  { value: "vuc", label: "VUC" },
-  { value: "34", label: "3/4" },
-  { value: "toco", label: "Toco" },
-  { value: "truck", label: "Truck" },
-  { value: "carreta", label: "Carreta" },
-  { value: "bitrem", label: "Bitrem" },
-  { value: "rodotrem", label: "Rodotrem" },
-];
-
-const tiposCarrocerias = [
-  { value: "bau", label: "Baú" },
-  { value: "bau-refrigerado", label: "Baú Refrigerado" },
-  { value: "sider", label: "Sider" },
-  { value: "cacamba", label: "Caçamba" },
-  { value: "grade-baixa", label: "Grade Baixa" },
-  { value: "prancha", label: "Prancha" },
-  { value: "container", label: "Container" },
-];
+// Body types by category - updated with all types
+const bodyTypes = {
+  open: [
+    { id: 'graneleiro', type: 'Graneleiro', category: 'open' as const },
+    { id: 'grade-baixa', type: 'Grade Baixa', category: 'open' as const },
+    { id: 'prancha', type: 'Prancha', category: 'open' as const },
+    { id: 'cacamba', type: 'Caçamba', category: 'open' as const },
+    { id: 'plataforma', type: 'Plataforma', category: 'open' as const }
+  ],
+  closed: [
+    { id: 'sider', type: 'Sider', category: 'closed' as const },
+    { id: 'bau', type: 'Baú', category: 'closed' as const },
+    { id: 'bau-frigorifico', type: 'Baú Frigorífico', category: 'closed' as const },
+    { id: 'bau-refrigerado', type: 'Baú Refrigerado', category: 'closed' as const }
+  ],
+  special: [
+    { id: 'silo', type: 'Silo', category: 'special' as const },
+    { id: 'cegonheiro', type: 'Cegonheiro', category: 'special' as const },
+    { id: 'gaiola', type: 'Gaiola', category: 'special' as const },
+    { id: 'tanque', type: 'Tanque', category: 'special' as const },
+    { id: 'bug-porta-container', type: 'Bug Porta Container', category: 'special' as const },
+    { id: 'munk', type: 'Munk', category: 'special' as const },
+    { id: 'apenas-cavalo', type: 'Apenas Cavalo', category: 'special' as const },
+    { id: 'cavaqueira', type: 'Cavaqueira', category: 'special' as const },
+    { id: 'hopper', type: 'Hopper', category: 'special' as const },
+    { id: 'cegonha', type: 'Cegonha', category: 'special' as const },
+    { id: 'porta-container', type: 'Porta Container', category: 'special' as const }
+  ]
+};
 
 const FreightCompleteForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [generatedFreights, setGeneratedFreights] = useState<any[]>([]);
-  
-  const [formData, setFormData] = useState<FormData>({
-    origem: { cep: '', endereco: '', cidade: '', estado: '' },
-    destinos: [{ cep: '', endereco: '', cidade: '', estado: '' }],
-    tipoCarga: '',
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [generatedFreights, setGeneratedFreights] = useState([]);
+
+  const [formData, setFormData] = useState({
+    // Etapa 1 - Colaboradores
+    selectedCollaborators: [] as string[],
+    
+    // Etapa 2 - Origem e Paradas
+    origem: {
+      estado: '',
+      cidade: ''
+    },
+    paradas: [] as Array<{ id: string; estado: string; cidade: string }>,
+    
+    // Etapa 3 - Carga e Veículos (reformulada)
+    dataColeta: '',
+    horarioColeta: '',
+    dimensoes: {
+      altura: '',
+      largura: '',
+      comprimento: ''
+    },
     peso: '',
-    dimensoes: { comprimento: '', largura: '', altura: '' },
-    valor: '',
-    observacoesCarga: '',
-    tipoVeiculo: '',
-    tipoCarroceria: '',
-    tipoValor: 'combinar',
+    tiposVeiculos: [] as Array<{ id: string; type: string; category: 'heavy' | 'medium' | 'light'; selected: boolean }>,
+    tiposCarrocerias: [] as Array<{ id: string; type: string; category: 'closed' | 'open' | 'special'; selected: boolean }>,
+    tipoValor: '', // 'combinar' ou 'valor'
+    valorOfertado: '',
+    
+    // Etapa 4 - Configurações
     valorFrete: '',
-    quemPagaPedagio: '',
-    direcaoPedagio: '',
+    pedagioPagoPor: '',
+    pedagioDirecao: '',
     precisaAjudante: false,
     precisaRastreador: false,
-    precisaSeguro: false,
-    observacoes: '',
+    beneficios: [] as string[],
+    observacoes: ''
   });
 
-  const handleInputChange = (field: string, value: any) => {
-    setFormData((prev) => {
-      if (field.includes('.')) {
-        const [parent, child] = field.split('.');
-        return {
-          ...prev,
-          [parent]: {
-            ...prev[parent as keyof FormData],
-            [child]: value
+  const { estados } = useEstados();
+  const { cidades: cidadesOrigem } = useCidades(formData.origem.estado);
+
+  // Create a custom hook for fetching cities for multiple states
+  const useMultipleCidades = (estados: string[]) => {
+    return useQuery({
+      queryKey: ['multiple-cidades', estados],
+      queryFn: async () => {
+        if (!estados.length) return {};
+        
+        const cidadesByState: Record<string, any[]> = {};
+        
+        for (const estado of estados) {
+          if (estado) {
+            try {
+              const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${estado}/municipios?orderBy=nome`);
+              if (response.ok) {
+                const data = await response.json();
+                cidadesByState[estado] = data;
+              } else {
+                cidadesByState[estado] = [];
+              }
+            } catch (error) {
+              console.error(`Erro ao buscar cidades para ${estado}:`, error);
+              cidadesByState[estado] = [];
+            }
           }
-        };
-      } else if (field.includes('[')) {
-        const match = field.match(/(\w+)\[(\d+)\]\.(\w+)/);
-        if (match) {
-          const [_, arrayName, index, property] = match;
-          const newArray = [...prev[arrayName as keyof FormData] as any[]];
-          newArray[parseInt(index)][property] = value;
-          return {
-            ...prev,
-            [arrayName]: newArray
-          };
         }
-        return prev;
-      } else {
-        return {
-          ...prev,
-          [field]: value
-        };
-      }
+        
+        return cidadesByState;
+      },
+      enabled: estados.length > 0,
     });
   };
 
-  const addDestino = () => {
-    setFormData(prev => ({
-      ...prev,
-      destinos: [...prev.destinos, { cep: '', endereco: '', cidade: '', estado: '' }]
-    }));
+  // Get unique states from paradas
+  const paradaStates = useMemo(() => {
+    return [...new Set(formData.paradas.map(p => p.estado).filter(Boolean))];
+  }, [formData.paradas]);
+
+  // Fetch cities for all parada states using the custom hook
+  const { data: cidadesByState = {} } = useMultipleCidades(paradaStates);
+
+  // Fetch collaborators
+  const { data: collaborators = [] } = useQuery({
+    queryKey: ['collaborators'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      const { data: company } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!company) throw new Error('Empresa não encontrada');
+
+      const { data, error } = await supabase
+        .from('collaborators')
+        .select('*')
+        .eq('company_id', company.id);
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Funções para gerenciar paradas
+  const addParada = () => {
+    const newParada = {
+      id: Date.now().toString(),
+      estado: '',
+      cidade: ''
+    };
+    setFormData({
+      ...formData,
+      paradas: [...formData.paradas, newParada]
+    });
   };
 
-  const removeDestino = (index: number) => {
-    if (formData.destinos.length > 1) {
-      setFormData(prev => ({
-        ...prev,
-        destinos: prev.destinos.filter((_, i) => i !== index)
-      }));
+  const removeParada = (id: string) => {
+    setFormData({
+      ...formData,
+      paradas: formData.paradas.filter(parada => parada.id !== id)
+    });
+  };
+
+  const updateParada = (id: string, field: 'estado' | 'cidade', value: string) => {
+    setFormData({
+      ...formData,
+      paradas: formData.paradas.map(parada =>
+        parada.id === id
+          ? { ...parada, [field]: value, ...(field === 'estado' ? { cidade: '' } : {}) }
+          : parada
+      )
+    });
+  };
+
+  // Nova função para lidar com o drag and drop
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) {
+      return;
     }
+
+    const items = Array.from(formData.paradas);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    setFormData({
+      ...formData,
+      paradas: items
+    });
   };
 
-  const nextStep = () => {
-    if (validateCurrentStep()) {
-      if (currentStep < 4) {
-        setCurrentStep(currentStep + 1);
-        window.scrollTo(0, 0);
-      } else {
-        submitForm();
-      }
+  // Vehicle selection functions
+  const toggleVehicleType = (vehicleId: string, type: string, category: 'heavy' | 'medium' | 'light') => {
+    const existing = formData.tiposVeiculos.find(v => v.id === vehicleId);
+    if (existing) {
+      setFormData({
+        ...formData,
+        tiposVeiculos: formData.tiposVeiculos.filter(v => v.id !== vehicleId)
+      });
     } else {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos obrigatórios.",
-        variant: "destructive",
+      setFormData({
+        ...formData,
+        tiposVeiculos: [...formData.tiposVeiculos, { id: vehicleId, type, category, selected: true }]
       });
     }
   };
 
-  const prevStep = () => {
+  // Body type selection functions
+  const toggleBodyType = (bodyId: string, type: string, category: 'closed' | 'open' | 'special') => {
+    const existing = formData.tiposCarrocerias.find(b => b.id === bodyId);
+    if (existing) {
+      setFormData({
+        ...formData,
+        tiposCarrocerias: formData.tiposCarrocerias.filter(b => b.id !== bodyId)
+      });
+    } else {
+      setFormData({
+        ...formData,
+        tiposCarrocerias: [...formData.tiposCarrocerias, { id: bodyId, type, category, selected: true }]
+      });
+    }
+  };
+
+  const steps = [
+    { number: 1, title: 'Colaboradores', icon: Users, description: 'Selecione os responsáveis' },
+    { number: 2, title: 'Origem e Paradas', icon: MapPin, description: 'Locais de coleta e paradas' },
+    { number: 3, title: 'Carga e Veículos', icon: Truck, description: 'Especificações da carga' },
+    { number: 4, title: 'Configurações', icon: Settings, description: 'Detalhes finais' }
+  ];
+
+  const benefitOptions = [
+    'Vale combustível',
+    'Adiantamento',
+    'Desconto no óleo diesel',
+    'Seguro carga incluso',
+    'Manutenção coberta',
+    'Pneus inclusos'
+  ];
+
+  const handleNext = () => {
+    if (currentStep < 4) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      handleSubmit();
+    }
+  };
+
+  const handlePrevious = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
-      window.scrollTo(0, 0);
     }
   };
 
-  const validateCurrentStep = () => {
-    switch (currentStep) {
-      case 1:
-        return formData.origem.cep && formData.origem.cidade && formData.origem.estado &&
-          formData.destinos.every(d => d.cep && d.cidade && d.estado);
-      case 2:
-        return formData.tipoCarga && formData.peso;
-      case 3:
-        return formData.tipoVeiculo && formData.tipoCarroceria;
-      case 4:
-        if (formData.tipoValor === 'valor' && !formData.valorFrete) {
-          return false;
-        }
-        return formData.quemPagaPedagio && 
-          (formData.quemPagaPedagio !== 'empresa' || formData.direcaoPedagio);
-      default:
-        return true;
-    }
-  };
-
-  const submitForm = async () => {
-    setIsLoading(true);
-    
+  const handleSubmit = async () => {
     try {
-      // Simulação de envio para API
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      setIsSubmitting(true);
       
-      // Simulação de resposta da API
-      const mockResponse = formData.destinos.map((destino, index) => ({
-        id: `freight-${Date.now()}-${index}`,
-        codigo_agregamento: `FR${Math.floor(100000 + Math.random() * 900000)}`,
-        destino_cidade: destino.cidade,
-        destino_estado: destino.estado,
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      const { data: company } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!company) throw new Error('Empresa não encontrada');
+
+      // Convert paradas to destinos format
+      const destinos = formData.paradas.map((parada, index) => ({
+        id: parada.id || index.toString(),
+        state: parada.estado,
+        city: parada.cidade
       }));
-      
-      setGeneratedFreights(mockResponse);
-      setShowSuccess(true);
+
+      const freightData = {
+        company_id: company.id,
+        tipo_frete: 'frete_completo',
+        origem_estado: formData.origem.estado,
+        origem_cidade: formData.origem.cidade,
+        destinos: destinos,
+        tipo_mercadoria: 'Geral', // Default value required by schema
+        paradas: formData.paradas,
+        data_coleta: formData.dataColeta || null,
+        horario_carregamento: formData.horarioColeta || null,
+        peso_carga: formData.peso ? parseFloat(formData.peso) : null,
+        tipos_veiculos: formData.tiposVeiculos,
+        tipos_carrocerias: formData.tiposCarrocerias,
+        valores_definidos: formData.tipoValor === 'valor' ? {
+          tipo: 'valor_fixo',
+          valor: formData.valorOfertado ? parseFloat(formData.valorOfertado) : 0
+        } : {
+          tipo: 'a_combinar'
+        },
+        precisa_ajudante: formData.precisaAjudante,
+        precisa_rastreador: formData.precisaRastreador,
+        pedagio_pago_por: formData.pedagioPagoPor,
+        pedagio_direcao: formData.pedagioDirecao,
+        beneficios: formData.beneficios,
+        observacoes: formData.observacoes,
+        collaborator_ids: formData.selectedCollaborators,
+        status: 'pendente'
+      };
+
+      const { data, error } = await supabase
+        .from('fretes')
+        .insert([freightData])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Convert the single freight to the format expected by FreightSuccessDialog
+      const generatedFreight = {
+        id: data.id,
+        codigo_agregamento: data.id, // Use the freight ID as code for now
+        destino_cidade: formData.paradas.length > 0 ? formData.paradas[0].cidade : '',
+        destino_estado: formData.paradas.length > 0 ? formData.paradas[0].estado : ''
+      };
+
+      setGeneratedFreights([generatedFreight]);
+      setIsSubmitting(false);
+      setShowVerificationDialog(true);
     } catch (error) {
+      console.error('Erro ao criar frete:', error);
+      setIsSubmitting(false);
       toast({
-        title: "Erro ao enviar",
-        description: "Ocorreu um erro ao enviar sua solicitação. Tente novamente.",
+        title: "Erro",
+        description: "Erro ao criar frete. Tente novamente.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const handleNewFreight = () => {
-    setShowSuccess(false);
-    setFormData({
-      origem: { cep: '', endereco: '', cidade: '', estado: '' },
-      destinos: [{ cep: '', endereco: '', cidade: '', estado: '' }],
-      tipoCarga: '',
-      peso: '',
-      dimensoes: { comprimento: '', largura: '', altura: '' },
-      valor: '',
-      observacoesCarga: '',
-      tipoVeiculo: '',
-      tipoCarroceria: '',
-      tipoValor: 'combinar',
-      valorFrete: '',
-      quemPagaPedagio: '',
-      direcaoPedagio: '',
-      precisaAjudante: false,
-      precisaRastreador: false,
-      precisaSeguro: false,
-      observacoes: '',
-    });
-    setCurrentStep(1);
+  const handleBack = () => {
+    navigate('/freight-request');
   };
 
-  const renderStep1 = () => (
-    <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-gray-800">Origem e Destino</h2>
-        <p className="text-gray-600">Informe os locais de coleta e entrega</p>
-      </div>
+  // Convert formData to the format expected by FreightVerificationDialog
+  const convertedFormData = {
+    collaborator_ids: formData.selectedCollaborators,
+    origem_cidade: formData.origem.cidade,
+    origem_estado: formData.origem.estado,
+    destinos: formData.paradas.map((parada, index) => ({ 
+      id: parada.id || index.toString(), 
+      state: parada.estado, 
+      city: parada.cidade 
+    })),
+    tipo_mercadoria: 'Geral',
+    tipos_veiculos: formData.tiposVeiculos,
+    tipos_carrocerias: formData.tiposCarrocerias,
+    vehicle_price_tables: [{
+      vehicleType: 'Frete Completo',
+      ranges: [{
+        id: '1',
+        kmStart: 0,
+        kmEnd: 9999,
+        price: formData.valorOfertado ? parseFloat(formData.valorOfertado) : 0
+      }]
+    }],
+    regras_agendamento: [],
+    beneficios: formData.beneficios,
+    horario_carregamento: formData.horarioColeta,
+    precisa_ajudante: formData.precisaAjudante,
+    precisa_rastreador: formData.precisaRastreador,
+    precisa_seguro: false,
+    pedagio_pago_por: formData.pedagioPagoPor,
+    pedagio_direcao: formData.pedagioDirecao,
+    observacoes: formData.observacoes
+  };
 
-      {/* Origem */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <MapPin className="w-5 h-5" />
-            <span>Local de Origem</span>
-          </CardTitle>
-          <CardDescription>
-            Informe o endereço de coleta da carga
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="origem-cep">CEP</Label>
-              <Input
-                id="origem-cep"
-                placeholder="00000-000"
-                value={formData.origem.cep}
-                onChange={(e) => handleInputChange('origem.cep', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="origem-endereco">Endereço</Label>
-              <Input
-                id="origem-endereco"
-                placeholder="Rua, número, complemento"
-                value={formData.origem.endereco}
-                onChange={(e) => handleInputChange('origem.endereco', e.target.value)}
-              />
+  if (isSubmitting) {
+    return <FreightLoadingAnimation open={true} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-3">
+              <Button
+                onClick={handleBack}
+                variant="outline"
+                size="sm"
+                className="flex items-center space-x-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Voltar</span>
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold text-gray-800">Frete Completo</h1>
+                <p className="text-sm text-gray-600">Etapa {currentStep} de 4</p>
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="origem-cidade">Cidade</Label>
-              <Input
-                id="origem-cidade"
-                placeholder="Cidade"
-                value={formData.origem.cidade}
-                onChange={(e) => handleInputChange('origem.cidade', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="origem-estado">Estado</Label>
-              <Input
-                id="origem-estado"
-                placeholder="UF"
-                value={formData.origem.estado}
-                onChange={(e) => handleInputChange('origem.estado', e.target.value)}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </header>
 
-      {/* Destinos */}
-      {formData.destinos.map((destino, index) => (
-        <Card key={index}>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <MapPin className="w-5 h-5" />
-                <span>Local de Destino {formData.destinos.length > 1 ? `#${index + 1}` : ''}</span>
-              </div>
-              {formData.destinos.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeDestino(index)}
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                >
-                  Remover
-                </Button>
-              )}
-            </CardTitle>
-            <CardDescription>
-              Informe o endereço de entrega da carga
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor={`destino-cep-${index}`}>CEP</Label>
-                <Input
-                  id={`destino-cep-${index}`}
-                  placeholder="00000-000"
-                  value={destino.cep}
-                  onChange={(e) => handleInputChange(`destinos[${index}].cep`, e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor={`destino-endereco-${index}`}>Endereço</Label>
-                <Input
-                  id={`destino-endereco-${index}`}
-                  placeholder="Rua, número, complemento"
-                  value={destino.endereco}
-                  onChange={(e) => handleInputChange(`destinos[${index}].endereco`, e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor={`destino-cidade-${index}`}>Cidade</Label>
-                <Input
-                  id={`destino-cidade-${index}`}
-                  placeholder="Cidade"
-                  value={destino.cidade}
-                  onChange={(e) => handleInputChange(`destinos[${index}].cidade`, e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor={`destino-estado-${index}`}>Estado</Label>
-                <Input
-                  id={`destino-estado-${index}`}
-                  placeholder="UF"
-                  value={destino.estado}
-                  onChange={(e) => handleInputChange(`destinos[${index}].estado`, e.target.value)}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-
-      <div className="flex justify-center">
-        <Button
-          variant="outline"
-          onClick={addDestino}
-          className="flex items-center space-x-2"
-        >
-          <span>Adicionar outro destino</span>
-          <MapPin className="w-4 h-4" />
-        </Button>
-      </div>
-    </div>
-  );
-
-  const renderStep2 = () => (
-    <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-gray-800">Informações da Carga</h2>
-        <p className="text-gray-600">Descreva as características da carga a ser transportada</p>
-      </div>
-
-      {/* Tipo de Carga */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Package className="w-5 h-5" />
-            <span>Tipo de Carga</span>
-          </CardTitle>
-          <CardDescription>
-            Informe o tipo de mercadoria a ser transportada
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Input
-            placeholder="Ex: Eletrônicos, Alimentos, Móveis, etc."
-            value={formData.tipoCarga}
-            onChange={(e) => handleInputChange('tipoCarga', e.target.value)}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Peso e Dimensões */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Package className="w-5 h-5" />
-            <span>Peso e Dimensões</span>
-          </CardTitle>
-          <CardDescription>
-            Informe o peso e as dimensões da carga
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="peso">Peso (kg)</Label>
-            <Input
-              id="peso"
-              type="number"
-              placeholder="0"
-              value={formData.peso}
-              onChange={(e) => handleInputChange('peso', e.target.value)}
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="comprimento">Comprimento (cm)</Label>
-              <Input
-                id="comprimento"
-                type="number"
-                placeholder="0"
-                value={formData.dimensoes.comprimento}
-                onChange={(e) => handleInputChange('dimensoes.comprimento', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="largura">Largura (cm)</Label>
-              <Input
-                id="largura"
-                type="number"
-                placeholder="0"
-                value={formData.dimensoes.largura}
-                onChange={(e) => handleInputChange('dimensoes.largura', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="altura">Altura (cm)</Label>
-              <Input
-                id="altura"
-                type="number"
-                placeholder="0"
-                value={formData.dimensoes.altura}
-                onChange={(e) => handleInputChange('dimensoes.altura', e.target.value)}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Valor da Carga */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <DollarSign className="w-5 h-5" />
-            <span>Valor da Carga</span>
-          </CardTitle>
-          <CardDescription>
-            Informe o valor aproximado da mercadoria
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Input
-            type="number"
-            placeholder="0,00"
-            value={formData.valor}
-            onChange={(e) => handleInputChange('valor', e.target.value)}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Observações */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <FileText className="w-5 h-5" />
-            <span>Observações sobre a Carga</span>
-          </CardTitle>
-          <CardDescription>
-            Adicione informações adicionais sobre a carga (opcional)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder="Ex: Carga frágil, necessita cuidados especiais, etc..."
-            value={formData.observacoesCarga}
-            onChange={(e) => handleInputChange('observacoesCarga', e.target.value)}
-            className="min-h-[100px]"
-          />
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const renderStep3 = () => (
-    <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-gray-800">Tipo de Veículo</h2>
-        <p className="text-gray-600">Selecione o tipo de veículo necessário para o transporte</p>
-      </div>
-
-      {/* Tipo de Veículo */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Truck className="w-5 h-5" />
-            <span>Tipo de Veículo</span>
-          </CardTitle>
-          <CardDescription>
-            Escolha o tipo de veículo adequado para sua carga
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {tiposVeiculos.map((tipo) => (
-              <div key={tipo.value} className="flex items-center space-x-2">
-                <RadioGroup
-                  value={formData.tipoVeiculo}
-                  onValueChange={(value) => handleInputChange('tipoVeiculo', value)}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value={tipo.value} id={`veiculo-${tipo.value}`} />
-                    <Label htmlFor={`veiculo-${tipo.value}`} className="cursor-pointer flex-1">
-                      <div className={`border rounded-lg p-4 transition-all ${
-                        formData.tipoVeiculo === tipo.value 
-                          ? 'border-blue-500 bg-blue-50' 
-                          : 'border-gray-200 hover:border-blue-300 hover:bg-blue-25'
-                      }`}>
-                        <h3 className={`font-medium ${
-                          formData.tipoVeiculo === tipo.value ? 'text-blue-800' : 'text-gray-800'
-                        }`}>{tipo.label}</h3>
-                      </div>
-                    </Label>
+      {/* Progress Bar */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            {steps.map((step, index) => (
+              <div key={step.number} className="flex items-center">
+                <div className={`flex items-center space-x-2 ${
+                  currentStep >= step.number ? 'text-blue-600' : 'text-gray-400'
+                }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    currentStep >= step.number ? 'bg-blue-600 text-white' : 'bg-gray-200'
+                  }`}>
+                    <step.icon className="w-4 h-4" />
                   </div>
-                </RadioGroup>
+                  <div className="hidden sm:block">
+                    <p className="text-sm font-medium">{step.title}</p>
+                    <p className="text-xs">{step.description}</p>
+                  </div>
+                </div>
+                {index < steps.length - 1 && (
+                  <div className={`w-8 sm:w-16 h-0.5 mx-2 sm:mx-4 ${
+                    currentStep > step.number ? 'bg-blue-600' : 'bg-gray-200'
+                  }`} />
+                )}
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Tipo de Carroceria */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Truck className="w-5 h-5" />
-            <span>Tipo de Carroceria</span>
-          </CardTitle>
-          <CardDescription>
-            Escolha o tipo de carroceria necessária
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {tiposCarrocerias.map((tipo) => (
-              <div key={tipo.value} className="flex items-center space-x-2">
-                <RadioGroup
-                  value={formData.tipoCarroceria}
-                  onValueChange={(value) => handleInputChange('tipoCarroceria', value)}
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Etapa 1 - Colaboradores */}
+        {currentStep === 1 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Users className="w-5 h-5" />
+                <span>Selecionar Colaboradores Responsáveis</span>
+              </CardTitle>
+              <CardDescription>
+                Escolha os colaboradores que serão responsáveis por este frete
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {collaborators.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Nenhum colaborador cadastrado</p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate('/collaborator-registration')}
+                    className="mt-4"
+                  >
+                    Cadastrar Colaborador
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {collaborators.map((collaborator) => (
+                    <div
+                      key={collaborator.id}
+                      className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                        formData.selectedCollaborators.includes(collaborator.id)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                      onClick={() => {
+                        const selected = formData.selectedCollaborators.includes(collaborator.id);
+                        if (selected) {
+                          setFormData({
+                            ...formData,
+                            selectedCollaborators: formData.selectedCollaborators.filter(id => id !== collaborator.id)
+                          });
+                        } else {
+                          setFormData({
+                            ...formData,
+                            selectedCollaborators: [...formData.selectedCollaborators, collaborator.id]
+                          });
+                        }
+                      }}
+                    >
+                      <h3 className="font-medium">{collaborator.name}</h3>
+                      <p className="text-sm text-gray-500">{collaborator.sector}</p>
+                      <p className="text-sm text-gray-500">{collaborator.phone}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Etapa 2 - Origem e Paradas */}
+        {currentStep === 2 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Origem */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <MapPin className="w-5 h-5 text-green-600" />
+                  <span>Origem</span>
+                </CardTitle>
+                <CardDescription>
+                  Local de coleta da carga
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="origem-estado">Estado</Label>
+                  <Select 
+                    value={formData.origem.estado} 
+                    onValueChange={(value) => setFormData({
+                      ...formData,
+                      origem: { estado: value, cidade: '' }
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {estados.map((estado) => (
+                        <SelectItem key={estado.sigla} value={estado.sigla}>
+                          {estado.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="origem-cidade">Cidade</Label>
+                  <Select 
+                    value={formData.origem.cidade} 
+                    onValueChange={(value) => setFormData({
+                      ...formData,
+                      origem: { ...formData.origem, cidade: value }
+                    })}
+                    disabled={!formData.origem.estado}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a cidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cidadesOrigem.map((cidade) => (
+                        <SelectItem key={cidade.id} value={cidade.nome}>
+                          {cidade.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Paradas */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-5 h-5 text-red-600" />
+                    <span>Paradas</span>
+                  </div>
+                  <Button
+                    onClick={addParada}
+                    size="sm"
+                    className="flex items-center space-x-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Adicionar Parada</span>
+                  </Button>
+                </CardTitle>
+                <CardDescription>
+                  Locais onde o veículo deve parar durante o trajeto. Arraste os cards para reordenar.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {formData.paradas.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <MapPin className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                    <p className="font-medium">Nenhuma parada adicionada</p>
+                    <p className="text-sm mt-1">Clique em "Adicionar Parada" para incluir paradas no trajeto</p>
+                  </div>
+                ) : (
+                  <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable droppableId="paradas">
+                      {(provided) => (
+                        <div
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
+                          className="space-y-4 max-h-96 overflow-y-auto"
+                        >
+                          {formData.paradas.map((parada, index) => {
+                            const cidadesParada = cidadesByState[parada.estado] || [];
+                            
+                            return (
+                              <Draggable key={parada.id} draggableId={parada.id} index={index}>
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    className={`border border-gray-200 rounded-lg p-4 bg-gray-50 transition-all ${
+                                      snapshot.isDragging ? 'shadow-lg scale-105 bg-white border-blue-300 rotate-2' : 'hover:shadow-md'
+                                    }`}
+                                    style={provided.draggableProps.style}
+                                  >
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center space-x-2">
+                                        <div
+                                          {...provided.dragHandleProps}
+                                          className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-1"
+                                        >
+                                          <GripVertical className="w-4 h-4" />
+                                        </div>
+                                        <h4 className="font-medium text-sm text-gray-700">Parada {index + 1}</h4>
+                                      </div>
+                                      <Button
+                                        onClick={() => removeParada(parada.id)}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                      <div>
+                                        <Label className="text-xs font-medium text-gray-600">Estado</Label>
+                                        <Select 
+                                          value={parada.estado} 
+                                          onValueChange={(value) => updateParada(parada.id, 'estado', value)}
+                                        >
+                                          <SelectTrigger className="h-9">
+                                            <SelectValue placeholder="Estado" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {estados.map((estado) => (
+                                              <SelectItem key={estado.sigla} value={estado.sigla}>
+                                                {estado.nome}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs font-medium text-gray-600">Cidade</Label>
+                                        <Select 
+                                          value={parada.cidade} 
+                                          onValueChange={(value) => updateParada(parada.id, 'cidade', value)}
+                                          disabled={!parada.estado}
+                                        >
+                                          <SelectTrigger className="h-9">
+                                            <SelectValue placeholder="Cidade" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {cidadesParada.map((cidade) => (
+                                              <SelectItem key={cidade.id} value={cidade.nome}>
+                                                {cidade.nome}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            );
+                          })}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Etapa 3 - Carga e Veículos (UPDATED WITH ALL TYPES) */}
+        {currentStep === 3 && (
+          <div className="space-y-6">
+            {/* Data e Horário de Coleta */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Calendar className="w-5 h-5" />
+                  <span>Data e Horário de Coleta *</span>
+                </CardTitle>
+                <CardDescription>
+                  Informações obrigatórias sobre quando a carga será coletada
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="data-coleta">Data de Coleta *</Label>
+                    <Input
+                      id="data-coleta"
+                      type="date"
+                      value={formData.dataColeta}
+                      onChange={(e) => setFormData({ ...formData, dataColeta: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="horario-coleta">Horário de Coleta *</Label>
+                    <Input
+                      id="horario-coleta"
+                      type="time"
+                      value={formData.horarioColeta}
+                      onChange={(e) => setFormData({ ...formData, horarioColeta: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Dimensões e Peso */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Package className="w-5 h-5" />
+                  <span>Dimensões e Peso (Opcional)</span>
+                </CardTitle>
+                <CardDescription>
+                  Informações sobre as dimensões e peso da carga
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <Label htmlFor="altura">Altura (m)</Label>
+                    <Input
+                      id="altura"
+                      type="number"
+                      step="0.01"
+                      placeholder="Ex: 2.5"
+                      value={formData.dimensoes.altura}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        dimensoes: { ...formData.dimensoes, altura: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="largura">Largura (m)</Label>
+                    <Input
+                      id="largura"
+                      type="number"
+                      step="0.01"
+                      placeholder="Ex: 2.4"
+                      value={formData.dimensoes.largura}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        dimensoes: { ...formData.dimensoes, largura: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="comprimento">Comprimento (m)</Label>
+                    <Input
+                      id="comprimento"
+                      type="number"
+                      step="0.01"
+                      placeholder="Ex: 14.0"
+                      value={formData.dimensoes.comprimento}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        dimensoes: { ...formData.dimensoes, comprimento: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="peso">Peso (kg)</Label>
+                    <Input
+                      id="peso"
+                      type="number"
+                      placeholder="Ex: 25000"
+                      value={formData.peso}
+                      onChange={(e) => setFormData({ ...formData, peso: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tipos de Veículos - UPDATED WITH ALL VEHICLE TYPES */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Truck className="w-5 h-5" />
+                  <span>Tipos de Veículos *</span>
+                </CardTitle>
+                <CardDescription>
+                  Selecione os tipos de veículos aceitos para este frete
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Veículos Pesados */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Veículos Pesados</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {vehicleTypes.heavy.map((vehicle) => (
+                        <div
+                          key={vehicle.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposVeiculos.some(v => v.id === vehicle.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
+                        >
+                          <p className="text-sm font-medium">{vehicle.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Veículos Médios */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Veículos Médios</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {vehicleTypes.medium.map((vehicle) => (
+                        <div
+                          key={vehicle.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposVeiculos.some(v => v.id === vehicle.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
+                        >
+                          <p className="text-sm font-medium">{vehicle.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Veículos Leves */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Veículos Leves</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {vehicleTypes.light.map((vehicle) => (
+                        <div
+                          key={vehicle.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposVeiculos.some(v => v.id === vehicle.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
+                        >
+                          <p className="text-sm font-medium">{vehicle.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tipos de Carroceria - UPDATED WITH ALL BODY TYPES */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Tipos de Carroceria *</CardTitle>
+                <CardDescription>
+                  Selecione os tipos de carroceria aceitos para este frete
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Carrocerias Abertas */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Carrocerias Abertas</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {bodyTypes.open.map((body) => (
+                        <div
+                          key={body.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposCarrocerias.some(b => b.id === body.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleBodyType(body.id, body.type, body.category)}
+                        >
+                          <p className="text-sm font-medium">{body.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Carrocerias Fechadas */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Carrocerias Fechadas</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {bodyTypes.closed.map((body) => (
+                        <div
+                          key={body.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposCarrocerias.some(b => b.id === body.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleBodyType(body.id, body.type, body.category)}
+                        >
+                          <p className="text-sm font-medium">{body.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Carrocerias Especiais */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Carrocerias Especiais</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {bodyTypes.special.map((body) => (
+                        <div
+                          key={body.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposCarrocerias.some(b => b.id === body.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleBodyType(body.id, body.type, body.category)}
+                        >
+                          <p className="text-sm font-medium">{body.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Valor do Frete */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <DollarSign className="w-5 h-5" />
+                  <span>Valor do Frete *</span>
+                </CardTitle>
+                <CardDescription>
+                  Escolha como será definido o valor do frete
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <RadioGroup 
+                  value={formData.tipoValor} 
+                  onValueChange={(value) => setFormData({ ...formData, tipoValor: value, valorOfertado: '' })}
+                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
                 >
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value={tipo.value} id={`carroceria-${tipo.value}`} />
-                    <Label htmlFor={`carroceria-${tipo.value}`} className="cursor-pointer flex-1">
+                    <RadioGroupItem value="combinar" id="combinar" />
+                    <Label htmlFor="combinar" className="cursor-pointer flex-1">
                       <div className={`border rounded-lg p-4 transition-all ${
-                        formData.tipoCarroceria === tipo.value 
+                        formData.tipoValor === 'combinar' 
+                          ? 'border-purple-500 bg-purple-50' 
+                          : 'border-gray-200 hover:border-purple-300 hover:bg-purple-25'
+                      }`}>
+                        <h3 className={`font-medium ${
+                          formData.tipoValor === 'combinar' ? 'text-purple-800' : 'text-gray-800'
+                        }`}>A Combinar</h3>
+                        <p className={`text-sm ${
+                          formData.tipoValor === 'combinar' ? 'text-purple-600' : 'text-gray-500'
+                        }`}>Valor será negociado com o transportador</p>
+                      </div>
+                    </Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="valor" id="valor" />
+                    <Label htmlFor="valor" className="cursor-pointer flex-1">
+                      <div className={`border rounded-lg p-4 transition-all ${
+                        formData.tipoValor === 'valor' 
                           ? 'border-green-500 bg-green-50' 
                           : 'border-gray-200 hover:border-green-300 hover:bg-green-25'
                       }`}>
                         <h3 className={`font-medium ${
-                          formData.tipoCarroceria === tipo.value ? 'text-green-800' : 'text-gray-800'
-                        }`}>{tipo.label}</h3>
+                          formData.tipoValor === 'valor' ? 'text-green-800' : 'text-gray-800'
+                        }`}>Valor Fixo</h3>
+                        <p className={`text-sm ${
+                          formData.tipoValor === 'valor' ? 'text-green-600' : 'text-gray-500'
+                        }`}>Definir um valor específico para o frete</p>
                       </div>
                     </Label>
                   </div>
                 </RadioGroup>
-              </div>
-            ))}
+
+                {formData.tipoValor === 'valor' && (
+                  <div className="mt-4">
+                    <Label htmlFor="valor-ofertado">Valor Ofertado (R$)</Label>
+                    <Input
+                      id="valor-ofertado"
+                      type="number"
+                      step="0.01"
+                      placeholder="Ex: 5000.00"
+                      value={formData.valorOfertado}
+                      onChange={(e) => setFormData({ ...formData, valorOfertado: e.target.value })}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+        )}
 
-  const renderStep4 = () => (
-    <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-gray-800">Valor e Condições</h2>
-        <p className="text-gray-600">Configure o valor do frete e condições adicionais</p>
-      </div>
-
-      {/* Tipo de Valor */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <DollarSign className="w-5 h-5" />
-            <span>Valor do Frete</span>
-          </CardTitle>
-          <CardDescription>
-            Escolha como definir o valor do frete
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <RadioGroup
-            value={formData.tipoValor}
-            onValueChange={(value) => handleInputChange('tipoValor', value)}
-            className="space-y-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="combinar" id="combinar" />
-              <Label htmlFor="combinar" className="cursor-pointer flex-1">
-                <div className={`border rounded-lg p-4 transition-all ${
-                  formData.tipoValor === 'combinar' 
-                    ? 'border-purple-500 bg-purple-50' 
-                    : 'border-gray-200 hover:border-purple-300 hover:bg-purple-25'
-                }`}>
-                  <h3 className={`font-medium ${
-                    formData.tipoValor === 'combinar' ? 'text-purple-800' : 'text-gray-800'
-                  }`}>A Combinar</h3>
-                  <p className={`text-sm ${
-                    formData.tipoValor === 'combinar' ? 'text-purple-600' : 'text-gray-500'
-                  }`}>Valor será negociado com o transportador</p>
+        {/* Etapa 4 - Configurações */}
+        {currentStep === 4 && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configurações de Pedágio</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="pedagio-pago-por">Pedágio pago por</Label>
+                  <Select 
+                    value={formData.pedagioPagoPor} 
+                    onValueChange={(value) => setFormData({ ...formData, pedagioPagoPor: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione quem paga" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="embarcador">Embarcador</SelectItem>
+                      <SelectItem value="transportador">Transportador</SelectItem>
+                      <SelectItem value="motorista">Motorista</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </Label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="valor" id="valor" />
-              <Label htmlFor="valor" className="cursor-pointer flex-1">
-                <div className={`border rounded-lg p-4 transition-all ${
-                  formData.tipoValor === 'valor' 
-                    ? 'border-green-500 bg-green-50' 
-                    : 'border-gray-200 hover:border-green-300 hover:bg-green-25'
-                }`}>
-                  <h3 className={`font-medium ${
-                    formData.tipoValor === 'valor' ? 'text-green-800' : 'text-gray-800'
-                  }`}>Valor Fixo</h3>
-                  <p className={`text-sm ${
-                    formData.tipoValor === 'valor' ? 'text-green-600' : 'text-gray-500'
-                  }`}>Definir um valor específico para o frete</p>
+                <div>
+                  <Label htmlFor="pedagio-direcao">Direção do pedágio</Label>
+                  <Select 
+                    value={formData.pedagioDirecao} 
+                    onValueChange={(value) => setFormData({ ...formData, pedagioDirecao: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a direção" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ida">Só ida</SelectItem>
+                      <SelectItem value="volta">Só volta</SelectItem>
+                      <SelectItem value="ida_volta">Ida e volta</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </Label>
-            </div>
-          </RadioGroup>
+              </CardContent>
+            </Card>
 
-          {formData.tipoValor === 'valor' && (
-            <div className="mt-4">
-              <Label htmlFor="valorFrete">Valor do Frete (R$)</Label>
-              <Input
-                id="valorFrete"
-                type="number"
-                placeholder="0,00"
-                value={formData.valorFrete}
-                onChange={(e) => handleInputChange('valorFrete', e.target.value)}
-                className="mt-1"
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Benefícios</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {benefitOptions.map((benefit) => (
+                    <div
+                      key={benefit}
+                      className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                        formData.beneficios.includes(benefit)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                      onClick={() => {
+                        const selected = formData.beneficios.includes(benefit);
+                        if (selected) {
+                          setFormData({
+                            ...formData,
+                            beneficios: formData.beneficios.filter(b => b !== benefit)
+                          });
+                        } else {
+                          setFormData({
+                            ...formData,
+                            beneficios: [...formData.beneficios, benefit]
+                          });
+                        }
+                      }}
+                    >
+                      <p className="text-sm font-medium">{benefit}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-      {/* Pedágio */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Settings className="w-5 h-5" />
-            <span>Pedágio</span>
-          </CardTitle>
-          <CardDescription>
-            Defina quem será responsável pelo pagamento do pedágio
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label className="text-sm font-medium">Quem paga o pedágio?</Label>
-            <Select 
-              value={formData.quemPagaPedagio} 
-              onValueChange={(value) => handleInputChange('quemPagaPedagio', value)}
-            >
-              <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Selecione quem paga" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="motorista">Motorista</SelectItem>
-                <SelectItem value="empresa">Empresa</SelectItem>
-              </SelectContent>
-            </Select>
+            <Card>
+              <CardHeader>
+                <CardTitle>Configurações Adicionais</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="precisa-ajudante"
+                    checked={formData.precisaAjudante}
+                    onCheckedChange={(checked) => setFormData({ ...formData, precisaAjudante: !!checked })}
+                  />
+                  <Label htmlFor="precisa-ajudante">Precisa de ajudante</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="precisa-rastreador"
+                    checked={formData.precisaRastreador}
+                    onCheckedChange={(checked) => setFormData({ ...formData, precisaRastreador: !!checked })}
+                  />
+                  <Label htmlFor="precisa-rastreador">Precisa de rastreador</Label>
+                </div>
+                <div>
+                  <Label htmlFor="observacoes">Observações</Label>
+                  <Textarea
+                    id="observacoes"
+                    value={formData.observacoes}
+                    onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                    placeholder="Observações adicionais sobre o frete..."
+                    rows={4}
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </div>
+        )}
 
-          {formData.quemPagaPedagio === 'empresa' && (
-            <div>
-              <Label className="text-sm font-medium">Direção do pedágio</Label>
-              <Select 
-                value={formData.direcaoPedagio} 
-                onValueChange={(value) => handleInputChange('direcaoPedagio', value)}
-              >
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Selecione a direção" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="apenas-ida">Apenas ida</SelectItem>
-                  <SelectItem value="apenas-volta">Apenas volta</SelectItem>
-                  <SelectItem value="ida-e-volta">IDA E VOLTA</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Requisitos Adicionais */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Settings className="w-5 h-5" />
-            <span>Requisitos Adicionais</span>
-          </CardTitle>
-          <CardDescription>
-            Selecione os requisitos necessários para o transporte
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="precisaSeguro"
-              checked={formData.precisaSeguro}
-              onCheckedChange={(checked) => handleInputChange('precisaSeguro', checked)}
-            />
-            <Label htmlFor="precisaSeguro" className="cursor-pointer">
-              Precisa de seguro
-            </Label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="precisaAjudante"
-              checked={formData.precisaAjudante}
-              onCheckedChange={(checked) => handleInputChange('precisaAjudante', checked)}
-            />
-            <Label htmlFor="precisaAjudante" className="cursor-pointer">
-              Precisa de ajudante
-            </Label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="precisaRastreador"
-              checked={formData.precisaRastreador}
-              onCheckedChange={(checked) => handleInputChange('precisaRastreador', checked)}
-            />
-            <Label htmlFor="precisaRastreador" className="cursor-pointer">
-              Precisa de rastreador
-            </Label>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Observações */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <FileText className="w-5 h-5" />
-            <span>Observações</span>
-          </CardTitle>
-          <CardDescription>
-            Adicione informações adicionais sobre o frete (opcional)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder="Ex: Carga frágil, horário de entrega específico, etc..."
-            value={formData.observacoes}
-            onChange={(e) => handleInputChange('observacoes', e.target.value)}
-            className="min-h-[100px]"
-          />
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 1:
-        return renderStep1();
-      case 2:
-        return renderStep2();
-      case 3:
-        return renderStep3();
-      case 4:
-        return renderStep4();
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/freight-aggregation')}
-            className="mb-4"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
-          </Button>
-          
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-gray-800">Solicitar Frete</h1>
-            <p className="text-gray-600">Preencha os dados para solicitar um novo frete</p>
-          </div>
-          
-          <div className="mt-6 space-y-2">
-            <div className="flex justify-between text-sm font-medium">
-              <span>Etapa {currentStep} de 4</span>
-              <span>{Math.round((currentStep / 4) * 100)}% concluído</span>
-            </div>
-            <Progress value={(currentStep / 4) * 100} className="h-2" />
-          </div>
-        </div>
-
-        {renderCurrentStep()}
-
-        <div className="mt-8 flex justify-between">
+        {/* Navigation Buttons */}
+        <div className="flex justify-between mt-8">
           <Button
             variant="outline"
-            onClick={prevStep}
+            onClick={handlePrevious}
             disabled={currentStep === 1}
+            className="flex items-center space-x-2"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" /> Anterior
+            <ArrowLeft className="w-4 h-4" />
+            <span>Anterior</span>
           </Button>
           
           <Button
-            onClick={nextStep}
-            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+            onClick={handleNext}
+            className="flex items-center space-x-2"
           >
-            {currentStep < 4 ? (
-              <>
-                Próximo <ArrowRight className="ml-2 h-4 w-4" />
-              </>
-            ) : (
-              'Finalizar Solicitação'
-            )}
+            <span>{currentStep === 4 ? 'Finalizar' : 'Próximo'}</span>
+            <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
-      </div>
+      </main>
 
-      <FreightLoadingAnimation open={isLoading} />
-      
+      <FreightVerificationDialog
+        open={showVerificationDialog}
+        onOpenChange={setShowVerificationDialog}
+        formData={convertedFormData}
+        collaborators={collaborators || []}
+        onEdit={() => setShowVerificationDialog(false)}
+        onConfirm={() => {
+          setShowVerificationDialog(false);
+          setShowSuccessDialog(true);
+        }}
+        loading={false}
+      />
+
       <FreightSuccessDialog
-        open={showSuccess}
-        onOpenChange={setShowSuccess}
+        open={showSuccessDialog}
+        onOpenChange={(open) => {
+          setShowSuccessDialog(open);
+          if (!open) {
+            navigate('/company-dashboard');
+          }
+        }}
         generatedFreights={generatedFreights}
-        onNewFreight={handleNewFreight}
-        onBackToDashboard={() => navigate('/company-dashboard')}
+        onNewFreight={() => {
+          setShowSuccessDialog(false);
+          // Reset form for new freight
+          setCurrentStep(1);
+          setFormData({
+            selectedCollaborators: [],
+            origem: { estado: '', cidade: '' },
+            paradas: [],
+            dataColeta: '',
+            horarioColeta: '',
+            dimensoes: { altura: '', largura: '', comprimento: '' },
+            peso: '',
+            tiposVeiculos: [],
+            tiposCarrocerias: [],
+            tipoValor: '',
+            valorOfertado: '',
+            valorFrete: '',
+            pedagioPagoPor: '',
+            pedagioDirecao: '',
+            precisaAjudante: false,
+            precisaRastreador: false,
+            beneficios: [],
+            observacoes: ''
+          });
+        }}
+        onBackToDashboard={() => {
+          setShowSuccessDialog(false);
+          navigate('/company-dashboard');
+        }}
       />
     </div>
   );
