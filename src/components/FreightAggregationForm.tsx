@@ -598,7 +598,7 @@ const FreightAggregationForm = () => {
 
         const { data: freteData, error: freteError } = await supabase
           .from('fretes')
-          .insert([freightData])
+          .insert(freightData)
           .select()
           .single();
 
