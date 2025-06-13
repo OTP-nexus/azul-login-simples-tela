@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,18 @@ const FreightCompleteForm = () => {
 
   const { estados } = useEstados();
   const { cidades: cidadesOrigem } = useCidades(formData.origem.estado);
+
+  // Get unique states from paradas to fetch cities for each
+  const paradaStates = useMemo(() => {
+    return [...new Set(formData.paradas.map(p => p.estado).filter(Boolean))];
+  }, [formData.paradas]);
+
+  // Fetch cities for all parada states
+  const cidadesByState = {};
+  paradaStates.forEach(estado => {
+    const { cidades } = useCidades(estado);
+    cidadesByState[estado] = cidades;
+  });
 
   // Fetch collaborators
   const { data: collaborators = [] } = useQuery({
@@ -411,159 +424,157 @@ const FreightCompleteForm = () => {
 
         {/* Etapa 2 - Origem e Paradas */}
         {currentStep === 2 && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Origem */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <MapPin className="w-5 h-5 text-green-600" />
-                    <span>Origem</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Local de coleta da carga
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="origem-estado">Estado</Label>
-                    <Select 
-                      value={formData.origem.estado} 
-                      onValueChange={(value) => setFormData({
-                        ...formData,
-                        origem: { estado: value, cidade: '' }
-                      })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o estado" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {estados.map((estado) => (
-                          <SelectItem key={estado.sigla} value={estado.sigla}>
-                            {estado.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="origem-cidade">Cidade</Label>
-                    <Select 
-                      value={formData.origem.cidade} 
-                      onValueChange={(value) => setFormData({
-                        ...formData,
-                        origem: { ...formData.origem, cidade: value }
-                      })}
-                      disabled={!formData.origem.estado}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a cidade" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cidadesOrigem.map((cidade) => (
-                          <SelectItem key={cidade.id} value={cidade.nome}>
-                            {cidade.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Origem */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <MapPin className="w-5 h-5 text-green-600" />
+                  <span>Origem</span>
+                </CardTitle>
+                <CardDescription>
+                  Local de coleta da carga
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="origem-estado">Estado</Label>
+                  <Select 
+                    value={formData.origem.estado} 
+                    onValueChange={(value) => setFormData({
+                      ...formData,
+                      origem: { estado: value, cidade: '' }
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {estados.map((estado) => (
+                        <SelectItem key={estado.sigla} value={estado.sigla}>
+                          {estado.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="origem-cidade">Cidade</Label>
+                  <Select 
+                    value={formData.origem.cidade} 
+                    onValueChange={(value) => setFormData({
+                      ...formData,
+                      origem: { ...formData.origem, cidade: value }
+                    })}
+                    disabled={!formData.origem.estado}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a cidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cidadesOrigem.map((cidade) => (
+                        <SelectItem key={cidade.id} value={cidade.nome}>
+                          {cidade.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
 
-              {/* Paradas */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="w-5 h-5 text-red-600" />
-                      <span>Paradas</span>
-                    </div>
-                    <Button
-                      onClick={addParada}
-                      size="sm"
-                      className="flex items-center space-x-1"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Adicionar</span>
-                    </Button>
-                  </CardTitle>
-                  <CardDescription>
-                    Locais onde o veículo deve parar durante o trajeto
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {formData.paradas.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <MapPin className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                      <p>Nenhuma parada adicionada</p>
-                      <p className="text-sm">Clique em "Adicionar" para incluir paradas</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 max-h-96 overflow-y-auto">
-                      {formData.paradas.map((parada, index) => {
-                        const { cidades: cidadesParada } = useCidades(parada.estado);
-                        
-                        return (
-                          <div key={parada.id} className="border rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="font-medium text-sm">Parada {index + 1}</h4>
-                              <Button
-                                onClick={() => removeParada(parada.id)}
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            {/* Paradas */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-5 h-5 text-red-600" />
+                    <span>Paradas</span>
+                  </div>
+                  <Button
+                    onClick={addParada}
+                    size="sm"
+                    className="flex items-center space-x-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Adicionar Parada</span>
+                  </Button>
+                </CardTitle>
+                <CardDescription>
+                  Locais onde o veículo deve parar durante o trajeto
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {formData.paradas.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <MapPin className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                    <p className="font-medium">Nenhuma parada adicionada</p>
+                    <p className="text-sm mt-1">Clique em "Adicionar Parada" para incluir paradas no trajeto</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {formData.paradas.map((parada, index) => {
+                      const cidadesParada = cidadesByState[parada.estado] || [];
+                      
+                      return (
+                        <div key={parada.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-medium text-sm text-gray-700">Parada {index + 1}</h4>
+                            <Button
+                              onClick={() => removeParada(parada.id)}
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs font-medium text-gray-600">Estado</Label>
+                              <Select 
+                                value={parada.estado} 
+                                onValueChange={(value) => updateParada(parada.id, 'estado', value)}
                               >
-                                <X className="w-4 h-4" />
-                              </Button>
+                                <SelectTrigger className="h-9">
+                                  <SelectValue placeholder="Estado" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {estados.map((estado) => (
+                                    <SelectItem key={estado.sigla} value={estado.sigla}>
+                                      {estado.nome}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
-                            <div className="space-y-3">
-                              <div>
-                                <Label>Estado</Label>
-                                <Select 
-                                  value={parada.estado} 
-                                  onValueChange={(value) => updateParada(parada.id, 'estado', value)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione o estado" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {estados.map((estado) => (
-                                      <SelectItem key={estado.sigla} value={estado.sigla}>
-                                        {estado.nome}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div>
-                                <Label>Cidade</Label>
-                                <Select 
-                                  value={parada.cidade} 
-                                  onValueChange={(value) => updateParada(parada.id, 'cidade', value)}
-                                  disabled={!parada.estado}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione a cidade" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {cidadesParada.map((cidade) => (
-                                      <SelectItem key={cidade.id} value={cidade.nome}>
-                                        {cidade.nome}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
+                            <div>
+                              <Label className="text-xs font-medium text-gray-600">Cidade</Label>
+                              <Select 
+                                value={parada.cidade} 
+                                onValueChange={(value) => updateParada(parada.id, 'cidade', value)}
+                                disabled={!parada.estado}
+                              >
+                                <SelectTrigger className="h-9">
+                                  <SelectValue placeholder="Cidade" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {cidadesParada.map((cidade) => (
+                                    <SelectItem key={cidade.id} value={cidade.nome}>
+                                      {cidade.nome}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         )}
 
