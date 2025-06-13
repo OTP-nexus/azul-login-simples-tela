@@ -265,7 +265,31 @@ const FreightReturnForm = () => {
       <FreightVerificationDialog
         open={showVerificationDialog}
         onOpenChange={setShowVerificationDialog}
-        formData={formData}
+        formData={{
+          collaborator_ids: formData.selectedCollaborators,
+          origem_cidade: formData.origem.cidade,
+          origem_estado: formData.origem.estado,
+          destinos: formData.paradas.map((parada, index) => ({ 
+            id: parada.id || index.toString(), 
+            state: parada.estado, 
+            city: parada.cidade 
+          })),
+          tipo_mercadoria: 'Geral',
+          tipos_veiculos: formData.tiposVeiculos,
+          tipos_carrocerias: formData.tiposCarrocerias,
+          vehicle_price_tables: [],
+          regras_agendamento: [],
+          beneficios: [],
+          horario_carregamento: formData.horarioColeta,
+          precisa_ajudante: formData.precisaAjudante,
+          precisa_rastreador: formData.precisaRastreador,
+          precisa_seguro: formData.precisaSeguro,
+          pedagio_pago_por: formData.pedagioPagoPor,
+          pedagio_direcao: formData.pedagioDirecao,
+          observacoes: formData.observacoes,
+          tipo_valor: formData.tipoValor,
+          valor_definido: formData.valorOfertado ? parseFloat(formData.valorOfertado) : undefined
+        }}
         collaborators={[]} // Pass collaborators if needed
         onEdit={() => setShowVerificationDialog(false)}
         onConfirm={handleSubmit}
