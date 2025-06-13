@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building, User, Phone, MapPin, Truck, CheckCircle } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Building, User, Phone, MapPin } from 'lucide-react';
 
 interface Company {
   id: string;
@@ -38,134 +38,68 @@ const CompanyProfileView: React.FC<CompanyProfileViewProps> = ({ company }) => {
     return cep.replace(/(\d{5})(\d{3})/, '$1-$2');
   };
 
-  const InfoItem = ({ label, value, icon: Icon }: { label: string; value: string; icon?: any }) => (
-    <div className="space-y-2">
-      <div className="flex items-center space-x-2">
-        {Icon && <Icon className="w-4 h-4 text-blue-600" />}
-        <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">{label}</label>
-      </div>
-      <p className="text-lg text-gray-900 font-medium pl-6">{value}</p>
+  const InfoSection = ({ icon: Icon, title, children }: { 
+    icon: any; 
+    title: string; 
+    children: React.ReactNode;
+  }) => (
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+            <Icon className="w-5 h-5 text-gray-600" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-gray-900 mb-3">{title}</h3>
+            <div className="space-y-3">
+              {children}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const InfoItem = ({ label, value }: { label: string; value: string }) => (
+    <div>
+      <span className="text-sm text-gray-500 block">{label}</span>
+      <span className="text-gray-900 font-medium">{value}</span>
     </div>
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Informações da Empresa */}
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
-          <CardTitle className="flex items-center space-x-3 text-xl">
-            <Building className="w-6 h-6" />
-            <span>Dados da Empresa</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-8 space-y-6">
-          <InfoItem
-            label="Nome da Empresa"
-            value={company.company_name}
-            icon={Building}
-          />
-          
-          <InfoItem
-            label="CNPJ"
-            value={formatCNPJ(company.cnpj)}
-            icon={CheckCircle}
-          />
+    <div className="space-y-4">
+      {/* Dados da Empresa */}
+      <InfoSection icon={Building} title="Dados da Empresa">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InfoItem label="Nome da Empresa" value={company.company_name} />
+          <InfoItem label="CNPJ" value={formatCNPJ(company.cnpj)} />
+        </div>
+      </InfoSection>
 
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Truck className="w-4 h-4 text-blue-600" />
-              <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Tipo de Empresa</label>
-            </div>
-            <div className="flex items-center space-x-3 pl-6">
-              <div className={`w-3 h-3 rounded-full ${company.is_transporter ? 'bg-green-500' : 'bg-blue-500'}`}></div>
-              <p className="text-lg text-gray-900 font-medium">
-                {company.is_transporter ? 'Transportadora' : 'Embarcadora'}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Informações de Contato */}
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader className="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-t-lg">
-          <CardTitle className="flex items-center space-x-3 text-xl">
-            <User className="w-6 h-6" />
-            <span>Responsável</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-8 space-y-6">
-          <InfoItem
-            label="Nome do Responsável"
-            value={company.contact_name}
-            icon={User}
-          />
-          
-          <InfoItem
-            label="Telefone Principal"
-            value={formatPhone(company.phone)}
-            icon={Phone}
-          />
-
-          <InfoItem
-            label="Telefone Confirmação"
-            value={formatPhone(company.confirm_phone)}
-            icon={Phone}
-          />
-        </CardContent>
-      </Card>
+      {/* Contato */}
+      <InfoSection icon={User} title="Responsável">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InfoItem label="Nome" value={company.contact_name} />
+          <InfoItem label="Telefone" value={formatPhone(company.phone)} />
+          <InfoItem label="Confirmação" value={formatPhone(company.confirm_phone)} />
+        </div>
+      </InfoSection>
 
       {/* Endereço */}
-      <Card className="lg:col-span-2 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
-          <CardTitle className="flex items-center space-x-3 text-xl">
-            <MapPin className="w-6 h-6" />
-            <span>Endereço Completo</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <InfoItem
-              label="CEP"
-              value={formatCEP(company.cep)}
-            />
-            
-            <div className="md:col-span-2 lg:col-span-2">
-              <InfoItem
-                label="Rua"
-                value={company.street}
-              />
-            </div>
-
-            <InfoItem
-              label="Número"
-              value={company.number}
-            />
-
-            {company.complement && (
-              <InfoItem
-                label="Complemento"
-                value={company.complement}
-              />
-            )}
-
-            <InfoItem
-              label="Bairro"
-              value={company.neighborhood}
-            />
-
-            <InfoItem
-              label="Cidade"
-              value={company.city}
-            />
-
-            <InfoItem
-              label="Estado"
-              value={company.state}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <InfoSection icon={MapPin} title="Endereço">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <InfoItem label="CEP" value={formatCEP(company.cep)} />
+          <InfoItem label="Rua" value={company.street} />
+          <InfoItem label="Número" value={company.number} />
+          {company.complement && (
+            <InfoItem label="Complemento" value={company.complement} />
+          )}
+          <InfoItem label="Bairro" value={company.neighborhood} />
+          <InfoItem label="Cidade" value={company.city} />
+          <InfoItem label="Estado" value={company.state} />
+        </div>
+      </InfoSection>
     </div>
   );
 };
