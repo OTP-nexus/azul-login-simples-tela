@@ -81,7 +81,7 @@ export const useActiveFreights = () => {
         id: freight.id,
         codigo_agregamento: freight.codigo_agregamento || '',
         tipo_frete: freight.tipo_frete,
-        status: freight.status || 'pendente',
+        status: freight.status || 'ativo', // Mudança aqui: padrão é "ativo" ao invés de "pendente"
         origem_cidade: freight.origem_cidade,
         origem_estado: freight.origem_estado,
         destinos: Array.isArray(freight.destinos) ? freight.destinos : [],

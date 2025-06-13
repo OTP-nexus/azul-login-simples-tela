@@ -156,7 +156,7 @@ const FreightCard = ({ freight, onViewDetails, onComplete, onDelete }: FreightCa
             <span>Detalhes</span>
           </Button>
           
-          {freight.status === 'pendente' && (
+          {freight.status === 'ativo' && (
             <Button
               variant="default"
               size="sm"
@@ -167,7 +167,7 @@ const FreightCard = ({ freight, onViewDetails, onComplete, onDelete }: FreightCa
               className="flex items-center space-x-1 bg-green-600 hover:bg-green-700"
             >
               <CheckCircle className="w-4 h-4" />
-              <span>Concluir</span>
+              <span>Finalizar</span>
             </Button>
           )}
           

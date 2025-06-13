@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -75,8 +74,7 @@ const ActiveFreightsList = () => {
   const getStatusCounts = () => {
     const counts = {
       total: freights.length,
-      pendente: freights.filter(f => f.status === 'pendente').length,
-      em_andamento: freights.filter(f => f.status === 'em_andamento').length,
+      ativo: freights.filter(f => f.status === 'ativo').length,
       concluido: freights.filter(f => f.status === 'concluido').length,
     };
     return counts;
@@ -112,7 +110,7 @@ const ActiveFreightsList = () => {
   return (
     <div className="space-y-6">
       {/* Header com estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -129,25 +127,11 @@ const ActiveFreightsList = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Pendentes</p>
-                <p className="text-2xl font-bold text-yellow-600">{statusCounts.pendente}</p>
-              </div>
-              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                {statusCounts.pendente}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Em Andamento</p>
-                <p className="text-2xl font-bold text-blue-600">{statusCounts.em_andamento}</p>
+                <p className="text-sm font-medium text-gray-600">Ativos</p>
+                <p className="text-2xl font-bold text-blue-600">{statusCounts.ativo}</p>
               </div>
               <Badge variant="default" className="bg-blue-100 text-blue-800">
-                {statusCounts.em_andamento}
+                {statusCounts.ativo}
               </Badge>
             </div>
           </CardContent>
@@ -194,8 +178,7 @@ const ActiveFreightsList = () => {
                 className="px-3 py-2 border border-gray-300 rounded-md text-sm"
               >
                 <option value="all">Todos os Status</option>
-                <option value="pendente">Pendente</option>
-                <option value="em_andamento">Em Andamento</option>
+                <option value="ativo">Ativo</option>
                 <option value="concluido">Concluído</option>
                 <option value="cancelado">Cancelado</option>
               </select>

@@ -1,6 +1,6 @@
 
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Clock, XCircle, AlertCircle } from "lucide-react";
+import { CheckCircle, Truck, XCircle, AlertCircle } from "lucide-react";
 
 interface FreightStatusBadgeProps {
   status: string;
@@ -10,19 +10,12 @@ interface FreightStatusBadgeProps {
 const FreightStatusBadge = ({ status, className = "" }: FreightStatusBadgeProps) => {
   const getStatusConfig = (status: string) => {
     switch (status) {
-      case 'pendente':
-        return {
-          variant: 'secondary' as const,
-          className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-          icon: Clock,
-          text: 'Pendente'
-        };
-      case 'em_andamento':
+      case 'ativo':
         return {
           variant: 'default' as const,
           className: 'bg-blue-100 text-blue-800 border-blue-200',
-          icon: AlertCircle,
-          text: 'Em Andamento'
+          icon: Truck,
+          text: 'Ativo'
         };
       case 'concluido':
         return {
@@ -42,7 +35,7 @@ const FreightStatusBadge = ({ status, className = "" }: FreightStatusBadgeProps)
         return {
           variant: 'outline' as const,
           className: 'bg-gray-100 text-gray-800 border-gray-200',
-          icon: Clock,
+          icon: AlertCircle,
           text: status
         };
     }
