@@ -318,29 +318,52 @@ export type Database = {
         Row: {
           beneficios: Json | null
           codigo_agregamento: string | null
-          collaborator_ids: string[]
-          company_id: string
+          collaborator_ids: string[] | null
+          company_id: string | null
           created_at: string
           data_coleta: string | null
           data_entrega: string | null
+          descricao_livre_itens: string | null
+          descricao_restricao: string | null
+          destino_cidade: string | null
+          destino_estado: string | null
+          destino_possui_carga_descarga: boolean | null
+          destino_possui_doca: boolean | null
+          destino_possui_elevador: boolean | null
+          destino_possui_escada: boolean | null
+          destino_tipo_endereco: string | null
           destinos: Json
           horario_carregamento: string | null
           id: string
+          itens_detalhados: Json | null
+          local_possui_restricao: boolean | null
           observacoes: string | null
           origem_cidade: string
           origem_estado: string
+          origem_possui_carga_descarga: boolean | null
+          origem_possui_doca: boolean | null
+          origem_possui_elevador: boolean | null
+          origem_possui_escada: boolean | null
+          origem_tipo_endereco: string | null
           paradas: Json | null
           pedagio_direcao: string | null
           pedagio_pago_por: string | null
           peso_carga: number | null
           precisa_ajudante: boolean | null
+          precisa_embalagem: boolean | null
+          precisa_montar_desmontar: boolean | null
           precisa_rastreador: boolean | null
           precisa_seguro: boolean | null
           regras_agendamento: Json | null
+          solicitante_confirmar_telefone: string | null
+          solicitante_nome: string | null
+          solicitante_telefone: string | null
           status: string | null
           tabelas_preco: Json | null
           tipo_frete: string
+          tipo_listagem_itens: string | null
           tipo_mercadoria: string
+          tipo_solicitacao: string | null
           tipos_carrocerias: Json | null
           tipos_veiculos: Json | null
           updated_at: string
@@ -350,29 +373,52 @@ export type Database = {
         Insert: {
           beneficios?: Json | null
           codigo_agregamento?: string | null
-          collaborator_ids: string[]
-          company_id: string
+          collaborator_ids?: string[] | null
+          company_id?: string | null
           created_at?: string
           data_coleta?: string | null
           data_entrega?: string | null
+          descricao_livre_itens?: string | null
+          descricao_restricao?: string | null
+          destino_cidade?: string | null
+          destino_estado?: string | null
+          destino_possui_carga_descarga?: boolean | null
+          destino_possui_doca?: boolean | null
+          destino_possui_elevador?: boolean | null
+          destino_possui_escada?: boolean | null
+          destino_tipo_endereco?: string | null
           destinos?: Json
           horario_carregamento?: string | null
           id?: string
+          itens_detalhados?: Json | null
+          local_possui_restricao?: boolean | null
           observacoes?: string | null
           origem_cidade: string
           origem_estado: string
+          origem_possui_carga_descarga?: boolean | null
+          origem_possui_doca?: boolean | null
+          origem_possui_elevador?: boolean | null
+          origem_possui_escada?: boolean | null
+          origem_tipo_endereco?: string | null
           paradas?: Json | null
           pedagio_direcao?: string | null
           pedagio_pago_por?: string | null
           peso_carga?: number | null
           precisa_ajudante?: boolean | null
+          precisa_embalagem?: boolean | null
+          precisa_montar_desmontar?: boolean | null
           precisa_rastreador?: boolean | null
           precisa_seguro?: boolean | null
           regras_agendamento?: Json | null
+          solicitante_confirmar_telefone?: string | null
+          solicitante_nome?: string | null
+          solicitante_telefone?: string | null
           status?: string | null
           tabelas_preco?: Json | null
           tipo_frete?: string
+          tipo_listagem_itens?: string | null
           tipo_mercadoria: string
+          tipo_solicitacao?: string | null
           tipos_carrocerias?: Json | null
           tipos_veiculos?: Json | null
           updated_at?: string
@@ -382,29 +428,52 @@ export type Database = {
         Update: {
           beneficios?: Json | null
           codigo_agregamento?: string | null
-          collaborator_ids?: string[]
-          company_id?: string
+          collaborator_ids?: string[] | null
+          company_id?: string | null
           created_at?: string
           data_coleta?: string | null
           data_entrega?: string | null
+          descricao_livre_itens?: string | null
+          descricao_restricao?: string | null
+          destino_cidade?: string | null
+          destino_estado?: string | null
+          destino_possui_carga_descarga?: boolean | null
+          destino_possui_doca?: boolean | null
+          destino_possui_elevador?: boolean | null
+          destino_possui_escada?: boolean | null
+          destino_tipo_endereco?: string | null
           destinos?: Json
           horario_carregamento?: string | null
           id?: string
+          itens_detalhados?: Json | null
+          local_possui_restricao?: boolean | null
           observacoes?: string | null
           origem_cidade?: string
           origem_estado?: string
+          origem_possui_carga_descarga?: boolean | null
+          origem_possui_doca?: boolean | null
+          origem_possui_elevador?: boolean | null
+          origem_possui_escada?: boolean | null
+          origem_tipo_endereco?: string | null
           paradas?: Json | null
           pedagio_direcao?: string | null
           pedagio_pago_por?: string | null
           peso_carga?: number | null
           precisa_ajudante?: boolean | null
+          precisa_embalagem?: boolean | null
+          precisa_montar_desmontar?: boolean | null
           precisa_rastreador?: boolean | null
           precisa_seguro?: boolean | null
           regras_agendamento?: Json | null
+          solicitante_confirmar_telefone?: string | null
+          solicitante_nome?: string | null
+          solicitante_telefone?: string | null
           status?: string | null
           tabelas_preco?: Json | null
           tipo_frete?: string
+          tipo_listagem_itens?: string | null
           tipo_mercadoria?: string
+          tipo_solicitacao?: string | null
           tipos_carrocerias?: Json | null
           tipos_veiculos?: Json | null
           updated_at?: string
