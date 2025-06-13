@@ -46,6 +46,7 @@ const App = () => (
             <Route path="/freight-complete" element={<FreightComplete />} />
             <Route path="/freight-return" element={<FreightReturn />} />
             <Route path="/collaborator-registration" element={<CollaboratorRegistration />} />
+            <Route path="/active-freights" element={<ActiveFreights />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
