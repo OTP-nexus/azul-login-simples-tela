@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Dialog,
@@ -142,7 +141,8 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
       // Priorizar campos mais descritivos
       const textFields = [
         'nome', 'name', 'tipo', 'type', 'descricao', 'description', 
-        'label', 'title', 'categoria', 'category', 'modelo', 'model'
+        'label', 'title', 'categoria', 'category', 'modelo', 'model',
+        'cidade', 'city', 'estado', 'state'
       ];
       
       for (const field of textFields) {
@@ -175,7 +175,10 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
       { key: 'categoria', label: 'Categoria' },
       { key: 'category', label: 'Categoria' },
       { key: 'modelo', label: 'Modelo' },
-      { key: 'model', label: 'Modelo' }
+      { key: 'model', label: 'Modelo' },
+      { key: 'cep', label: 'CEP' },
+      { key: 'bairro', label: 'Bairro' },
+      { key: 'endereco', label: 'Endereço' }
     ];
     
     for (const field of subtitleFields) {
@@ -185,6 +188,105 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     }
     
     return '';
+  };
+
+  // Função melhorada para renderizar destinos
+  const renderDestinations = () => {
+    const flattenedDestinations = flattenNestedArrays(freight.destinos);
+    console.log('Destinos originais:', freight.destinos);
+    console.log('Destinos após flatten:', flattenedDestinations);
+    
+    if (!Array.isArray(flattenedDestinations) || flattenedDestinations.length === 0) {
+      return <p className="text-gray-500 italic">Nenhum destino definido</p>;
+    }
+
+    return (
+      <div className="space-y-2">
+        {flattenedDestinations.map((destino: any, index: number) => {
+          // Se o destino é uma string simples
+          if (typeof destino === 'string') {
+            return (
+              <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
+                <p className="font-medium text-green-900">{destino}</p>
+              </div>
+            );
+          }
+
+          // Se o destino é um objeto
+          if (typeof destino === 'object' && destino !== null) {
+            const cidade = destino.cidade || destino.city || '';
+            const estado = destino.estado || destino.state || '';
+            const cep = destino.cep || '';
+            const bairro = destino.bairro || destino.neighborhood || '';
+            const endereco = destino.endereco || destino.address || '';
+
+            return (
+              <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
+                <div className="text-sm">
+                  <p className="font-medium text-green-900">
+                    {cidade && estado ? `${cidade}, ${estado}` : extractDisplayText(destino)}
+                  </p>
+                  {cep && <p className="text-green-700 text-xs mt-1">CEP: {cep}</p>}
+                  {bairro && <p className="text-green-700 text-xs">Bairro: {bairro}</p>}
+                  {endereco && <p className="text-green-700 text-xs">Endereço: {endereco}</p>}
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
+              <p className="font-medium text-green-900">{String(destino)}</p>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Função melhorada para renderizar paradas
+  const renderStops = () => {
+    const flattenedStops = flattenNestedArrays(freight.paradas);
+    
+    if (!Array.isArray(flattenedStops) || flattenedStops.length === 0) {
+      return null;
+    }
+
+    return (
+      <div>
+        <p className="text-sm text-gray-500 mb-2">Paradas</p>
+        <div className="space-y-2">
+          {flattenedStops.map((parada: any, index: number) => {
+            if (typeof parada === 'string') {
+              return (
+                <div key={index} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                  <p className="font-medium text-yellow-900">{parada}</p>
+                </div>
+              );
+            }
+
+            if (typeof parada === 'object' && parada !== null) {
+              const cidade = parada.cidade || parada.city || '';
+              const estado = parada.estado || parada.state || '';
+
+              return (
+                <div key={index} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                  <p className="font-medium text-yellow-900">
+                    {cidade && estado ? `${cidade}, ${estado}` : extractDisplayText(parada)}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div key={index} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                <p className="font-medium text-yellow-900">{String(parada)}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   // Função melhorada para renderizar itens de array com formatação adequada
@@ -358,39 +460,17 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Origem</p>
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <p className="font-medium">{freight.origem_cidade}, {freight.origem_estado}</p>
+                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                    <p className="font-medium text-blue-900">{freight.origem_cidade}, {freight.origem_estado}</p>
                   </div>
                 </div>
                 
                 <div>
                   <p className="text-sm text-gray-500 mb-2">Destinos</p>
-                  <div className="space-y-2">
-                    {freight.destinos && freight.destinos.length > 0 ? (
-                      freight.destinos.map((destino: any, index: number) => (
-                        <div key={index} className="bg-green-50 p-3 rounded-lg">
-                          <p className="font-medium">{destino.cidade}, {destino.estado}</p>
-                          {destino.cep && <p className="text-sm text-gray-600">CEP: {destino.cep}</p>}
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-gray-500 italic">Nenhum destino definido</p>
-                    )}
-                  </div>
+                  {renderDestinations()}
                 </div>
 
-                {freight.paradas && freight.paradas.length > 0 && (
-                  <div>
-                    <p className="text-sm text-gray-500 mb-2">Paradas</p>
-                    <div className="space-y-2">
-                      {freight.paradas.map((parada: any, index: number) => (
-                        <div key={index} className="bg-yellow-50 p-3 rounded-lg">
-                          <p className="font-medium">{parada.cidade}, {parada.estado}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {renderStops()}
               </div>
             </CardContent>
           </Card>
