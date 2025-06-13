@@ -353,7 +353,7 @@ const FreightReturnForm = () => {
         precisa_rastreador: formData.precisaRastreador,
         precisa_seguro: formData.precisaSeguro,
         pedagio_pago_por: formData.pedagioPagoPor,
-        pedagio_direcao: formData.pedagioPagoPor === 'motorista' ? null : formData.pedagioDirecao || null,
+        pedagio_direcao: formData.pedagioPagoPor === 'motorista' ? null : (formData.pedagioDirecao || null),
         observacoes: formData.observacoes,
         collaborator_ids: formData.selectedCollaborators,
         status: 'pendente'
@@ -496,7 +496,10 @@ const FreightReturnForm = () => {
                 <span>Voltar</span>
               </Button>
               <div>
-                <h1 className="text-xl font-bold text-gray-800">Frete de Retorno</h1>
+                <h1 className="text-xl font-bold text-gray-800 flex items-center space-x-2">
+                  <RotateCcw className="w-5 h-5 text-amber-600" />
+                  <span>Frete de Retorno</span>
+                </h1>
                 <p className="text-sm text-gray-600">Etapa {currentStep} de 4</p>
               </div>
             </div>
