@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -393,6 +394,7 @@ const FreightCompleteForm = () => {
       }]
     }],
     regras_agendamento: [],
+    beneficios: [], // Added missing beneficios property
     horario_carregamento: formData.horarioColeta,
     precisa_ajudante: formData.precisaAjudante,
     precisa_rastreador: formData.precisaRastreador,
