@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,7 @@ const FreightCompleteForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [freightCode, setFreightCode] = useState('');
+  const [generatedFreights, setGeneratedFreights] = useState([]);
 
   const [formData, setFormData] = useState({
     // Etapa 1 - Colaboradores
@@ -188,7 +187,15 @@ const FreightCompleteForm = () => {
 
       if (error) throw error;
 
-      setFreightCode(data.id);
+      // Convert the single freight to the format expected by FreightSuccessDialog
+      const generatedFreight = {
+        id: data.id,
+        codigo_agregamento: data.id, // Use the freight ID as code for now
+        destino_cidade: formData.destino.cidade,
+        destino_estado: formData.destino.estado
+      };
+
+      setGeneratedFreights([generatedFreight]);
       setIsSubmitting(false);
       setShowVerificationDialog(true);
     } catch (error) {
@@ -776,8 +783,36 @@ const FreightCompleteForm = () => {
             navigate('/company-dashboard');
           }
         }}
-        freightCode={freightCode}
-        freightType="Frete Completo"
+        generatedFreights={generatedFreights}
+        onNewFreight={() => {
+          setShowSuccessDialog(false);
+          // Reset form for new freight
+          setCurrentStep(1);
+          setFormData({
+            selectedCollaborators: [],
+            origem: { estado: '', cidade: '' },
+            destino: { estado: '', cidade: '' },
+            tipoMercadoria: '',
+            pesoCarga: '',
+            valorCarga: '',
+            dataColeta: '',
+            dataEntrega: '',
+            tiposVeiculos: [],
+            tiposCarrocerias: [],
+            precisaSeguro: false,
+            valorFrete: '',
+            pedagioPagoPor: '',
+            pedagioDirecao: '',
+            precisaAjudante: false,
+            precisaRastreador: false,
+            beneficios: [],
+            observacoes: ''
+          });
+        }}
+        onBackToDashboard={() => {
+          setShowSuccessDialog(false);
+          navigate('/company-dashboard');
+        }}
       />
     </div>
   );
