@@ -414,7 +414,7 @@ const FreightAggregationForm = () => {
         ...prev,
         beneficios: [...prev.beneficios, newBenefit.trim()]
       }));
-      setNewBenefit(''); // Limpar o input após adicionar
+      setNewBenefit('');
     }
   };
 
@@ -542,6 +542,8 @@ const FreightAggregationForm = () => {
     setShowLoadingAnimation(true);
     
     try {
+      console.log('Starting freight creation with data:', formData);
+      
       const { data: company, error: companyError } = await supabase
         .from('companies')
         .select('id')
@@ -551,6 +553,10 @@ const FreightAggregationForm = () => {
       if (companyError || !company) {
         throw new Error('Empresa não encontrada');
       }
+
+      // Ensure beneficios is always an array
+      const beneficiosArray = Array.isArray(formData.beneficios) ? formData.beneficios : [];
+      console.log('Benefits array:', beneficiosArray);
 
       // Prepare base freight data (same for all freights)
       const baseFreightData = {
@@ -566,15 +572,18 @@ const FreightAggregationForm = () => {
         tipos_carrocerias: JSON.stringify(formData.tipos_carrocerias.filter(b => b.selected)),
         tabelas_preco: JSON.stringify(formData.vehicle_price_tables),
         regras_agendamento: JSON.stringify(formData.regras_agendamento),
-        beneficios: JSON.stringify(formData.beneficios),
+        beneficios: JSON.stringify(beneficiosArray),
         horario_carregamento: formData.horario_carregamento || null,
         precisa_ajudante: formData.precisa_ajudante,
         precisa_rastreador: formData.precisa_rastreador,
         precisa_seguro: formData.precisa_seguro,
         pedagio_pago_por: formData.pedagio_pago_por || null,
         pedagio_direcao: formData.pedagio_direcao || null,
-        observacoes: formData.observacoes || null
+        observacoes: formData.observacoes || null,
+        status: 'ativo'
       };
+
+      console.log('Base freight data prepared:', baseFreightData);
 
       const createdFreights: GeneratedFreight[] = [];
 
@@ -585,6 +594,8 @@ const FreightAggregationForm = () => {
           destinos: JSON.stringify([destino])
         };
 
+        console.log('Creating freight with data:', freightData);
+
         const { data: freteData, error: freteError } = await supabase
           .from('fretes')
           .insert([freightData])
@@ -592,8 +603,11 @@ const FreightAggregationForm = () => {
           .single();
 
         if (freteError) {
+          console.error('Error creating freight:', freteError);
           throw freteError;
         }
+
+        console.log('Freight created successfully:', freteData);
 
         // Add to created freights list
         createdFreights.push({
@@ -623,6 +637,7 @@ const FreightAggregationForm = () => {
             .insert(priceTableInserts);
 
           if (priceError) {
+            console.error('Error creating price tables:', priceError);
             throw priceError;
           }
         }
