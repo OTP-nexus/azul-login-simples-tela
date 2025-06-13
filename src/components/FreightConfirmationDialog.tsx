@@ -145,13 +145,14 @@ const FreightConfirmationDialog = ({
             variant="outline" 
             onClick={() => onOpenChange(false)}
             className="px-8"
+            disabled={isSubmitting}
           >
             Voltar e Editar
           </Button>
           <Button 
             onClick={onConfirm}
             disabled={isSubmitting}
-            className="bg-green-600 hover:bg-green-700 px-8"
+            className="bg-green-600 hover:bg-green-700 px-8 disabled:opacity-50"
           >
             {isSubmitting ? (
               <>
