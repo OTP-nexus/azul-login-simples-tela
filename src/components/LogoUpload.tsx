@@ -104,7 +104,7 @@ const LogoUpload: React.FC<LogoUploadProps> = ({
           
           <div className="flex-1">
             <h3 className="font-semibold text-gray-900 mb-1">Logo da Empresa</h3>
-            <p className="text-sm text-gray-600 mb-4">Adicione o logo da sua empresa. Formato PNG, máxiadicmo 5MB.</p>
+            <p className="text-sm text-gray-600 mb-4">Adicione o logo da sua empresa. Formato PNG, máximo 5MB.</p>
             
             <div className="flex items-center gap-4">
               <Button onClick={() => fileInputRef.current?.click()} disabled={uploading} variant="outline" size="sm">
