@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,6 +21,7 @@ import FreightComplete from "./pages/FreightComplete";
 import FreightReturn from "./pages/FreightReturn";
 import CollaboratorRegistration from "./pages/CollaboratorRegistration";
 import ActiveFreights from "./pages/ActiveFreights";
+import PublicFreightRequest from "./pages/PublicFreightRequest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +50,7 @@ const App = () => (
             <Route path="/freight-return" element={<FreightReturn />} />
             <Route path="/collaborator-registration" element={<CollaboratorRegistration />} />
             <Route path="/active-freights" element={<ActiveFreights />} />
+            <Route path="/solicitar-frete" element={<PublicFreightRequest />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
