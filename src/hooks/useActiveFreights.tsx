@@ -76,7 +76,40 @@ export const useActiveFreights = () => {
         return;
       }
 
-      setFreights(freightData || []);
+      // Converter os dados do Supabase para o formato esperado
+      const formattedFreights: ActiveFreight[] = (freightData || []).map(freight => ({
+        id: freight.id,
+        codigo_agregamento: freight.codigo_agregamento || '',
+        tipo_frete: freight.tipo_frete,
+        status: freight.status || 'pendente',
+        origem_cidade: freight.origem_cidade,
+        origem_estado: freight.origem_estado,
+        destinos: Array.isArray(freight.destinos) ? freight.destinos : [],
+        data_coleta: freight.data_coleta,
+        data_entrega: freight.data_entrega,
+        tipo_mercadoria: freight.tipo_mercadoria,
+        peso_carga: freight.peso_carga,
+        valor_carga: freight.valor_carga,
+        valores_definidos: freight.valores_definidos,
+        tipos_veiculos: Array.isArray(freight.tipos_veiculos) ? freight.tipos_veiculos : [],
+        tipos_carrocerias: Array.isArray(freight.tipos_carrocerias) ? freight.tipos_carrocerias : [],
+        collaborator_ids: freight.collaborator_ids,
+        created_at: freight.created_at,
+        updated_at: freight.updated_at,
+        pedagio_pago_por: freight.pedagio_pago_por,
+        pedagio_direcao: freight.pedagio_direcao,
+        precisa_seguro: freight.precisa_seguro || false,
+        precisa_rastreador: freight.precisa_rastreador || false,
+        precisa_ajudante: freight.precisa_ajudante || false,
+        horario_carregamento: freight.horario_carregamento,
+        observacoes: freight.observacoes,
+        paradas: Array.isArray(freight.paradas) ? freight.paradas : [],
+        beneficios: Array.isArray(freight.beneficios) ? freight.beneficios : [],
+        regras_agendamento: Array.isArray(freight.regras_agendamento) ? freight.regras_agendamento : [],
+        tabelas_preco: Array.isArray(freight.tabelas_preco) ? freight.tabelas_preco : []
+      }));
+
+      setFreights(formattedFreights);
     } catch (err) {
       console.error('Erro ao carregar fretes:', err);
       setError('Erro ao carregar fretes');
