@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useEstados, useCidades } from '@/hooks/useIBGE';
-import { ChevronLeft, ChevronRight, Package, MapPin, Clock, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Package, MapPin, Clock, User, Home, Check } from 'lucide-react';
 
 interface ItemDetalhado {
   id: string;
@@ -22,7 +22,7 @@ const PublicFreightRequestForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  
+
   // IBGE hooks para origem e destino
   const { estados } = useEstados();
   const { cidades: cidadesOrigem, loading: loadingCidadesOrigem } = useCidades('');
@@ -272,432 +272,457 @@ const PublicFreightRequestForm = () => {
     switch (currentStep) {
       case 1:
         return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
-                Etapa 1 - Informações de Origem e Destino
-              </CardTitle>
-              <CardDescription>
-                Informe os locais de coleta e entrega da sua carga
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Origem */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">🔸 Origem</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="origem-estado">UF *</Label>
-                    <Select value={formData.origemEstado} onValueChange={(value) => setFormData(prev => ({ ...prev, origemEstado: value, origemCidade: '' }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma UF" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {estados.map(state => (
-                          <SelectItem key={state.sigla} value={state.sigla}>
-                            {state.sigla} - {state.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="origem-cidade">Cidade *</Label>
-                    <Select value={formData.origemCidade} onValueChange={(value) => setFormData(prev => ({ ...prev, origemCidade: value }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a cidade" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cidadesOrigem.map(city => (
-                          <SelectItem key={city.nome} value={city.nome}>
-                            {city.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Tipo de Endereço *</Label>
-                  <RadioGroup value={formData.origemTipoEndereco} onValueChange={(value) => setFormData(prev => ({ ...prev, origemTipoEndereco: value }))}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="residencial" id="origem-residencial" />
-                      <Label htmlFor="origem-residencial">Residencial</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="comercial" id="origem-comercial" />
-                      <Label htmlFor="origem-comercial">Comercial</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="industrial" id="origem-industrial" />
-                      <Label htmlFor="origem-industrial">Industrial</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="origem-carga-descarga" 
-                      checked={formData.origemPossuiCargaDescarga}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, origemPossuiCargaDescarga: !!checked }))}
-                    />
-                    <Label htmlFor="origem-carga-descarga">Possui carga e descarga?</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="origem-escada" 
-                      checked={formData.origemPossuiEscada}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, origemPossuiEscada: !!checked }))}
-                    />
-                    <Label htmlFor="origem-escada">Possui escada?</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="origem-elevador" 
-                      checked={formData.origemPossuiElevador}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, origemPossuiElevador: !!checked }))}
-                    />
-                    <Label htmlFor="origem-elevador">Possui elevador?</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="origem-doca" 
-                      checked={formData.origemPossuiDoca}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, origemPossuiDoca: !!checked }))}
-                    />
-                    <Label htmlFor="origem-doca">Possui doca de carga?</Label>
-                  </div>
-                </div>
+          <div className="space-y-8">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                <MapPin className="w-8 h-8 text-blue-600" />
               </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Onde buscar e entregar?</h2>
+              <p className="text-gray-600 text-lg">Informe os locais de origem e destino da sua carga</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Origem */}
+              <Card className="border-2 border-gray-100 hover:border-blue-200 transition-colors">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    Local de Origem
+                  </CardTitle>
+                  <CardDescription>De onde vamos buscar</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-base font-medium">Estado *</Label>
+                      <Select value={formData.origemEstado} onValueChange={(value) => setFormData(prev => ({ ...prev, origemEstado: value, origemCidade: '' }))}>
+                        <SelectTrigger className="h-12 text-base">
+                          <SelectValue placeholder="Escolha o estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {estados.map(state => (
+                            <SelectItem key={state.sigla} value={state.sigla} className="text-base">
+                              {state.sigla} - {state.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-base font-medium">Cidade *</Label>
+                      <Select value={formData.origemCidade} onValueChange={(value) => setFormData(prev => ({ ...prev, origemCidade: value }))}>
+                        <SelectTrigger className="h-12 text-base">
+                          <SelectValue placeholder="Escolha a cidade" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cidadesOrigem.map(city => (
+                            <SelectItem key={city.nome} value={city.nome} className="text-base">
+                              {city.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-base font-medium mb-3 block">Tipo de local *</Label>
+                      <RadioGroup value={formData.origemTipoEndereco} onValueChange={(value) => setFormData(prev => ({ ...prev, origemTipoEndereco: value }))}>
+                        <div className="grid grid-cols-1 gap-3">
+                          <label className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <RadioGroupItem value="residencial" id="origem-residencial" />
+                            <Home className="w-5 h-5 text-gray-600" />
+                            <span className="text-base">Casa/Apartamento</span>
+                          </label>
+                          <label className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <RadioGroupItem value="comercial" id="origem-comercial" />
+                            <Package className="w-5 h-5 text-gray-600" />
+                            <span className="text-base">Loja/Escritório</span>
+                          </label>
+                          <label className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <RadioGroupItem value="industrial" id="origem-industrial" />
+                            <MapPin className="w-5 h-5 text-gray-600" />
+                            <span className="text-base">Indústria/Galpão</span>
+                          </label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-base font-medium">Características do local</Label>
+                      <div className="space-y-3">
+                        {[
+                          { id: 'origem-carga-descarga', label: 'Tem espaço para carga e descarga', checked: formData.origemPossuiCargaDescarga, field: 'origemPossuiCargaDescarga' },
+                          { id: 'origem-escada', label: 'Tem escada', checked: formData.origemPossuiEscada, field: 'origemPossuiEscada' },
+                          { id: 'origem-elevador', label: 'Tem elevador', checked: formData.origemPossuiElevador, field: 'origemPossuiElevador' },
+                          { id: 'origem-doca', label: 'Tem doca de carga', checked: formData.origemPossuiDoca, field: 'origemPossuiDoca' }
+                        ].map((item) => (
+                          <label key={item.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                            <Checkbox 
+                              id={item.id}
+                              checked={item.checked}
+                              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, [item.field]: !!checked }))}
+                            />
+                            <span className="text-base">{item.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Destino */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">🔸 Destino</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="destino-estado">UF *</Label>
-                    <Select value={formData.destinoEstado} onValueChange={(value) => setFormData(prev => ({ ...prev, destinoEstado: value, destinoCidade: '' }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma UF" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {estados.map(state => (
-                          <SelectItem key={state.sigla} value={state.sigla}>
-                            {state.sigla} - {state.nome}
-                          </SelectItem>
+              <Card className="border-2 border-gray-100 hover:border-blue-200 transition-colors">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                    Local de Destino
+                  </CardTitle>
+                  <CardDescription>Para onde vamos levar</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-base font-medium">Estado *</Label>
+                      <Select value={formData.destinoEstado} onValueChange={(value) => setFormData(prev => ({ ...prev, destinoEstado: value, destinoCidade: '' }))}>
+                        <SelectTrigger className="h-12 text-base">
+                          <SelectValue placeholder="Escolha o estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {estados.map(state => (
+                            <SelectItem key={state.sigla} value={state.sigla} className="text-base">
+                              {state.sigla} - {state.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-base font-medium">Cidade *</Label>
+                      <Select value={formData.destinoCidade} onValueChange={(value) => setFormData(prev => ({ ...prev, destinoCidade: value }))}>
+                        <SelectTrigger className="h-12 text-base">
+                          <SelectValue placeholder="Escolha a cidade" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cidadesDestino.map(city => (
+                            <SelectItem key={city.nome} value={city.nome} className="text-base">
+                              {city.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-base font-medium mb-3 block">Tipo de local *</Label>
+                      <RadioGroup value={formData.destinoTipoEndereco} onValueChange={(value) => setFormData(prev => ({ ...prev, destinoTipoEndereco: value }))}>
+                        <div className="grid grid-cols-1 gap-3">
+                          <label className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <RadioGroupItem value="residencial" id="destino-residencial" />
+                            <Home className="w-5 h-5 text-gray-600" />
+                            <span className="text-base">Casa/Apartamento</span>
+                          </label>
+                          <label className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <RadioGroupItem value="comercial" id="destino-comercial" />
+                            <Package className="w-5 h-5 text-gray-600" />
+                            <span className="text-base">Loja/Escritório</span>
+                          </label>
+                          <label className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <RadioGroupItem value="industrial" id="destino-industrial" />
+                            <MapPin className="w-5 h-5 text-gray-600" />
+                            <span className="text-base">Indústria/Galpão</span>
+                          </label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-base font-medium">Características do local</Label>
+                      <div className="space-y-3">
+                        {[
+                          { id: 'destino-carga-descarga', label: 'Tem espaço para carga e descarga', checked: formData.destinoPossuiCargaDescarga, field: 'destinoPossuiCargaDescarga' },
+                          { id: 'destino-escada', label: 'Tem escada', checked: formData.destinoPossuiEscada, field: 'destinoPossuiEscada' },
+                          { id: 'destino-elevador', label: 'Tem elevador', checked: formData.destinoPossuiElevador, field: 'destinoPossuiElevador' },
+                          { id: 'destino-doca', label: 'Tem doca de carga', checked: formData.destinoPossuiDoca, field: 'destinoPossuiDoca' }
+                        ].map((item) => (
+                          <label key={item.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                            <Checkbox 
+                              id={item.id}
+                              checked={item.checked}
+                              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, [item.field]: !!checked }))}
+                            />
+                            <span className="text-base">{item.label}</span>
+                          </label>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </div>
+                    </div>
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Data e Horário */}
+            <Card className="border-2 border-gray-100">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  Quando precisamos buscar?
+                </CardTitle>
+                <CardDescription>Data e horário da coleta</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="destino-cidade">Cidade *</Label>
-                    <Select value={formData.destinoCidade} onValueChange={(value) => setFormData(prev => ({ ...prev, destinoCidade: value }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a cidade" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cidadesDestino.map(city => (
-                          <SelectItem key={city.nome} value={city.nome}>
-                            {city.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Tipo de Endereço *</Label>
-                  <RadioGroup value={formData.destinoTipoEndereco} onValueChange={(value) => setFormData(prev => ({ ...prev, destinoTipoEndereco: value }))}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="residencial" id="destino-residencial" />
-                      <Label htmlFor="destino-residencial">Residencial</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="comercial" id="destino-comercial" />
-                      <Label htmlFor="destino-comercial">Comercial</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="industrial" id="destino-industrial" />
-                      <Label htmlFor="destino-industrial">Industrial</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="destino-carga-descarga" 
-                      checked={formData.destinoPossuiCargaDescarga}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, destinoPossuiCargaDescarga: !!checked }))}
-                    />
-                    <Label htmlFor="destino-carga-descarga">Possui carga e descarga?</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="destino-escada" 
-                      checked={formData.destinoPossuiEscada}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, destinoPossuiEscada: !!checked }))}
-                    />
-                    <Label htmlFor="destino-escada">Possui escada?</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="destino-elevador" 
-                      checked={formData.destinoPossuiElevador}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, destinoPossuiElevador: !!checked }))}
-                    />
-                    <Label htmlFor="destino-elevador">Possui elevador?</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="destino-doca" 
-                      checked={formData.destinoPossuiDoca}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, destinoPossuiDoca: !!checked }))}
-                    />
-                    <Label htmlFor="destino-doca">Possui doca de carga?</Label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Data e Horário */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  🗓️ Data e Horário de Carregamento
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="data-carregamento">Data *</Label>
+                    <Label className="text-base font-medium">Data da coleta *</Label>
                     <Input
-                      id="data-carregamento"
                       type="date"
                       value={formData.dataCarregamento}
                       onChange={(e) => setFormData(prev => ({ ...prev, dataCarregamento: e.target.value }))}
+                      className="h-12 text-base"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="horario-carregamento">Horário *</Label>
+                    <Label className="text-base font-medium">Horário aproximado *</Label>
                     <Input
-                      id="horario-carregamento"
                       type="time"
                       value={formData.horarioCarregamento}
                       onChange={(e) => setFormData(prev => ({ ...prev, horarioCarregamento: e.target.value }))}
+                      className="h-12 text-base"
                     />
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         );
 
       case 2:
         return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="w-5 h-5" />
-                Etapa 2 - Itens a serem transportados
-              </CardTitle>
-              <CardDescription>
-                Informe quais itens serão transportados
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <Label>Como você quer informar os itens?</Label>
-                <RadioGroup 
-                  value={formData.tipoListagemItens} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, tipoListagemItens: value }))}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="detalhada" id="lista-detalhada" />
-                    <Label htmlFor="lista-detalhada">Listar os itens (Nome + Quantidade)</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="livre" id="descricao-livre" />
-                    <Label htmlFor="descricao-livre">Descrição livre dos itens</Label>
-                  </div>
-                </RadioGroup>
+          <div className="space-y-8">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                <Package className="w-8 h-8 text-green-600" />
               </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">O que vamos transportar?</h2>
+              <p className="text-gray-600 text-lg">Descreva os itens que precisam ser transportados</p>
+            </div>
 
-              {formData.tipoListagemItens === 'detalhada' ? (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-medium">Lista de Itens</h4>
-                    <Button type="button" onClick={addItem} variant="outline" size="sm">
-                      Adicionar Item
-                    </Button>
+            <Card className="border-2 border-gray-100">
+              <CardContent className="p-6">
+                <div className="space-y-6">
+                  <div>
+                    <Label className="text-base font-medium mb-4 block">Como você quer informar os itens?</Label>
+                    <RadioGroup 
+                      value={formData.tipoListagemItens} 
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, tipoListagemItens: value }))}
+                    >
+                      <div className="grid grid-cols-1 gap-4">
+                        <label className="flex items-start space-x-3 p-4 border-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                          <RadioGroupItem value="detalhada" id="lista-detalhada" className="mt-1" />
+                          <div>
+                            <div className="text-base font-medium">Lista detalhada</div>
+                            <div className="text-sm text-gray-600 mt-1">Informar cada item com nome e quantidade</div>
+                          </div>
+                        </label>
+                        <label className="flex items-start space-x-3 p-4 border-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                          <RadioGroupItem value="livre" id="descricao-livre" className="mt-1" />
+                          <div>
+                            <div className="text-base font-medium">Descrição livre</div>
+                            <div className="text-sm text-gray-600 mt-1">Descrever todos os itens em texto livre</div>
+                          </div>
+                        </label>
+                      </div>
+                    </RadioGroup>
                   </div>
-                  
-                  {formData.itensDetalhados.map((item, index) => (
-                    <div key={item.id} className="flex gap-4 items-end">
-                      <div className="flex-1">
-                        <Label htmlFor={`item-nome-${item.id}`}>Nome do Item</Label>
-                        <Input
-                          id={`item-nome-${item.id}`}
-                          placeholder="Ex: Cama, Geladeira, Caixa pequena"
-                          value={item.nome}
-                          onChange={(e) => updateItem(item.id, 'nome', e.target.value)}
-                        />
+
+                  {formData.tipoListagemItens === 'detalhada' ? (
+                    <div className="space-y-6">
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-lg font-medium">Lista de Itens</h4>
+                        <Button 
+                          type="button" 
+                          onClick={addItem} 
+                          className="bg-blue-600 hover:bg-blue-700 text-base px-6"
+                        >
+                          + Adicionar Item
+                        </Button>
                       </div>
-                      <div className="w-32">
-                        <Label htmlFor={`item-quantidade-${item.id}`}>Quantidade</Label>
-                        <Input
-                          id={`item-quantidade-${item.id}`}
-                          type="number"
-                          min="1"
-                          value={item.quantidade}
-                          onChange={(e) => updateItem(item.id, 'quantidade', parseInt(e.target.value) || 1)}
-                        />
+                      
+                      <div className="space-y-4">
+                        {formData.itensDetalhados.map((item, index) => (
+                          <div key={item.id} className="p-4 border rounded-lg bg-gray-50">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                              <div className="md:col-span-2">
+                                <Label className="text-base font-medium">Nome do Item</Label>
+                                <Input
+                                  placeholder="Ex: Geladeira, Sofá, Caixa de livros..."
+                                  value={item.nome}
+                                  onChange={(e) => updateItem(item.id, 'nome', e.target.value)}
+                                  className="h-12 text-base mt-2"
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <div className="flex-1">
+                                  <Label className="text-base font-medium">Quantidade</Label>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={item.quantidade}
+                                    onChange={(e) => updateItem(item.id, 'quantidade', parseInt(e.target.value) || 1)}
+                                    className="h-12 text-base mt-2"
+                                  />
+                                </div>
+                                <Button 
+                                  type="button" 
+                                  onClick={() => removeItem(item.id)} 
+                                  variant="destructive" 
+                                  className="h-12 mt-8"
+                                >
+                                  ✕
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <Button 
-                        type="button" 
-                        onClick={() => removeItem(item.id)} 
-                        variant="destructive" 
-                        size="sm"
-                      >
-                        Remover
-                      </Button>
+                      
+                      {formData.itensDetalhados.length === 0 && (
+                        <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
+                          <Package className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                          <p className="text-lg">Nenhum item adicionado ainda</p>
+                          <p className="text-base">Clique em "Adicionar Item" para começar</p>
+                        </div>
+                      )}
                     </div>
-                  ))}
-                  
-                  {formData.itensDetalhados.length === 0 && (
-                    <p className="text-gray-500 text-center py-4">
-                      Nenhum item adicionado. Clique em "Adicionar Item" para começar.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div>
-                  <Label htmlFor="descricao-livre-itens">Descrição dos Itens *</Label>
-                  <Textarea
-                    id="descricao-livre-itens"
-                    placeholder="Descreva todos os itens que serão transportados..."
-                    value={formData.descricaoLivreItens}
-                    onChange={(e) => setFormData(prev => ({ ...prev, descricaoLivreItens: e.target.value }))}
-                    rows={5}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        );
-
-      case 3:
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle>🛠️ Etapa 3 - Necessidades adicionais</CardTitle>
-              <CardDescription>
-                Informe se você precisa de serviços extras
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="precisa-ajudante" 
-                    checked={formData.precisaAjudante}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, precisaAjudante: !!checked }))}
-                  />
-                  <Label htmlFor="precisa-ajudante">Precisa de ajudante?</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="precisa-montar-desmontar" 
-                    checked={formData.precisaMontarDesmontar}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, precisaMontarDesmontar: !!checked }))}
-                  />
-                  <Label htmlFor="precisa-montar-desmontar">Precisa montar ou desmontar móveis?</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="precisa-embalagem" 
-                    checked={formData.precisaEmbalagem}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, precisaEmbalagem: !!checked }))}
-                  />
-                  <Label htmlFor="precisa-embalagem">Precisa de embalagem para os itens?</Label>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="local-possui-restricao" 
-                      checked={formData.localPossuiRestricao}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, localPossuiRestricao: !!checked }))}
-                    />
-                    <Label htmlFor="local-possui-restricao">O local possui algum tipo de restrição?</Label>
-                  </div>
-                  <p className="text-sm text-gray-500 ml-6">Ex: Horário, acesso, altura, condomínio, etc.</p>
-                  
-                  {formData.localPossuiRestricao && (
-                    <div className="ml-6">
-                      <Label htmlFor="descricao-restricao">Descreva a restrição</Label>
+                  ) : (
+                    <div>
+                      <Label className="text-base font-medium">Descreva todos os itens *</Label>
                       <Textarea
-                        id="descricao-restricao"
-                        placeholder="Descreva as restrições do local..."
-                        value={formData.descricaoRestricao}
-                        onChange={(e) => setFormData(prev => ({ ...prev, descricaoRestricao: e.target.value }))}
-                        rows={3}
+                        placeholder="Descreva detalhadamente todos os itens que serão transportados..."
+                        value={formData.descricaoLivreItens}
+                        onChange={(e) => setFormData(prev => ({ ...prev, descricaoLivreItens: e.target.value }))}
+                        rows={6}
+                        className="text-base mt-2"
                       />
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case 3:
+        return (
+          <div className="space-y-8">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
+                <Check className="w-8 h-8 text-purple-600" />
               </div>
-            </CardContent>
-          </Card>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Precisa de serviços extras?</h2>
+              <p className="text-gray-600 text-lg">Marque os serviços adicionais que você precisa</p>
+            </div>
+
+            <Card className="border-2 border-gray-100">
+              <CardContent className="p-6">
+                <div className="space-y-6">
+                  {[
+                    { id: 'precisa-ajudante', label: 'Preciso de ajudante para carregar/descarregar', checked: formData.precisaAjudante, field: 'precisaAjudante' },
+                    { id: 'precisa-montar-desmontar', label: 'Preciso montar ou desmontar móveis', checked: formData.precisaMontarDesmontar, field: 'precisaMontarDesmontar' },
+                    { id: 'precisa-embalagem', label: 'Preciso de embalagem para os itens', checked: formData.precisaEmbalagem, field: 'precisaEmbalagem' }
+                  ].map((item) => (
+                    <label key={item.id} className="flex items-center space-x-4 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                      <Checkbox 
+                        id={item.id}
+                        checked={item.checked}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, [item.field]: !!checked }))}
+                      />
+                      <span className="text-base font-medium">{item.label}</span>
+                    </label>
+                  ))}
+
+                  <div className="space-y-4">
+                    <label className="flex items-start space-x-4 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                      <Checkbox 
+                        id="local-possui-restricao"
+                        checked={formData.localPossuiRestricao}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, localPossuiRestricao: !!checked }))}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="text-base font-medium">O local tem alguma restrição?</div>
+                        <div className="text-sm text-gray-600 mt-1">Ex: Horário de funcionamento, condomínio, altura limitada, etc.</div>
+                      </div>
+                    </label>
+                    
+                    {formData.localPossuiRestricao && (
+                      <div className="ml-10">
+                        <Label className="text-base font-medium">Descreva as restrições</Label>
+                        <Textarea
+                          placeholder="Descreva as restrições do local..."
+                          value={formData.descricaoRestricao}
+                          onChange={(e) => setFormData(prev => ({ ...prev, descricaoRestricao: e.target.value }))}
+                          rows={3}
+                          className="text-base mt-2"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         );
 
       case 4:
         return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                👤 Etapa 4 - Dados do Solicitante
-              </CardTitle>
-              <CardDescription>
-                Informe seus dados para contato
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="solicitante-nome">Nome completo do solicitante *</Label>
-                <Input
-                  id="solicitante-nome"
-                  placeholder="Digite seu nome completo"
-                  value={formData.solicitanteNome}
-                  onChange={(e) => setFormData(prev => ({ ...prev, solicitanteNome: e.target.value }))}
-                />
+          <div className="space-y-8">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mb-4">
+                <User className="w-8 h-8 text-orange-600" />
               </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Seus dados para contato</h2>
+              <p className="text-gray-600 text-lg">Como podemos entrar em contato com você</p>
+            </div>
 
-              <div>
-                <Label htmlFor="solicitante-telefone">Telefone *</Label>
-                <Input
-                  id="solicitante-telefone"
-                  placeholder="(00) 00000-0000"
-                  value={formData.solicitanteTelefone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, solicitanteTelefone: e.target.value }))}
-                />
-              </div>
+            <Card className="border-2 border-gray-100">
+              <CardContent className="p-6">
+                <div className="space-y-6">
+                  <div>
+                    <Label className="text-base font-medium">Nome completo *</Label>
+                    <Input
+                      placeholder="Digite seu nome completo"
+                      value={formData.solicitanteNome}
+                      onChange={(e) => setFormData(prev => ({ ...prev, solicitanteNome: e.target.value }))}
+                      className="h-12 text-base mt-2"
+                    />
+                  </div>
 
-              <div>
-                <Label htmlFor="solicitante-confirmar-telefone">Confirmar telefone *</Label>
-                <Input
-                  id="solicitante-confirmar-telefone"
-                  placeholder="(00) 00000-0000"
-                  value={formData.solicitanteConfirmarTelefone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, solicitanteConfirmarTelefone: e.target.value }))}
-                />
-              </div>
-            </CardContent>
-          </Card>
+                  <div>
+                    <Label className="text-base font-medium">Telefone *</Label>
+                    <Input
+                      placeholder="(11) 99999-9999"
+                      value={formData.solicitanteTelefone}
+                      onChange={(e) => setFormData(prev => ({ ...prev, solicitanteTelefone: e.target.value }))}
+                      className="h-12 text-base mt-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-base font-medium">Confirme seu telefone *</Label>
+                    <Input
+                      placeholder="(11) 99999-9999"
+                      value={formData.solicitanteConfirmarTelefone}
+                      onChange={(e) => setFormData(prev => ({ ...prev, solicitanteConfirmarTelefone: e.target.value }))}
+                      className="h-12 text-base mt-2"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         );
 
       default:
@@ -706,21 +731,21 @@ const PublicFreightRequestForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-20">
             <div>
-              <h1 className="text-xl font-bold text-gray-800">Solicitar Frete</h1>
-              <p className="text-sm text-gray-600">Etapa {currentStep} de 4</p>
+              <h1 className="text-2xl font-bold text-gray-900">Solicitar Frete</h1>
+              <p className="text-gray-600">Etapa {currentStep} de 4</p>
             </div>
             
             <div className="flex space-x-2">
               {[1, 2, 3, 4].map((step) => (
                 <div
                   key={step}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-medium transition-colors ${
                     step === currentStep
                       ? 'bg-blue-600 text-white'
                       : step < currentStep
@@ -728,7 +753,7 @@ const PublicFreightRequestForm = () => {
                       : 'bg-gray-200 text-gray-600'
                   }`}
                 >
-                  {step}
+                  {step < currentStep ? <Check className="w-5 h-5" /> : step}
                 </div>
               ))}
             </div>
@@ -741,38 +766,41 @@ const PublicFreightRequestForm = () => {
         {renderStep()}
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between mt-8">
+        <div className="flex justify-between mt-12 pt-8 border-t border-gray-200">
           <Button
             onClick={prevStep}
             disabled={currentStep === 1}
             variant="outline"
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2 h-12 px-6 text-base"
           >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Anterior</span>
+            <ChevronLeft className="w-5 h-5" />
+            <span>Voltar</span>
           </Button>
 
           {currentStep < 4 ? (
             <Button
               onClick={nextStep}
-              className="flex items-center space-x-2"
+              className="flex items-center space-x-2 h-12 px-6 text-base bg-blue-600 hover:bg-blue-700"
             >
-              <span>Próxima</span>
-              <ChevronRight className="w-4 h-4" />
+              <span>Continuar</span>
+              <ChevronRight className="w-5 h-5" />
             </Button>
           ) : (
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="flex items-center space-x-2"
+              className="flex items-center space-x-2 h-12 px-8 text-base bg-green-600 hover:bg-green-700"
             >
               {isSubmitting ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
                   <span>Enviando...</span>
                 </>
               ) : (
-                <span>Solicitar Frete</span>
+                <>
+                  <Check className="w-5 h-5" />
+                  <span>Solicitar Frete</span>
+                </>
               )}
             </Button>
           )}
