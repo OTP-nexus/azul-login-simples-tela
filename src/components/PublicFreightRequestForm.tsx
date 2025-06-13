@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useIBGE } from '@/hooks/useIBGE';
+import { useEstados, useCidades } from '@/hooks/useIBGE';
 import { ChevronLeft, ChevronRight, Package, MapPin, Clock, User } from 'lucide-react';
 
 interface ItemDetalhado {
@@ -23,7 +22,11 @@ const PublicFreightRequestForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const { states, cities, loadCities } = useIBGE();
+  
+  // IBGE hooks para origem e destino
+  const { estados } = useEstados();
+  const { cidades: cidadesOrigem, loading: loadingCidadesOrigem } = useCidades('');
+  const { cidades: cidadesDestino, loading: loadingCidadesDestino } = useCidades('');
 
   // Estados do formulário
   const [formData, setFormData] = useState({
@@ -66,15 +69,6 @@ const PublicFreightRequestForm = () => {
     solicitanteTelefone: '',
     solicitanteConfirmarTelefone: ''
   });
-
-  const handleEstadoChange = (tipo: 'origem' | 'destino', estado: string) => {
-    if (tipo === 'origem') {
-      setFormData(prev => ({ ...prev, origemEstado: estado, origemCidade: '' }));
-    } else {
-      setFormData(prev => ({ ...prev, destinoEstado: estado, destinoCidade: '' }));
-    }
-    loadCities(estado);
-  };
 
   const addItem = () => {
     const newItem: ItemDetalhado = {
@@ -197,7 +191,7 @@ const PublicFreightRequestForm = () => {
         data_coleta: formData.dataCarregamento,
         horario_carregamento: formData.horarioCarregamento,
         tipo_listagem_itens: formData.tipoListagemItens,
-        itens_detalhados: formData.tipoListagemItens === 'detalhada' ? formData.itensDetalhados : [],
+        itens_detalhados: formData.tipoListagemItens === 'detalhada' ? JSON.parse(JSON.stringify(formData.itensDetalhados)) : null,
         descricao_livre_itens: formData.tipoListagemItens === 'livre' ? formData.descricaoLivreItens : null,
         precisa_ajudante: formData.precisaAjudante,
         precisa_montar_desmontar: formData.precisaMontarDesmontar,
@@ -295,12 +289,12 @@ const PublicFreightRequestForm = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="origem-estado">UF *</Label>
-                    <Select value={formData.origemEstado} onValueChange={(value) => handleEstadoChange('origem', value)}>
+                    <Select value={formData.origemEstado} onValueChange={(value) => setFormData(prev => ({ ...prev, origemEstado: value, origemCidade: '' }))}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione uma UF" />
                       </SelectTrigger>
                       <SelectContent>
-                        {states.map(state => (
+                        {estados.map(state => (
                           <SelectItem key={state.sigla} value={state.sigla}>
                             {state.sigla} - {state.nome}
                           </SelectItem>
@@ -315,7 +309,7 @@ const PublicFreightRequestForm = () => {
                         <SelectValue placeholder="Selecione a cidade" />
                       </SelectTrigger>
                       <SelectContent>
-                        {cities.map(city => (
+                        {cidadesOrigem.map(city => (
                           <SelectItem key={city.nome} value={city.nome}>
                             {city.nome}
                           </SelectItem>
@@ -385,12 +379,12 @@ const PublicFreightRequestForm = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="destino-estado">UF *</Label>
-                    <Select value={formData.destinoEstado} onValueChange={(value) => handleEstadoChange('destino', value)}>
+                    <Select value={formData.destinoEstado} onValueChange={(value) => setFormData(prev => ({ ...prev, destinoEstado: value, destinoCidade: '' }))}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione uma UF" />
                       </SelectTrigger>
                       <SelectContent>
-                        {states.map(state => (
+                        {estados.map(state => (
                           <SelectItem key={state.sigla} value={state.sigla}>
                             {state.sigla} - {state.nome}
                           </SelectItem>
@@ -405,7 +399,7 @@ const PublicFreightRequestForm = () => {
                         <SelectValue placeholder="Selecione a cidade" />
                       </SelectTrigger>
                       <SelectContent>
-                        {cities.map(city => (
+                        {cidadesDestino.map(city => (
                           <SelectItem key={city.nome} value={city.nome}>
                             {city.nome}
                           </SelectItem>
