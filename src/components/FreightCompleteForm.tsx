@@ -23,55 +23,55 @@ import { ErrorMessage } from '@/components/ui/error-message';
 
 const vehicleTypes = {
   heavy: [
-    { id: 'carreta', type: 'Carreta', category: 'heavy' as const },
-    { id: 'carreta-ls', type: 'Carreta LS', category: 'heavy' as const },
-    { id: 'vanderleia', type: 'Vanderléia', category: 'heavy' as const },
-    { id: 'bitrem', type: 'Bitrem', category: 'heavy' as const },
-    { id: 'rodotrem', type: 'Rodotrem', category: 'heavy' as const }
+    { id: 'carreta', type: 'Carreta', category: 'heavy' },
+    { id: 'carreta-ls', type: 'Carreta LS', category: 'heavy' },
+    { id: 'vanderleia', type: 'Vanderléia', category: 'heavy' },
+    { id: 'bitrem', type: 'Bitrem', category: 'heavy' },
+    { id: 'rodotrem', type: 'Rodotrem', category: 'heavy' }
   ],
   medium: [
-    { id: 'truck', type: 'Truck', category: 'medium' as const },
-    { id: 'bitruck', type: 'Bitruck', category: 'medium' as const },
-    { id: 'toco', type: 'Toco', category: 'medium' as const }
+    { id: 'truck', type: 'Truck', category: 'medium' },
+    { id: 'bitruck', type: 'Bitruck', category: 'medium' },
+    { id: 'toco', type: 'Toco', category: 'medium' }
   ],
   light: [
-    { id: 'fiorino', type: 'Fiorino', category: 'light' as const },
-    { id: 'vlc', type: 'VLC', category: 'light' as const },
-    { id: 'tres-quartos', type: '3/4', category: 'light' as const },
-    { id: 'van', type: 'Van', category: 'light' as const },
-    { id: 'hr', type: 'HR (Hyundai HR)', category: 'light' as const },
-    { id: 'utilitario', type: 'Utilitário', category: 'light' as const },
-    { id: 'kombi', type: 'Kombi', category: 'light' as const },
-    { id: 'moto', type: 'Moto', category: 'light' as const }
+    { id: 'fiorino', type: 'Fiorino', category: 'light' },
+    { id: 'vlc', type: 'VLC', category: 'light' },
+    { id: 'tres-quartos', type: '3/4', category: 'light' },
+    { id: 'van', type: 'Van', category: 'light' },
+    { id: 'hr', type: 'HR (Hyundai HR)', category: 'light' },
+    { id: 'utilitario', type: 'Utilitário', category: 'light' },
+    { id: 'kombi', type: 'Kombi', category: 'light' },
+    { id: 'moto', type: 'Moto', category: 'light' }
   ]
 };
 
 const bodyTypes = {
   open: [
-    { id: 'graneleiro', type: 'Graneleiro', category: 'open' as const },
-    { id: 'grade-baixa', type: 'Grade Baixa', category: 'open' as const },
-    { id: 'prancha', type: 'Prancha', category: 'open' as const },
-    { id: 'cacamba', type: 'Caçamba', category: 'open' as const },
-    { id: 'plataforma', type: 'Plataforma', category: 'open' as const }
+    { id: 'graneleiro', type: 'Graneleiro', category: 'open' },
+    { id: 'grade-baixa', type: 'Grade Baixa', category: 'open' },
+    { id: 'prancha', type: 'Prancha', category: 'open' },
+    { id: 'cacamba', type: 'Caçamba', category: 'open' },
+    { id: 'plataforma', type: 'Plataforma', category: 'open' }
   ],
   closed: [
-    { id: 'sider', type: 'Sider', category: 'closed' as const },
-    { id: 'bau', type: 'Baú', category: 'closed' as const },
-    { id: 'bau-frigorifico', type: 'Baú Frigorífico', category: 'closed' as const },
-    { id: 'bau-refrigerado', type: 'Baú Refrigerado', category: 'closed' as const }
+    { id: 'sider', type: 'Sider', category: 'closed' },
+    { id: 'bau', type: 'Baú', category: 'closed' },
+    { id: 'bau-frigorifico', type: 'Baú Frigorífico', category: 'closed' },
+    { id: 'bau-refrigerado', type: 'Baú Refrigerado', category: 'closed' }
   ],
   special: [
-    { id: 'silo', type: 'Silo', category: 'special' as const },
-    { id: 'cegonheiro', type: 'Cegonheiro', category: 'special' as const },
-    { id: 'gaiola', type: 'Gaiola', category: 'special' as const },
-    { id: 'tanque', type: 'Tanque', category: 'special' as const },
-    { id: 'bug-porta-container', type: 'Bug Porta Container', category: 'special' as const },
-    { id: 'munk', type: 'Munk', category: 'special' as const },
-    { id: 'apenas-cavalo', type: 'Apenas Cavalo', category: 'special' as const },
-    { id: 'cavaqueira', type: 'Cavaqueira', category: 'special' as const },
-    { id: 'hopper', type: 'Hopper', category: 'special' as const },
-    { id: 'cegonha', type: 'Cegonha', category: 'special' as const },
-    { id: 'porta-container', type: 'Porta Container', category: 'special' as const }
+    { id: 'silo', type: 'Silo', category: 'special' },
+    { id: 'cegonheiro', type: 'Cegonheiro', category: 'special' },
+    { id: 'gaiola', type: 'Gaiola', category: 'special' },
+    { id: 'tanque', type: 'Tanque', category: 'special' },
+    { id: 'bug-porta-container', type: 'Bug Porta Container', category: 'special' },
+    { id: 'munk', type: 'Munk', category: 'special' },
+    { id: 'apenas-cavalo', type: 'Apenas Cavalo', category: 'special' },
+    { id: 'cavaqueira', type: 'Cavaqueira', category: 'special' },
+    { id: 'hopper', type: 'Hopper', category: 'special' },
+    { id: 'cegonha', type: 'Cegonha', category: 'special' },
+    { id: 'porta-container', type: 'Porta Container', category: 'special' }
   ]
 };
 
@@ -94,12 +94,12 @@ const FreightCompleteForm = () => {
   } = useFreightFormValidation();
 
   const [formData, setFormData] = useState<FreightFormData>({
-    selectedCollaborators: [] as string[],
+    selectedCollaborators: [],
     origem: {
       estado: '',
       cidade: ''
     },
-    paradas: [] as Array<{ id: string; estado: string; cidade: string }>,
+    paradas: [],
     dataColeta: '',
     horarioColeta: '',
     dimensoes: {
@@ -108,8 +108,8 @@ const FreightCompleteForm = () => {
       comprimento: ''
     },
     peso: '',
-    tiposVeiculos: [] as Array<{ id: string; type: string; category: 'heavy' | 'medium' | 'light'; selected: boolean }>,
-    tiposCarrocerias: [] as Array<{ id: string; type: string; category: 'closed' | 'open' | 'special'; selected: boolean }>,
+    tiposVeiculos: [],
+    tiposCarrocerias: [],
     tipoValor: '',
     valorOfertado: '',
     pedagioPagoPor: '',
@@ -399,7 +399,7 @@ const FreightCompleteForm = () => {
         pedagio_direcao: formData.pedagioPagoPor === 'motorista' ? null : formData.pedagioDirecao || null,
         observacoes: formData.observacoes,
         collaborator_ids: formData.selectedCollaborators,
-        status: 'pendente'
+        status: 'ativo'
       };
 
       console.log('Dados do frete a serem salvos:', freightData);

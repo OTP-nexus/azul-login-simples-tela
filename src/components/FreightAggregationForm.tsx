@@ -1,270 +1,447 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Truck, User, Plus, X, ArrowRight, CheckCircle, MapPin, Settings, DollarSign, Info } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ArrowLeft, ArrowRight, Users, MapPin, Truck, Settings, Calendar, Package, DollarSign, Plus, X, GripVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
-import { useEstados, useCidades } from '@/hooks/useIBGE';
 import { supabase } from '@/integrations/supabase/client';
-import FreightVerificationDialog from './FreightVerificationDialog';
+import { useQuery } from '@tanstack/react-query';
 import FreightLoadingAnimation from './FreightLoadingAnimation';
+import FreightVerificationDialog from './FreightVerificationDialog';
 import FreightSuccessDialog from './FreightSuccessDialog';
+import { useEstados, useCidades } from '@/hooks/useIBGE';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { useFreightFormValidation, FreightFormData } from '@/hooks/useFreightFormValidation';
+import { formatCurrency, formatNumericInput, formatWeight, parseCurrencyValue, limitTextInput } from '@/utils/freightFormatters';
+import { ErrorMessage } from '@/components/ui/error-message';
 
-interface Collaborator {
-  id: string;
-  name: string;
-  sector: string;
-  phone: string;
-  email?: string;
-}
+const vehicleTypes = {
+  heavy: [
+    { id: 'carreta', type: 'Carreta', category: 'heavy' as const },
+    { id: 'carreta-ls', type: 'Carreta LS', category: 'heavy' as const },
+    { id: 'vanderleia', type: 'Vanderléia', category: 'heavy' as const },
+    { id: 'bitrem', type: 'Bitrem', category: 'heavy' as const },
+    { id: 'rodotrem', type: 'Rodotrem', category: 'heavy' as const }
+  ],
+  medium: [
+    { id: 'truck', type: 'Truck', category: 'medium' as const },
+    { id: 'bitruck', type: 'Bitruck', category: 'medium' as const },
+    { id: 'toco', type: 'Toco', category: 'medium' as const }
+  ],
+  light: [
+    { id: 'fiorino', type: 'Fiorino', category: 'light' as const },
+    { id: 'vlc', type: 'VLC', category: 'light' as const },
+    { id: 'tres-quartos', type: '3/4', category: 'light' as const },
+    { id: 'van', type: 'Van', category: 'light' as const },
+    { id: 'hr', type: 'HR (Hyundai HR)', category: 'light' as const },
+    { id: 'utilitario', type: 'Utilitário', category: 'light' as const },
+    { id: 'kombi', type: 'Kombi', category: 'light' as const },
+    { id: 'moto', type: 'Moto', category: 'light' as const }
+  ]
+};
 
-interface Destination {
-  id: string;
-  state: string;
-  city: string;
-}
-
-interface VehicleType {
-  id: string;
-  type: string;
-  category: 'heavy' | 'medium' | 'light';
-  selected: boolean;
-}
-
-interface BodyType {
-  id: string;
-  type: string;
-  category: 'open' | 'closed' | 'special';
-  selected: boolean;
-}
-
-interface PriceRange {
-  id: string;
-  kmStart: number;
-  kmEnd: number;
-  price: number;
-}
-
-interface VehiclePriceTable {
-  vehicleType: string;
-  ranges: PriceRange[];
-}
-
-interface FreightFormData {
-  collaborator_ids: string[];
-  origem_cidade: string;
-  origem_estado: string;
-  destinos: Destination[];
-  tipo_mercadoria: string;
-  tipos_veiculos: VehicleType[];
-  tipos_carrocerias: BodyType[];
-  vehicle_price_tables: VehiclePriceTable[];
-  regras_agendamento: string[];
-  beneficios: string[];
-  horario_carregamento: string;
-  precisa_ajudante: boolean;
-  precisa_rastreador: boolean;
-  precisa_seguro: boolean;
-  pedagio_pago_por: string;
-  pedagio_direcao: string;
-  observacoes: string;
-}
-
-interface GeneratedFreight {
-  id: string;
-  codigo_agregamento: string;
-  destino_cidade: string;
-  destino_estado: string;
-}
-
-const predefinedVehicleTypes: VehicleType[] = [
-  // Pesados
-  { id: '1', type: 'Carreta', category: 'heavy', selected: false },
-  { id: '2', type: 'Carreta LS', category: 'heavy', selected: false },
-  { id: '3', type: 'Vanderléia', category: 'heavy', selected: false },
-  { id: '4', type: 'Bitrem', category: 'heavy', selected: false },
-  // Médios
-  { id: '5', type: 'Truck', category: 'medium', selected: false },
-  { id: '6', type: 'Bitruck', category: 'medium', selected: false },
-  // Leves
-  { id: '7', type: 'Fiorino', category: 'light', selected: false },
-  { id: '8', type: 'VLC', category: 'light', selected: false },
-  { id: '9', type: 'VUC', category: 'light', selected: false },
-  { id: '10', type: '3/4', category: 'light', selected: false },
-  { id: '11', type: 'Toco', category: 'light', selected: false },
-];
-
-const predefinedBodyTypes: BodyType[] = [
-  // Abertas
-  { id: '1', type: 'Graneleiro', category: 'open', selected: false },
-  { id: '2', type: 'Grade Baixa', category: 'open', selected: false },
-  { id: '3', type: 'Prancha', category: 'open', selected: false },
-  { id: '4', type: 'Caçamba', category: 'open', selected: false },
-  { id: '5', type: 'Plataforma', category: 'open', selected: false },
-  // Fechadas
-  { id: '6', type: 'Sider', category: 'closed', selected: false },
-  { id: '7', type: 'Baú', category: 'closed', selected: false },
-  { id: '8', type: 'Baú Frigorífico', category: 'closed', selected: false },
-  { id: '9', type: 'Baú Refrigerado', category: 'closed', selected: false },
-  // Especiais
-  { id: '10', type: 'Silo', category: 'special', selected: false },
-  { id: '11', type: 'Cegonheiro', category: 'special', selected: false },
-  { id: '12', type: 'Gaiola', category: 'special', selected: false },
-  { id: '13', type: 'Tanque', category: 'special', selected: false },
-  { id: '14', type: 'Bug Porta Container', category: 'special', selected: false },
-  { id: '15', type: 'Munk', category: 'special', selected: false },
-  { id: '16', type: 'Apenas Cavalo', category: 'special', selected: false },
-  { id: '17', type: 'Cavaqueira', category: 'special', selected: false },
-  { id: '18', type: 'Hopper', category: 'special', selected: false },
-];
-
-const schedulingRules = [
-  'FIFO (Primeiro a chegar, primeiro a sair)',
-  'Janela de tempo específica',
-  'Prioridade por tipo de carga',
-  'Agendamento obrigatório',
-  'Chegada sem agendamento'
-];
+const bodyTypes = {
+  open: [
+    { id: 'graneleiro', type: 'Graneleiro', category: 'open' as const },
+    { id: 'grade-baixa', type: 'Grade Baixa', category: 'open' as const },
+    { id: 'prancha', type: 'Prancha', category: 'open' as const },
+    { id: 'cacamba', type: 'Caçamba', category: 'open' as const },
+    { id: 'plataforma', type: 'Plataforma', category: 'open' as const }
+  ],
+  closed: [
+    { id: 'sider', type: 'Sider', category: 'closed' as const },
+    { id: 'bau', type: 'Baú', category: 'closed' as const },
+    { id: 'bau-frigorifico', type: 'Baú Frigorífico', category: 'closed' as const },
+    { id: 'bau-refrigerado', type: 'Baú Refrigerado', category: 'closed' as const }
+  ],
+  special: [
+    { id: 'silo', type: 'Silo', category: 'special' as const },
+    { id: 'cegonheiro', type: 'Cegonheiro', category: 'special' as const },
+    { id: 'gaiola', type: 'Gaiola', category: 'special' as const },
+    { id: 'tanque', type: 'Tanque', category: 'special' as const },
+    { id: 'bug-porta-container', type: 'Bug Porta Container', category: 'special' as const },
+    { id: 'munk', type: 'Munk', category: 'special' as const },
+    { id: 'apenas-cavalo', type: 'Apenas Cavalo', category: 'special' as const },
+    { id: 'cavaqueira', type: 'Cavaqueira', category: 'special' as const },
+    { id: 'hopper', type: 'Hopper', category: 'special' as const },
+    { id: 'cegonha', type: 'Cegonha', category: 'special' as const },
+    { id: 'porta-container', type: 'Porta Container', category: 'special' as const }
+  ]
+};
 
 const FreightAggregationForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
-  const [loadingCollaborators, setLoadingCollaborators] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
-  
-  // Dialog states
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
-  const [showLoadingAnimation, setShowLoadingAnimation] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [generatedFreights, setGeneratedFreights] = useState<GeneratedFreight[]>([]);
-  
+  const [generatedFreights, setGeneratedFreights] = useState([]);
+
+  const {
+    errors,
+    validateStep1,
+    validateStep2,
+    validateStep3,
+    validateStep4,
+    clearErrors
+  } = useFreightFormValidation();
+
   const [formData, setFormData] = useState<FreightFormData>({
-    collaborator_ids: [],
-    origem_cidade: '',
-    origem_estado: '',
-    destinos: [],
-    tipo_mercadoria: '',
-    tipos_veiculos: [...predefinedVehicleTypes],
-    tipos_carrocerias: [...predefinedBodyTypes],
-    vehicle_price_tables: [],
-    regras_agendamento: [],
-    beneficios: [],
-    horario_carregamento: '',
-    precisa_ajudante: false,
-    precisa_rastreador: false,
-    precisa_seguro: false,
-    pedagio_pago_por: '',
-    pedagio_direcao: '',
+    selectedCollaborators: [] as string[],
+    origem: {
+      estado: '',
+      cidade: ''
+    },
+    paradas: [] as Array<{ id: string; estado: string; cidade: string }>,
+    dataColeta: '',
+    horarioColeta: '',
+    dimensoes: {
+      altura: '',
+      largura: '',
+      comprimento: ''
+    },
+    peso: '',
+    tiposVeiculos: [] as Array<{ id: string; type: string; category: 'heavy' | 'medium' | 'light'; selected: boolean }>,
+    tiposCarrocerias: [] as Array<{ id: string; type: string; category: 'closed' | 'open' | 'special'; selected: boolean }>,
+    tipoValor: '',
+    valorOfertado: '',
+    pedagioPagoPor: '',
+    pedagioDirecao: '',
+    precisaSeguro: false,
+    precisaAjudante: false,
+    precisaRastreador: false,
     observacoes: ''
   });
-  
-  const { estados, loading: loadingEstados } = useEstados();
-  const origemCidades = useCidades(formData.origem_estado);
-  const [destinoCidades, setDestinoCidades] = useState<{[key: string]: any}>({});
 
-  const steps = [
-    { number: 1, title: 'Colaboradores', description: 'Selecione os responsáveis' },
-    { number: 2, title: 'Origem e Destinos', description: 'Defina as rotas' },
-    { number: 3, title: 'Carga e Veículos', description: 'Configure tipos e carga' },
-    { number: 4, title: 'Configurações', description: 'Regras e condições' }
-  ];
+  const { estados } = useEstados();
+  const { cidades: cidadesOrigem } = useCidades(formData.origem.estado);
 
-  const progressValue = (currentStep / steps.length) * 100;
+  const useMultipleCidades = (estados: string[]) => {
+    return useQuery({
+      queryKey: ['multiple-cidades', estados],
+      queryFn: async () => {
+        if (!estados.length) return {};
+        
+        const cidadesByState: Record<string, any[]> = {};
+        
+        for (const estado of estados) {
+          if (estado) {
+            try {
+              const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${estado}/municipios?orderBy=nome`);
+              if (response.ok) {
+                const data = await response.json();
+                cidadesByState[estado] = data;
+              } else {
+                cidadesByState[estado] = [];
+              }
+            } catch (error) {
+              console.error(`Erro ao buscar cidades para ${estado}:`, error);
+              cidadesByState[estado] = [];
+            }
+          }
+        }
+        
+        return cidadesByState;
+      },
+      enabled: estados.length > 0,
+    });
+  };
 
-  const fetchCollaborators = async () => {
-    if (!user) return;
+  const paradaStates = useMemo(() => {
+    return [...new Set(formData.paradas.map(p => p.estado).filter(Boolean))];
+  }, [formData.paradas]);
 
-    try {
-      const { data: company, error: companyError } = await supabase
+  const { data: cidadesByState = {} } = useMultipleCidades(paradaStates);
+
+  const { data: collaborators = [] } = useQuery({
+    queryKey: ['collaborators'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      const { data: company } = await supabase
         .from('companies')
         .select('id')
         .eq('user_id', user.id)
         .single();
 
-      if (companyError || !company) {
-        throw new Error('Empresa não encontrada');
-      }
+      if (!company) throw new Error('Empresa não encontrada');
 
-      const { data: collaboratorsData, error: collaboratorsError } = await supabase
+      const { data, error } = await supabase
         .from('collaborators')
         .select('*')
-        .eq('company_id', company.id)
-        .order('name', { ascending: true });
+        .eq('company_id', company.id);
 
-      if (collaboratorsError) {
-        throw collaboratorsError;
-      }
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
-      setCollaborators(collaboratorsData || []);
-    } catch (error: any) {
-      console.error('Erro ao buscar colaboradores:', error);
-      toast({
-        title: "Erro ao carregar colaboradores",
-        description: error.message || "Tente novamente",
-        variant: "destructive"
+  const addParada = () => {
+    const newParada = {
+      id: Date.now().toString(),
+      estado: '',
+      cidade: ''
+    };
+    setFormData({
+      ...formData,
+      paradas: [...formData.paradas, newParada]
+    });
+  };
+
+  const removeParada = (id: string) => {
+    setFormData({
+      ...formData,
+      paradas: formData.paradas.filter(parada => parada.id !== id)
+    });
+  };
+
+  const updateParada = (id: string, field: 'estado' | 'cidade', value: string) => {
+    setFormData({
+      ...formData,
+      paradas: formData.paradas.map(parada =>
+        parada.id === id
+          ? { ...parada, [field]: value, ...(field === 'estado' ? { cidade: '' } : {}) }
+          : parada
+      )
+    });
+  };
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) {
+      return;
+    }
+
+    const items = Array.from(formData.paradas);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    setFormData({
+      ...formData,
+      paradas: items
+    });
+  };
+
+  const toggleVehicleType = (vehicleId: string, type: string, category: 'heavy' | 'medium' | 'light') => {
+    const existing = formData.tiposVeiculos.find(v => v.id === vehicleId);
+    if (existing) {
+      setFormData({
+        ...formData,
+        tiposVeiculos: formData.tiposVeiculos.filter(v => v.id !== vehicleId)
       });
-    } finally {
-      setLoadingCollaborators(false);
+    } else {
+      setFormData({
+        ...formData,
+        tiposVeiculos: [...formData.tiposVeiculos, { id: vehicleId, type, category, selected: true }]
+      });
     }
   };
 
-  useEffect(() => {
-    fetchCollaborators();
-  }, [user]);
+  const toggleBodyType = (bodyId: string, type: string, category: 'closed' | 'open' | 'special') => {
+    const existing = formData.tiposCarrocerias.find(b => b.id === bodyId);
+    if (existing) {
+      setFormData({
+        ...formData,
+        tiposCarrocerias: formData.tiposCarrocerias.filter(b => b.id !== bodyId)
+      });
+    } else {
+      setFormData({
+        ...formData,
+        tiposCarrocerias: [...formData.tiposCarrocerias, { id: bodyId, type, category, selected: true }]
+      });
+    }
+  };
 
-  // Atualizar tabelas de preço quando veículos são selecionados/deselecionados
-  useEffect(() => {
-    const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
-    const currentTables = formData.vehicle_price_tables;
-    
-    // Remover tabelas de veículos que não estão mais selecionados
-    const updatedTables = currentTables.filter(table => 
-      selectedVehicles.some(vehicle => vehicle.type === table.vehicleType)
-    );
-    
-    // Adicionar tabelas para novos veículos selecionados
-    selectedVehicles.forEach(vehicle => {
-      if (!updatedTables.some(table => table.vehicleType === vehicle.type)) {
-        updatedTables.push({
-          vehicleType: vehicle.type,
-          ranges: [{
-            id: Date.now().toString(),
-            kmStart: 0,
-            kmEnd: 100,
-            price: 0
-          }]
-        });
-      }
+  const handleCurrencyChange = (value: string, field: string) => {
+    const formatted = formatCurrency(value);
+    setFormData({
+      ...formData,
+      [field]: parseCurrencyValue(formatted)
     });
-    
-    setFormData(prev => ({
-      ...prev,
-      vehicle_price_tables: updatedTables
-    }));
-  }, [formData.tipos_veiculos]);
+  };
 
-  const fetchCidadesForDestino = async (uf: string, destinoId: string) => {
-    if (!uf) return;
+  const handleNumericChange = (value: string, field: string, maxDecimals: number = 2) => {
+    const formatted = formatNumericInput(value, maxDecimals);
+    setFormData({
+      ...formData,
+      [field]: formatted
+    });
+  };
+
+  const handleWeightChange = (value: string) => {
+    const formatted = formatWeight(value);
+    setFormData({
+      ...formData,
+      peso: formatted
+    });
+  };
+
+  const handleObservationsChange = (value: string) => {
+    const limited = limitTextInput(value, 500);
+    setFormData({
+      ...formData,
+      observacoes: limited
+    });
+  };
+
+  const steps = [
+    { number: 1, title: 'Colaboradores', icon: Users, description: 'Selecione os responsáveis' },
+    { number: 2, title: 'Origem e Paradas', icon: MapPin, description: 'Locais de coleta e paradas' },
+    { number: 3, title: 'Carga e Veículos', icon: Truck, description: 'Especificações da carga' },
+    { number: 4, title: 'Configurações', icon: Settings, description: 'Detalhes finais' }
+  ];
+
+  const handleNext = () => {
+    clearErrors();
     
+    let isValid = false;
+    
+    switch (currentStep) {
+      case 1:
+        isValid = validateStep1(formData);
+        break;
+      case 2:
+        isValid = validateStep2(formData);
+        break;
+      case 3:
+        isValid = validateStep3(formData);
+        break;
+      case 4:
+        isValid = validateStep4(formData);
+        if (isValid) {
+          setShowVerificationDialog(true);
+          return;
+        }
+        break;
+    }
+    
+    if (isValid && currentStep < 4) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    clearErrors();
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const checkForDuplicateParada = (estado: string, cidade: string, currentId: string): boolean => {
+    return formData.paradas.some(parada => 
+      parada.id !== currentId && 
+      parada.estado === estado && 
+      parada.cidade === cidade
+    );
+  };
+
+  const handleSubmit = async () => {
+    if (!validateStep4(formData)) {
+      return;
+    }
+
     try {
-      const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`);
-      const cidades = await response.json();
-      setDestinoCidades(prev => ({
-        ...prev,
-        [destinoId]: cidades
+      setIsSubmitting(true);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      const { data: company } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!company) throw new Error('Empresa não encontrada');
+
+      const destinos = formData.paradas.map((parada, index) => ({
+        id: parada.id || index.toString(),
+        state: parada.estado,
+        city: parada.cidade
       }));
+
+      const valoresDefinidos = formData.tipoValor === 'valor' ? {
+        tipo: 'valor_fixo',
+        valor: formData.valorOfertado ? parseFloat(formData.valorOfertado) : 0
+      } : {
+        tipo: 'a_combinar'
+      };
+
+      const freightData = {
+        company_id: company.id,
+        tipo_frete: 'agregamento',
+        origem_estado: formData.origem.estado,
+        origem_cidade: formData.origem.cidade,
+        destinos: destinos,
+        tipo_mercadoria: 'Geral',
+        paradas: formData.paradas.map(parada => ({
+          estado: parada.estado,
+          cidade: parada.cidade,
+          ordem: formData.paradas.indexOf(parada) + 1
+        })),
+        data_coleta: formData.dataColeta || null,
+        horario_carregamento: formData.horarioColeta || null,
+        peso_carga: formData.peso ? parseFloat(formData.peso.replace(/\./g, '')) : null,
+        tipos_veiculos: formData.tiposVeiculos,
+        tipos_carrocerias: formData.tiposCarrocerias,
+        valores_definidos: valoresDefinidos,
+        precisa_ajudante: formData.precisaAjudante,
+        precisa_rastreador: formData.precisaRastreador,
+        precisa_seguro: formData.precisaSeguro,
+        pedagio_pago_por: formData.pedagioPagoPor,
+        pedagio_direcao: formData.pedagioPagoPor === 'motorista' ? null : formData.pedagioDirecao || null,
+        observacoes: formData.observacoes,
+        collaborator_ids: formData.selectedCollaborators,
+        status: 'ativo'
+      };
+
+      console.log('Dados do frete a serem salvos:', freightData);
+
+      const { data, error } = await supabase
+        .from('fretes')
+        .insert([freightData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erro ao salvar frete:', error);
+        throw error;
+      }
+
+      console.log('Frete salvo com sucesso:', data);
+
+      const generatedFreightsList = [{
+        id: data.id,
+        codigo_agregamento: data.codigo_agregamento || `AGR-${Date.now()}`,
+        destino_cidade: formData.paradas[0]?.cidade || 'N/A',
+        destino_estado: formData.paradas[0]?.estado || 'N/A'
+      }];
+
+      setGeneratedFreights(generatedFreightsList);
+      setIsSubmitting(false);
+      setShowVerificationDialog(false);
+      setShowSuccessDialog(true);
+
+      toast({
+        title: "Sucesso!",
+        description: "Agregamento criado com sucesso.",
+      });
     } catch (error) {
-      console.error('Erro ao buscar cidades:', error);
+      console.error('Erro ao criar agregamento:', error);
+      setIsSubmitting(false);
+      setShowVerificationDialog(false);
+      toast({
+        title: "Erro",
+        description: `Erro ao criar agregamento: ${error.message}`,
+        variant: "destructive",
+      });
     }
   };
 
@@ -272,1297 +449,861 @@ const FreightAggregationForm = () => {
     navigate('/freight-request');
   };
 
-  const handleBackToDashboard = () => {
-    navigate('/company-dashboard');
+  const convertedFormData = {
+    collaborator_ids: formData.selectedCollaborators,
+    origem_cidade: formData.origem.cidade,
+    origem_estado: formData.origem.estado,
+    destinos: formData.paradas.map((parada, index) => ({ 
+      id: parada.id || index.toString(), 
+      state: parada.estado, 
+      city: parada.cidade 
+    })),
+    tipo_mercadoria: 'Geral',
+    tipos_veiculos: formData.tiposVeiculos,
+    tipos_carrocerias: formData.tiposCarrocerias,
+    vehicle_price_tables: [],
+    regras_agendamento: [],
+    beneficios: [],
+    horario_carregamento: formData.horarioColeta,
+    precisa_ajudante: formData.precisaAjudante,
+    precisa_rastreador: formData.precisaRastreador,
+    precisa_seguro: formData.precisaSeguro,
+    pedagio_pago_por: formData.pedagioPagoPor,
+    pedagio_direcao: formData.pedagioDirecao,
+    observacoes: formData.observacoes,
+    tipo_valor: formData.tipoValor,
+    valor_definido: formData.valorOfertado ? parseFloat(formData.valorOfertado) : undefined
   };
 
-  const handleInputChange = (field: keyof FreightFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleCollaboratorToggle = (collaboratorId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      collaborator_ids: prev.collaborator_ids.includes(collaboratorId)
-        ? prev.collaborator_ids.filter(id => id !== collaboratorId)
-        : [...prev.collaborator_ids, collaboratorId]
-    }));
-  };
-
-  const addDestination = () => {
-    const newDestination: Destination = {
-      id: Date.now().toString(),
-      state: '',
-      city: ''
-    };
-    setFormData(prev => ({
-      ...prev,
-      destinos: [...prev.destinos, newDestination]
-    }));
-  };
-
-  const removeDestination = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      destinos: prev.destinos.filter(dest => dest.id !== id)
-    }));
-    setDestinoCidades(prev => {
-      const newState = { ...prev };
-      delete newState[id];
-      return newState;
-    });
-  };
-
-  const updateDestination = (id: string, field: 'state' | 'city', value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      destinos: prev.destinos.map(dest =>
-        dest.id === id ? { ...dest, [field]: value } : dest
-      )
-    }));
-
-    if (field === 'state') {
-      fetchCidadesForDestino(value, id);
-      setFormData(prev => ({
-        ...prev,
-        destinos: prev.destinos.map(dest =>
-          dest.id === id ? { ...dest, city: '' } : dest
-        )
-      }));
-    }
-  };
-
-  const toggleVehicleType = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tipos_veiculos: prev.tipos_veiculos.map(vehicle =>
-        vehicle.id === id ? { ...vehicle, selected: !vehicle.selected } : vehicle
-      )
-    }));
-  };
-
-  const toggleBodyType = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tipos_carrocerias: prev.tipos_carrocerias.map(body =>
-        body.id === id ? { ...body, selected: !body.selected } : body
-      )
-    }));
-  };
-
-  // Funções para gerenciar tabelas de preço por veículo
-  const addPriceRange = (vehicleType: string) => {
-    setFormData(prev => ({
-      ...prev,
-      vehicle_price_tables: prev.vehicle_price_tables.map(table =>
-        table.vehicleType === vehicleType
-          ? {
-              ...table,
-              ranges: [
-                ...table.ranges,
-                {
-                  id: Date.now().toString(),
-                  kmStart: 0,
-                  kmEnd: 100,
-                  price: 0
-                }
-              ]
-            }
-          : table
-      )
-    }));
-  };
-
-  const removePriceRange = (vehicleType: string, rangeId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      vehicle_price_tables: prev.vehicle_price_tables.map(table =>
-        table.vehicleType === vehicleType
-          ? {
-              ...table,
-              ranges: table.ranges.filter(range => range.id !== rangeId)
-            }
-          : table
-      )
-    }));
-  };
-
-  const updatePriceRange = (vehicleType: string, rangeId: string, field: keyof PriceRange, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      vehicle_price_tables: prev.vehicle_price_tables.map(table =>
-        table.vehicleType === vehicleType
-          ? {
-              ...table,
-              ranges: table.ranges.map(range =>
-                range.id === rangeId ? { ...range, [field]: value } : range
-              )
-            }
-          : table
-      )
-    }));
-  };
-
-  const addBenefit = () => {
-    const benefit = prompt('Digite o benefício:');
-    if (benefit && benefit.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        beneficios: [...prev.beneficios, benefit.trim()]
-      }));
-    }
-  };
-
-  const removeBenefit = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      beneficios: prev.beneficios.filter((_, i) => i !== index)
-    }));
-  };
-
-  const toggleSchedulingRule = (rule: string) => {
-    setFormData(prev => ({
-      ...prev,
-      regras_agendamento: prev.regras_agendamento.includes(rule)
-        ? prev.regras_agendamento.filter(r => r !== rule)
-        : [...prev.regras_agendamento, rule]
-    }));
-  };
-
-  const getSelectedCollaborators = () => {
-    return collaborators.filter(collaborator => 
-      formData.collaborator_ids.includes(collaborator.id)
-    );
-  };
-
-  const handleNextStep = () => {
-    if (currentStep === 1) {
-      if (formData.collaborator_ids.length === 0) {
-        toast({
-          title: "Selecione colaboradores",
-          description: "É necessário selecionar pelo menos um colaborador responsável",
-          variant: "destructive"
-        });
-        return;
-      }
-    } else if (currentStep === 2) {
-      if (!formData.origem_cidade || !formData.origem_estado) {
-        toast({
-          title: "Erro de validação",
-          description: "Informe a cidade e estado de origem",
-          variant: "destructive"
-        });
-        return;
-      }
-      if (formData.destinos.length === 0) {
-        toast({
-          title: "Erro de validação",
-          description: "Adicione pelo menos um destino",
-          variant: "destructive"
-        });
-        return;
-      }
-      const invalidDestinations = formData.destinos.some(dest => !dest.city || !dest.state);
-      if (invalidDestinations) {
-        toast({
-          title: "Erro de validação",
-          description: "Preencha todos os destinos adicionados",
-          variant: "destructive"
-        });
-        return;
-      }
-    } else if (currentStep === 3) {
-      if (!formData.tipo_mercadoria) {
-        toast({
-          title: "Erro de validação",
-          description: "Informe o tipo de mercadoria",
-          variant: "destructive"
-        });
-        return;
-      }
-      const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
-      if (selectedVehicles.length === 0) {
-        toast({
-          title: "Erro de validação",
-          description: "Selecione pelo menos um tipo de veículo",
-          variant: "destructive"
-        });
-        return;
-      }
-    }
-    
-    setCurrentStep(currentStep + 1);
-  };
-
-  const handlePreviousStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  // New function to handle opening verification dialog
-  const handleOpenVerificationDialog = () => {
-    // Final validation before showing verification dialog
-    if (!formData.tipo_mercadoria) {
-      toast({
-        title: "Erro de validação",
-        description: "Informe o tipo de mercadoria",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
-    if (selectedVehicles.length === 0) {
-      toast({
-        title: "Erro de validação",
-        description: "Selecione pelo menos um tipo de veículo",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setShowVerificationDialog(true);
-  };
-
-  // Function to handle editing from verification dialog
-  const handleEditFromVerification = () => {
-    setShowVerificationDialog(false);
-    // User stays on current step to edit
-  };
-
-  // Updated submit function for creating multiple freights
-  const handleConfirmFreight = async () => {
-    setShowVerificationDialog(false);
-    setShowLoadingAnimation(true);
-    
-    try {
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .select('id')
-        .eq('user_id', user?.id)
-        .single();
-
-      if (companyError || !company) {
-        throw new Error('Empresa não encontrada');
-      }
-
-      // Prepare base freight data (same for all freights)
-      const baseFreightData = {
-        company_id: company.id,
-        collaborator_ids: formData.collaborator_ids,
-        tipo_frete: 'agregamento',
-        origem_estado: formData.origem_estado,
-        origem_cidade: formData.origem_cidade,
-        tipo_mercadoria: formData.tipo_mercadoria,
-        peso_carga: null,
-        valor_carga: null,
-        tipos_veiculos: JSON.stringify(formData.tipos_veiculos.filter(v => v.selected)),
-        tipos_carrocerias: JSON.stringify(formData.tipos_carrocerias.filter(b => b.selected)),
-        tabelas_preco: JSON.stringify(formData.vehicle_price_tables),
-        regras_agendamento: JSON.stringify(formData.regras_agendamento),
-        beneficios: JSON.stringify(formData.beneficios),
-        horario_carregamento: formData.horario_carregamento || null,
-        precisa_ajudante: formData.precisa_ajudante,
-        precisa_rastreador: formData.precisa_rastreador,
-        precisa_seguro: formData.precisa_seguro,
-        pedagio_pago_por: formData.pedagio_pago_por || null,
-        pedagio_direcao: formData.pedagio_direcao || null,
-        observacoes: formData.observacoes || null
-      };
-
-      const createdFreights: GeneratedFreight[] = [];
-
-      // Create one freight for each destination
-      for (const destino of formData.destinos) {
-        const freightData = {
-          ...baseFreightData,
-          destinos: JSON.stringify([destino])
-        };
-
-        const { data: freteData, error: freteError } = await supabase
-          .from('fretes')
-          .insert([freightData])
-          .select()
-          .single();
-
-        if (freteError) {
-          throw freteError;
-        }
-
-        // Add to created freights list
-        createdFreights.push({
-          id: freteData.id,
-          codigo_agregamento: freteData.codigo_agregamento,
-          destino_cidade: destino.city,
-          destino_estado: destino.state
-        });
-
-        // Save price tables for this freight
-        const priceTableInserts = [];
-        for (const vehicleTable of formData.vehicle_price_tables) {
-          for (const range of vehicleTable.ranges) {
-            priceTableInserts.push({
-              frete_id: freteData.id,
-              vehicle_type: vehicleTable.vehicleType,
-              km_start: range.kmStart,
-              km_end: range.kmEnd,
-              price: range.price
-            });
-          }
-        }
-
-        if (priceTableInserts.length > 0) {
-          const { error: priceError } = await supabase
-            .from('freight_price_tables')
-            .insert(priceTableInserts);
-
-          if (priceError) {
-            throw priceError;
-          }
-        }
-      }
-
-      setGeneratedFreights(createdFreights);
-      setShowLoadingAnimation(false);
-      setShowSuccessDialog(true);
-
-      toast({
-        title: "Sucesso!",
-        description: `${createdFreights.length === 1 ? 'Frete criado' : `${createdFreights.length} fretes criados`} com sucesso!`
-      });
-
-    } catch (error: any) {
-      console.error('Erro ao salvar frete:', error);
-      setShowLoadingAnimation(false);
-      toast({
-        title: "Erro ao salvar",
-        description: error.message || "Não foi possível salvar a solicitação. Tente novamente.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Function to handle creating new freight from success dialog
-  const handleNewFreight = () => {
-    setShowSuccessDialog(false);
-    setFormData({
-      collaborator_ids: [],
-      origem_cidade: '',
-      origem_estado: '',
-      destinos: [],
-      tipo_mercadoria: '',
-      tipos_veiculos: [...predefinedVehicleTypes],
-      tipos_carrocerias: [...predefinedBodyTypes],
-      vehicle_price_tables: [],
-      regras_agendamento: [],
-      beneficios: [],
-      horario_carregamento: '',
-      precisa_ajudante: false,
-      precisa_rastreador: false,
-      precisa_seguro: false,
-      pedagio_pago_por: '',
-      pedagio_direcao: '',
-      observacoes: ''
-    });
-    setCurrentStep(1);
-  };
-
-  // Function to handle going back to dashboard from success dialog
-  const handleBackToDashboardFromSuccess = () => {
-    setShowSuccessDialog(false);
-    navigate('/company-dashboard');
-  };
-
-  if (loadingCollaborators) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
+  if (isSubmitting) {
+    return <FreightLoadingAnimation open={true} />;
   }
-
-  if (collaborators.length === 0) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center space-x-3">
-                <Button
-                  onClick={handleBack}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center space-x-2"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Voltar</span>
-                </Button>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-800">Frete de Agregamento</h1>
-                  <p className="text-sm text-gray-600">Solicitação de frete</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Card className="text-center py-12">
-            <CardContent>
-              <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <User className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                Nenhum colaborador cadastrado
-              </h3>
-              <p className="text-base text-gray-600 mb-6">
-                Para solicitar um frete, você precisa ter pelo menos um colaborador cadastrado como responsável pelo pedido.
-              </p>
-              <div className="flex gap-4 justify-center">
-                <Button
-                  onClick={() => navigate('/collaborator-registration')}
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Cadastrar Colaborador
-                </Button>
-                <Button
-                  onClick={handleBackToDashboard}
-                  variant="outline"
-                >
-                  Voltar ao Dashboard
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    );
-  }
-
-  const selectedCollaborators = getSelectedCollaborators();
 
   return (
-    <>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center space-x-3">
-                <Button
-                  onClick={handleBack}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center space-x-2"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Voltar</span>
-                </Button>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-800">Frete de Agregamento</h1>
-                  <p className="text-sm text-gray-600">Solicitação de frete para motoristas agregados</p>
-                </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
+      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-3">
+              <Button
+                onClick={handleBack}
+                variant="outline"
+                size="sm"
+                className="flex items-center space-x-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Voltar</span>
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold text-gray-800">Agregamento</h1>
+                <p className="text-sm text-gray-600">Etapa {currentStep} de 4</p>
               </div>
             </div>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Progress Steps */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              {steps.map((step, index) => (
-                <div key={step.number} className="flex items-center">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                    currentStep > step.number 
-                      ? 'bg-green-500 border-green-500 text-white' 
-                      : currentStep === step.number 
-                      ? 'bg-blue-500 border-blue-500 text-white' 
-                      : 'bg-gray-200 border-gray-300 text-gray-500'
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            {steps.map((step, index) => (
+              <div key={step.number} className="flex items-center">
+                <div className={`flex items-center space-x-2 ${
+                  currentStep >= step.number ? 'text-blue-600' : 'text-gray-400'
+                }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    currentStep >= step.number ? 'bg-blue-600 text-white' : 'bg-gray-200'
                   }`}>
-                    {currentStep > step.number ? (
-                      <CheckCircle className="w-5 h-5" />
-                    ) : (
-                      step.number
-                    )}
+                    <step.icon className="w-4 h-4" />
                   </div>
-                  <div className="ml-3">
-                    <div className={`text-sm font-medium ${
-                      currentStep >= step.number ? 'text-gray-900' : 'text-gray-500'
-                    }`}>
-                      {step.title}
-                    </div>
-                    <div className="text-xs text-gray-500">{step.description}</div>
+                  <div className="hidden sm:block">
+                    <p className="text-sm font-medium">{step.title}</p>
+                    <p className="text-xs">{step.description}</p>
                   </div>
-                  {index < steps.length - 1 && (
-                    <div className={`w-16 h-0.5 mx-4 ${
-                      currentStep > step.number ? 'bg-green-500' : 'bg-gray-300'
-                    }`} />
-                  )}
                 </div>
-              ))}
-            </div>
-            <Progress value={progressValue} className="w-full" />
-          </div>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                  {currentStep === 1 && <User className="w-6 h-6 text-white" />}
-                  {currentStep === 2 && <MapPin className="w-6 h-6 text-white" />}
-                  {currentStep === 3 && <Truck className="w-6 h-6 text-white" />}
-                  {currentStep === 4 && <Settings className="w-6 h-6 text-white" />}
-                </div>
-                <div>
-                  <CardTitle className="text-xl text-gray-800">
-                    {steps[currentStep - 1].title}
-                  </CardTitle>
-                  <CardDescription>
-                    {steps[currentStep - 1].description}
-                  </CardDescription>
-                </div>
+                {index < steps.length - 1 && (
+                  <div className={`w-8 sm:w-16 h-0.5 mx-2 sm:mx-4 ${
+                    currentStep > step.number ? 'bg-blue-600' : 'bg-gray-200'
+                  }`} />
+                )}
               </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {currentStep === 1 && (
+          <Card className={errors.collaborators ? 'border-red-300' : ''}>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Users className="w-5 h-5" />
+                <span>Selecionar Colaboradores Responsáveis *</span>
+              </CardTitle>
+              <CardDescription>
+                Escolha os colaboradores que serão responsáveis por este frete
+              </CardDescription>
+              <ErrorMessage error={errors.collaborators} />
             </CardHeader>
-            
-            <CardContent>
-              {currentStep === 1 && (
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <Label className="text-sm font-medium text-gray-700">
-                      Colaboradores Responsáveis *
-                    </Label>
-                    <p className="text-sm text-gray-600">
-                      Selecione um ou mais colaboradores que serão responsáveis por este pedido de frete.
-                    </p>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto border rounded-lg p-4">
-                      {collaborators.map((collaborator) => (
-                        <div key={collaborator.id} className="flex items-center space-x-3 p-2 border rounded-lg hover:bg-gray-50">
-                          <Checkbox
-                            id={collaborator.id}
-                            checked={formData.collaborator_ids.includes(collaborator.id)}
-                            onCheckedChange={() => handleCollaboratorToggle(collaborator.id)}
-                          />
-                          <label htmlFor={collaborator.id} className="flex-1 cursor-pointer">
-                            <div className="font-medium text-gray-800">{collaborator.name}</div>
-                            <div className="text-sm text-gray-600">{collaborator.sector}</div>
-                            <div className="text-xs text-gray-500">{collaborator.phone}</div>
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-
-                    {selectedCollaborators.length > 0 && (
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-green-700">
-                          Colaboradores Selecionados ({selectedCollaborators.length})
-                        </Label>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedCollaborators.map((collaborator) => (
-                            <div
-                              key={collaborator.id}
-                              className="flex items-center space-x-2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm"
-                            >
-                              <span>{collaborator.name}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleCollaboratorToggle(collaborator.id)}
-                                className="hover:bg-green-200 rounded-full p-1"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-4 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleBack}
-                      className="flex-1"
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleNextStep}
-                      className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
-                      disabled={formData.collaborator_ids.length === 0}
-                    >
-                      Próximo
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </div>
+            <CardContent className="space-y-4">
+              {collaborators.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Nenhum colaborador cadastrado</p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate('/collaborator-registration')}
+                    className="mt-4"
+                  >
+                    Cadastrar Colaborador
+                  </Button>
                 </div>
-              )}
-
-              {currentStep === 2 && (
-                <div className="space-y-6">
-                  {/* Origem */}
-                  <div className="space-y-4">
-                    <Label className="text-lg font-medium text-gray-800">Origem</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="origem_estado" className="text-sm font-medium text-gray-700">
-                          Estado de Origem *
-                        </Label>
-                        <Select 
-                          value={formData.origem_estado} 
-                          onValueChange={(value) => {
-                            handleInputChange('origem_estado', value);
-                            handleInputChange('origem_cidade', ''); // Limpar cidade quando mudar estado
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o estado" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {loadingEstados ? (
-                              <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                            ) : (
-                              estados.map((estado) => (
-                                <SelectItem key={estado.id} value={estado.sigla}>
-                                  {estado.nome} ({estado.sigla})
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="origem_cidade" className="text-sm font-medium text-gray-700">
-                          Cidade de Origem *
-                        </Label>
-                        <Select 
-                          value={formData.origem_cidade} 
-                          onValueChange={(value) => handleInputChange('origem_cidade', value)}
-                          disabled={!formData.origem_estado}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a cidade" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {origemCidades.loading ? (
-                              <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                            ) : (
-                              origemCidades.cidades.map((cidade) => (
-                                <SelectItem key={cidade.id} value={cidade.nome}>
-                                  {cidade.nome}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Destinos */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-lg font-medium text-gray-800">Destinos</Label>
-                      <Button
-                        type="button"
-                        onClick={addDestination}
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center space-x-2"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>Adicionar Destino</span>
-                      </Button>
-                    </div>
-
-                    {/* Aviso informativo sobre múltiplos destinos */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-start space-x-3">
-                        <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <div className="text-sm text-blue-800">
-                          <strong>Informação importante:</strong> Cada destino gerará um pedido de frete separado, com os mesmos dados preenchidos. Isso facilita o seu trabalho e economiza tempo, pois você só precisa preencher as informações uma vez!
-                        </div>
-                      </div>
-                    </div>
-
-                    {formData.destinos.length === 0 && (
-                      <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-                        <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-500">Nenhum destino adicionado</p>
-                        <p className="text-sm text-gray-400">Clique em "Adicionar Destino" para começar</p>
-                      </div>
-                    )}
-
-                    {formData.destinos.map((destino) => (
-                      <div key={destino.id} className="flex items-center space-x-3 p-4 border rounded-lg">
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">Estado</Label>
-                            <Select 
-                              value={destino.state} 
-                              onValueChange={(value) => updateDestination(destino.id, 'state', value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o estado" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {loadingEstados ? (
-                                  <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                                ) : (
-                                  estados.map((estado) => (
-                                    <SelectItem key={estado.id} value={estado.sigla}>
-                                      {estado.nome} ({estado.sigla})
-                                    </SelectItem>
-                                  ))
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">Cidade</Label>
-                            <Select 
-                              value={destino.city} 
-                              onValueChange={(value) => updateDestination(destino.id, 'city', value)}
-                              disabled={!destino.state}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione a cidade" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {destinoCidades[destino.id] ? (
-                                  destinoCidades[destino.id].map((cidade: any) => (
-                                    <SelectItem key={cidade.id} value={cidade.nome}>
-                                      {cidade.nome}
-                                    </SelectItem>
-                                  ))
-                                ) : (
-                                  <SelectItem value="loading" disabled>Selecione um estado primeiro</SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={() => removeDestination(destino.id)}
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-4 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handlePreviousStep}
-                      className="flex-1"
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {collaborators.map((collaborator) => (
+                    <div
+                      key={collaborator.id}
+                      className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                        formData.selectedCollaborators.includes(collaborator.id)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                      onClick={() => {
+                        const selected = formData.selectedCollaborators.includes(collaborator.id);
+                        if (selected) {
+                          setFormData({
+                            ...formData,
+                            selectedCollaborators: formData.selectedCollaborators.filter(id => id !== collaborator.id)
+                          });
+                        } else {
+                          setFormData({
+                            ...formData,
+                            selectedCollaborators: [...formData.selectedCollaborators, collaborator.id]
+                          });
+                        }
+                      }}
                     >
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Voltar
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleNextStep}
-                      className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
-                    >
-                      Próximo
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {currentStep === 3 && (
-                <div className="space-y-6">
-                  {/* Informações da Carga */}
-                  <div className="space-y-4">
-                    <Label className="text-lg font-medium text-gray-800">Informações da Carga</Label>
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="tipo_mercadoria" className="text-sm font-medium text-gray-700">
-                          Tipo de Mercadoria *
-                        </Label>
-                        <Input
-                          id="tipo_mercadoria"
-                          type="text"
-                          value={formData.tipo_mercadoria}
-                          onChange={(e) => handleInputChange('tipo_mercadoria', e.target.value)}
-                          placeholder="Ex: Eletrônicos"
-                          required
-                        />
-                      </div>
+                      <h3 className="font-medium">{collaborator.name}</h3>
+                      <p className="text-sm text-gray-500">{collaborator.sector}</p>
+                      <p className="text-sm text-gray-500">{collaborator.phone}</p>
                     </div>
-                  </div>
-
-                  {/* Tipos de Veículos */}
-                  <div className="space-y-4">
-                    <Label className="text-lg font-medium text-gray-800">Tipos de Veículos *</Label>
-                    
-                    {/* Pesados */}
-                    <div className="space-y-3">
-                      <h4 className="text-md font-semibold text-gray-700">Pesados</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {formData.tipos_veiculos.filter(v => v.category === 'heavy').map((vehicle) => (
-                          <div key={vehicle.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                            <Checkbox
-                              id={`vehicle-${vehicle.id}`}
-                              checked={vehicle.selected}
-                              onCheckedChange={() => toggleVehicleType(vehicle.id)}
-                            />
-                            <label htmlFor={`vehicle-${vehicle.id}`} className="flex-1 cursor-pointer">
-                              <div className="font-medium text-gray-800">{vehicle.type}</div>
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Médios */}
-                    <div className="space-y-3">
-                      <h4 className="text-md font-semibold text-gray-700">Médios</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {formData.tipos_veiculos.filter(v => v.category === 'medium').map((vehicle) => (
-                          <div key={vehicle.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                            <Checkbox
-                              id={`vehicle-${vehicle.id}`}
-                              checked={vehicle.selected}
-                              onCheckedChange={() => toggleVehicleType(vehicle.id)}
-                            />
-                            <label htmlFor={`vehicle-${vehicle.id}`} className="flex-1 cursor-pointer">
-                              <div className="font-medium text-gray-800">{vehicle.type}</div>
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Leves */}
-                    <div className="space-y-3">
-                      <h4 className="text-md font-semibold text-gray-700">Leves</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {formData.tipos_veiculos.filter(v => v.category === 'light').map((vehicle) => (
-                          <div key={vehicle.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                            <Checkbox
-                              id={`vehicle-${vehicle.id}`}
-                              checked={vehicle.selected}
-                              onCheckedChange={() => toggleVehicleType(vehicle.id)}
-                            />
-                            <label htmlFor={`vehicle-${vehicle.id}`} className="flex-1 cursor-pointer">
-                              <div className="font-medium text-gray-800">{vehicle.type}</div>
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tipos de Carroceria */}
-                  <div className="space-y-4">
-                    <Label className="text-lg font-medium text-gray-800">Tipos de Carroceria</Label>
-                    
-                    {/* Abertas */}
-                    <div className="space-y-3">
-                      <h4 className="text-md font-semibold text-gray-700">Abertas</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {formData.tipos_carrocerias.filter(b => b.category === 'open').map((body) => (
-                          <div key={body.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                            <Checkbox
-                              id={`body-${body.id}`}
-                              checked={body.selected}
-                              onCheckedChange={() => toggleBodyType(body.id)}
-                            />
-                            <label htmlFor={`body-${body.id}`} className="flex-1 cursor-pointer">
-                              <div className="font-medium text-gray-800">{body.type}</div>
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Fechadas */}
-                    <div className="space-y-3">
-                      <h4 className="text-md font-semibold text-gray-700">Fechadas</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {formData.tipos_carrocerias.filter(b => b.category === 'closed').map((body) => (
-                          <div key={body.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                            <Checkbox
-                              id={`body-${body.id}`}
-                              checked={body.selected}
-                              onCheckedChange={() => toggleBodyType(body.id)}
-                            />
-                            <label htmlFor={`body-${body.id}`} className="flex-1 cursor-pointer">
-                              <div className="font-medium text-gray-800">{body.type}</div>
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Especiais */}
-                    <div className="space-y-3">
-                      <h4 className="text-md font-semibold text-gray-700">Especiais</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {formData.tipos_carrocerias.filter(b => b.category === 'special').map((body) => (
-                          <div key={body.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                            <Checkbox
-                              id={`body-${body.id}`}
-                              checked={body.selected}
-                              onCheckedChange={() => toggleBodyType(body.id)}
-                            />
-                            <label htmlFor={`body-${body.id}`} className="flex-1 cursor-pointer">
-                              <div className="font-medium text-gray-800">{body.type}</div>
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tabelas de Preço por Veículo */}
-                  <div className="space-y-4">
-                    <Label className="text-lg font-medium text-gray-800">Tabelas de Preço por Veículo</Label>
-                    
-                    {formData.vehicle_price_tables.length === 0 ? (
-                      <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-                        <DollarSign className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-500">Selecione veículos para configurar as tabelas de preço</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-6">
-                        {formData.vehicle_price_tables.map((vehicleTable) => (
-                          <div key={vehicleTable.vehicleType} className="border rounded-lg p-4 bg-gray-50">
-                            <div className="flex items-center justify-between mb-4">
-                              <h4 className="text-lg font-semibold text-gray-800">{vehicleTable.vehicleType}</h4>
-                              <Button
-                                type="button"
-                                onClick={() => addPriceRange(vehicleTable.vehicleType)}
-                                variant="outline"
-                                size="sm"
-                                className="flex items-center space-x-2"
-                              >
-                                <Plus className="w-4 h-4" />
-                                <span>Adicionar Faixa</span>
-                              </Button>
-                            </div>
-                            
-                            <div className="space-y-3">
-                              {vehicleTable.ranges.map((range) => (
-                                <div key={range.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-3 bg-white rounded-lg border">
-                                  <div className="space-y-2">
-                                    <Label className="text-sm font-medium text-gray-700">KM Inicial</Label>
-                                    <Input
-                                      type="number"
-                                      value={range.kmStart}
-                                      onChange={(e) => updatePriceRange(vehicleTable.vehicleType, range.id, 'kmStart', parseInt(e.target.value) || 0)}
-                                      min="0"
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label className="text-sm font-medium text-gray-700">KM Final</Label>
-                                    <Input
-                                      type="number"
-                                      value={range.kmEnd}
-                                      onChange={(e) => updatePriceRange(vehicleTable.vehicleType, range.id, 'kmEnd', parseInt(e.target.value) || 0)}
-                                      min="0"
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label className="text-sm font-medium text-gray-700">Preço (R$)</Label>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      value={range.price}
-                                      onChange={(e) => updatePriceRange(vehicleTable.vehicleType, range.id, 'price', parseFloat(e.target.value) || 0)}
-                                      min="0"
-                                    />
-                                  </div>
-                                  <div className="flex items-end">
-                                    <Button
-                                      type="button"
-                                      onClick={() => removePriceRange(vehicleTable.vehicleType, range.id)}
-                                      variant="outline"
-                                      size="sm"
-                                      className="text-red-600 hover:text-red-700 w-full"
-                                      disabled={vehicleTable.ranges.length === 1}
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-4 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handlePreviousStep}
-                      className="flex-1"
-                    >
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Voltar
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleNextStep}
-                      className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
-                    >
-                      Próximo
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {currentStep === 4 && (
-                <div className="space-y-6">
-                  {/* Resumo dos colaboradores */}
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <Label className="text-sm font-medium text-green-800 mb-2 block">
-                      Colaboradores Responsáveis ({selectedCollaborators.length})
-                    </Label>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedCollaborators.map((collaborator) => (
-                        <div
-                          key={collaborator.id}
-                          className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm"
-                        >
-                          {collaborator.name}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Configurações Operacionais */}
-                  <div className="space-y-4">
-                    <Label className="text-lg font-medium text-gray-800">Configurações Operacionais</Label>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="precisa_ajudante"
-                          checked={formData.precisa_ajudante}
-                          onCheckedChange={(checked) => handleInputChange('precisa_ajudante', checked)}
-                        />
-                        <Label htmlFor="precisa_ajudante" className="text-sm font-medium text-gray-700">
-                          Precisa de ajudante
-                        </Label>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="precisa_rastreador"
-                          checked={formData.precisa_rastreador}
-                          onCheckedChange={(checked) => handleInputChange('precisa_rastreador', checked)}
-                        />
-                        <Label htmlFor="precisa_rastreador" className="text-sm font-medium text-gray-700">
-                          Precisa de rastreador
-                        </Label>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="precisa_seguro"
-                          checked={formData.precisa_seguro}
-                          onCheckedChange={(checked) => handleInputChange('precisa_seguro', checked)}
-                        />
-                        <Label htmlFor="precisa_seguro" className="text-sm font-medium text-gray-700">
-                          Precisa de seguro
-                        </Label>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="horario_carregamento" className="text-sm font-medium text-gray-700">
-                        Horário de Carregamento
-                      </Label>
-                      <Input
-                        id="horario_carregamento"
-                        type="time"
-                        value={formData.horario_carregamento}
-                        onChange={(e) => handleInputChange('horario_carregamento', e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Configurações de Pedágio */}
-                  <div className="space-y-4">
-                    <Label className="text-lg font-medium text-gray-800">Configurações de Pedágio</Label>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">Pedágio pago por</Label>
-                        <Select 
-                          value={formData.pedagio_pago_por} 
-                          onValueChange={(value) => handleInputChange('pedagio_pago_por', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione quem paga" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="motorista">Motorista</SelectItem>
-                            <SelectItem value="empresa">Empresa</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">Direção do pedágio</Label>
-                        <Select 
-                          value={formData.pedagio_direcao} 
-                          onValueChange={(value) => handleInputChange('pedagio_direcao', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a direção" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ida">Apenas ida</SelectItem>
-                            <SelectItem value="volta">Apenas volta</SelectItem>
-                            <SelectItem value="ida_volta">Ida e volta</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Regras de Agendamento */}
-                  <div className="space-y-4">
-                    <Label className="text-lg font-medium text-gray-800">Regras de Agendamento</Label>
-                    <div className="space-y-2">
-                      {schedulingRules.map((rule) => (
-                        <div key={rule} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`rule-${rule}`}
-                            checked={formData.regras_agendamento.includes(rule)}
-                            onCheckedChange={() => toggleSchedulingRule(rule)}
-                          />
-                          <Label htmlFor={`rule-${rule}`} className="text-sm text-gray-700">
-                            {rule}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Benefícios */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-lg font-medium text-gray-800">Benefícios</Label>
-                      <Button
-                        type="button"
-                        onClick={addBenefit}
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center space-x-2"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>Adicionar Benefício</span>
-                      </Button>
-                    </div>
-
-                    {formData.beneficios.length > 0 && (
-                      <div className="space-y-2">
-                        {formData.beneficios.map((benefit, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                            <span className="text-sm text-gray-700">{benefit}</span>
-                            <Button
-                              type="button"
-                              onClick={() => removeBenefit(index)}
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Observações */}
-                  <div className="space-y-2">
-                    <Label htmlFor="observacoes" className="text-sm font-medium text-gray-700">
-                      Observações
-                    </Label>
-                    <Textarea
-                      id="observacoes"
-                      value={formData.observacoes}
-                      onChange={(e) => handleInputChange('observacoes', e.target.value)}
-                      placeholder="Informações adicionais sobre o frete..."
-                      rows={4}
-                    />
-                  </div>
-
-                  {/* Botões */}
-                  <div className="flex gap-4 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handlePreviousStep}
-                      className="flex-1"
-                      disabled={loading}
-                    >
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Voltar
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleOpenVerificationDialog}
-                      disabled={loading}
-                      className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
-                    >
-                      <Truck className="w-4 h-4 mr-2" />
-                      Solicitar Frete
-                    </Button>
-                  </div>
+                  ))}
                 </div>
               )}
             </CardContent>
           </Card>
-        </main>
-      </div>
+        )}
 
-      {/* Dialog Components */}
+        {currentStep === 2 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className={errors.origem ? 'border-red-300' : ''}>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <MapPin className="w-5 h-5 text-green-600" />
+                  <span>Origem *</span>
+                </CardTitle>
+                <CardDescription>
+                  Local de coleta da carga
+                </CardDescription>
+                <ErrorMessage error={errors.origem} />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="origem-estado">Estado *</Label>
+                  <Select 
+                    value={formData.origem.estado} 
+                    onValueChange={(value) => setFormData({
+                      ...formData,
+                      origem: { estado: value, cidade: '' }
+                    })}
+                  >
+                    <SelectTrigger className={errors.origem ? 'border-red-300' : ''}>
+                      <SelectValue placeholder="Selecione o estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {estados.map((estado) => (
+                        <SelectItem key={estado.sigla} value={estado.sigla}>
+                          {estado.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="origem-cidade">Cidade *</Label>
+                  <Select 
+                    value={formData.origem.cidade} 
+                    onValueChange={(value) => setFormData({
+                      ...formData,
+                      origem: { ...formData.origem, cidade: value }
+                    })}
+                    disabled={!formData.origem.estado}
+                  >
+                    <SelectTrigger className={errors.origem ? 'border-red-300' : ''}>
+                      <SelectValue placeholder="Selecione a cidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cidadesOrigem.map((cidade) => (
+                        <SelectItem key={cidade.id} value={cidade.nome}>
+                          {cidade.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className={errors.paradas ? 'border-red-300' : ''}>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-5 h-5 text-red-600" />
+                    <span>Paradas *</span>
+                  </div>
+                  <Button
+                    onClick={addParada}
+                    size="sm"
+                    className="flex items-center space-x-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Adicionar Parada</span>
+                  </Button>
+                </CardTitle>
+                <CardDescription>
+                  Locais onde o veículo deve parar durante o trajeto. Arraste os cards para reordenar.
+                </CardDescription>
+                <ErrorMessage error={errors.paradas} />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {formData.paradas.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <MapPin className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                    <p className="font-medium">Nenhuma parada adicionada</p>
+                    <p className="text-sm mt-1">Clique em "Adicionar Parada" para incluir paradas no trajeto</p>
+                  </div>
+                ) : (
+                  <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable droppableId="paradas">
+                      {(provided) => (
+                        <div
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
+                          className="space-y-4 max-h-96 overflow-y-auto"
+                        >
+                          {formData.paradas.map((parada, index) => {
+                            const cidadesParada = cidadesByState[parada.estado] || [];
+                            const isDuplicate = checkForDuplicateParada(parada.estado, parada.cidade, parada.id);
+                            
+                            return (
+                              <Draggable key={parada.id} draggableId={parada.id} index={index}>
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    className={`border rounded-lg p-4 transition-all ${
+                                      snapshot.isDragging ? 'shadow-lg scale-105 bg-white border-blue-300 rotate-2' : 'hover:shadow-md'
+                                    } ${
+                                      isDuplicate ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'
+                                    }`}
+                                    style={provided.draggableProps.style}
+                                  >
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center space-x-2">
+                                        <div
+                                          {...provided.dragHandleProps}
+                                          className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-1"
+                                        >
+                                          <GripVertical className="w-4 h-4" />
+                                        </div>
+                                        <h4 className="font-medium text-sm text-gray-700">Parada {index + 1}</h4>
+                                      </div>
+                                      <Button
+                                        onClick={() => removeParada(parada.id)}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                    {isDuplicate && (
+                                      <div className="mb-2">
+                                        <ErrorMessage error="Parada duplicada detectada" />
+                                      </div>
+                                    )}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                      <div>
+                                        <Label className="text-xs font-medium text-gray-600">Estado *</Label>
+                                        <Select 
+                                          value={parada.estado} 
+                                          onValueChange={(value) => updateParada(parada.id, 'estado', value)}
+                                        >
+                                          <SelectTrigger className="h-9">
+                                            <SelectValue placeholder="Estado" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {estados.map((estado) => (
+                                              <SelectItem key={estado.sigla} value={estado.sigla}>
+                                                {estado.nome}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs font-medium text-gray-600">Cidade *</Label>
+                                        <Select 
+                                          value={parada.cidade} 
+                                          onValueChange={(value) => updateParada(parada.id, 'cidade', value)}
+                                          disabled={!parada.estado}
+                                        >
+                                          <SelectTrigger className="h-9">
+                                            <SelectValue placeholder="Cidade" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {cidadesParada.map((cidade) => (
+                                              <SelectItem key={cidade.id} value={cidade.nome}>
+                                                {cidade.nome}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            );
+                          })}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {currentStep === 3 && (
+          <div className="space-y-6">
+            <Card className={errors.dataColeta || errors.horarioColeta ? 'border-red-300' : ''}>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Calendar className="w-5 h-5" />
+                  <span>Data e Horário de Coleta *</span>
+                </CardTitle>
+                <CardDescription>
+                  Informações obrigatórias sobre quando a carga será coletada
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="data-coleta">Data de Coleta *</Label>
+                    <Input
+                      id="data-coleta"
+                      type="date"
+                      value={formData.dataColeta}
+                      onChange={(e) => setFormData({ ...formData, dataColeta: e.target.value })}
+                      className={errors.dataColeta ? 'border-red-300' : ''}
+                      min={new Date().toISOString().split('T')[0]}
+                      required
+                    />
+                    <ErrorMessage error={errors.dataColeta} />
+                  </div>
+                  <div>
+                    <Label htmlFor="horario-coleta">Horário de Coleta *</Label>
+                    <Input
+                      id="horario-coleta"
+                      type="time"
+                      value={formData.horarioColeta}
+                      onChange={(e) => setFormData({ ...formData, horarioColeta: e.target.value })}
+                      className={errors.horarioColeta ? 'border-red-300' : ''}
+                      required
+                    />
+                    <ErrorMessage error={errors.horarioColeta} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Package className="w-5 h-5" />
+                  <span>Dimensões e Peso (Opcional)</span>
+                </CardTitle>
+                <CardDescription>
+                  Informações sobre as dimensões e peso da carga
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <Label htmlFor="altura">Altura (m)</Label>
+                    <Input
+                      id="altura"
+                      type="text"
+                      placeholder="Ex: 2.5"
+                      value={formData.dimensoes.altura}
+                      onChange={(e) => {
+                        const formatted = formatNumericInput(e.target.value, 2);
+                        setFormData({ 
+                          ...formData, 
+                          dimensoes: { ...formData.dimensoes, altura: formatted }
+                        });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="largura">Largura (m)</Label>
+                    <Input
+                      id="largura"
+                      type="text"
+                      placeholder="Ex: 2.4"
+                      value={formData.dimensoes.largura}
+                      onChange={(e) => {
+                        const formatted = formatNumericInput(e.target.value, 2);
+                        setFormData({ 
+                          ...formData, 
+                          dimensoes: { ...formData.dimensoes, largura: formatted }
+                        });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="comprimento">Comprimento (m)</Label>
+                    <Input
+                      id="comprimento"
+                      type="text"
+                      placeholder="Ex: 14.0"
+                      value={formData.dimensoes.comprimento}
+                      onChange={(e) => {
+                        const formatted = formatNumericInput(e.target.value, 2);
+                        setFormData({ 
+                          ...formData, 
+                          dimensoes: { ...formData.dimensoes, comprimento: formatted }
+                        });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="peso">Peso (kg)</Label>
+                    <Input
+                      id="peso"
+                      type="text"
+                      placeholder="Ex: 25.000"
+                      value={formData.peso}
+                      onChange={(e) => handleWeightChange(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className={errors.tiposVeiculos ? 'border-red-300' : ''}>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Truck className="w-5 h-5" />
+                  <span>Tipos de Veículos *</span>
+                </CardTitle>
+                <CardDescription>
+                  Selecione os tipos de veículos aceitos para este frete
+                </CardDescription>
+                <ErrorMessage error={errors.tiposVeiculos} />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Veículos Pesados</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {vehicleTypes.heavy.map((vehicle) => (
+                        <div
+                          key={vehicle.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposVeiculos.some(v => v.id === vehicle.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
+                        >
+                          <p className="text-sm font-medium">{vehicle.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Veículos Médios</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {vehicleTypes.medium.map((vehicle) => (
+                        <div
+                          key={vehicle.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposVeiculos.some(v => v.id === vehicle.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
+                        >
+                          <p className="text-sm font-medium">{vehicle.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Veículos Leves</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {vehicleTypes.light.map((vehicle) => (
+                        <div
+                          key={vehicle.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposVeiculos.some(v => v.id === vehicle.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
+                        >
+                          <p className="text-sm font-medium">{vehicle.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className={errors.tiposCarrocerias ? 'border-red-300' : ''}>
+              <CardHeader>
+                <CardTitle>Tipos de Carroceria *</CardTitle>
+                <CardDescription>
+                  Selecione os tipos de carroceria aceitos para este frete
+                </CardDescription>
+                <ErrorMessage error={errors.tiposCarrocerias} />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Carrocerias Abertas</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {bodyTypes.open.map((body) => (
+                        <div
+                          key={body.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposCarrocerias.some(b => b.id === body.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleBodyType(body.id, body.type, body.category)}
+                        >
+                          <p className="text-sm font-medium">{body.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Carrocerias Fechadas</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {bodyTypes.closed.map((body) => (
+                        <div
+                          key={body.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposCarrocerias.some(b => b.id === body.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleBodyType(body.id, body.type, body.category)}
+                        >
+                          <p className="text-sm font-medium">{body.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-3">Carrocerias Especiais</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {bodyTypes.special.map((body) => (
+                        <div
+                          key={body.id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            formData.tiposCarrocerias.some(b => b.id === body.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleBodyType(body.id, body.type, body.category)}
+                        >
+                          <p className="text-sm font-medium">{body.type}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className={errors.tipoValor || errors.valorOfertado ? 'border-red-300' : ''}>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <DollarSign className="w-5 h-5" />
+                  <span>Valor do Frete *</span>
+                </CardTitle>
+                <CardDescription>
+                  Escolha como será definido o valor do frete
+                </CardDescription>
+                <ErrorMessage error={errors.tipoValor} />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <RadioGroup 
+                  value={formData.tipoValor} 
+                  onValueChange={(value) => setFormData({ ...formData, tipoValor: value, valorOfertado: '' })}
+                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="combinar" id="combinar" />
+                    <Label htmlFor="combinar" className="cursor-pointer flex-1">
+                      <div className={`border rounded-lg p-4 transition-all ${
+                        formData.tipoValor === 'combinar' 
+                          ? 'border-purple-500 bg-purple-50' 
+                          : 'border-gray-200 hover:border-purple-300 hover:bg-purple-25'
+                      }`}>
+                        <h3 className={`font-medium ${
+                          formData.tipoValor === 'combinar' ? 'text-purple-800' : 'text-gray-800'
+                        }`}>A Combinar</h3>
+                        <p className={`text-sm ${
+                          formData.tipoValor === 'combinar' ? 'text-purple-600' : 'text-gray-500'
+                        }`}>Valor será negociado com o transportador</p>
+                      </div>
+                    </Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="valor" id="valor" />
+                    <Label htmlFor="valor" className="cursor-pointer flex-1">
+                      <div className={`border rounded-lg p-4 transition-all ${
+                        formData.tipoValor === 'valor' 
+                          ? 'border-green-500 bg-green-50' 
+                          : 'border-gray-200 hover:border-green-300 hover:bg-green-25'
+                      }`}>
+                        <h3 className={`font-medium ${
+                          formData.tipoValor === 'valor' ? 'text-green-800' : 'text-gray-800'
+                        }`}>Valor Fixo</h3>
+                        <p className={`text-sm ${
+                          formData.tipoValor === 'valor' ? 'text-green-600' : 'text-gray-500'
+                        }`}>Definir um valor específico para o frete</p>
+                      </div>
+                    </Label>
+                  </div>
+                </RadioGroup>
+
+                {formData.tipoValor === 'valor' && (
+                  <div className="mt-4">
+                    <Label htmlFor="valor-ofertado">Valor Ofertado (R$) *</Label>
+                    <Input
+                      id="valor-ofertado"
+                      type="text"
+                      placeholder="Ex: R$ 5.000,00"
+                      value={formData.valorOfertado ? formatCurrency(formData.valorOfertado) : ''}
+                      onChange={(e) => handleCurrencyChange(e.target.value, 'valorOfertado')}
+                      className={errors.valorOfertado ? 'border-red-300' : ''}
+                    />
+                    <ErrorMessage error={errors.valorOfertado} />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {currentStep === 4 && (
+          <div className="space-y-6">
+            <Card className={errors.pedagioPagoPor || errors.pedagioDirecao ? 'border-red-300' : ''}>
+              <CardHeader>
+                <CardTitle>Quem paga o pedágio *</CardTitle>
+                <CardDescription>
+                  Defina quem será responsável pelo pagamento do pedágio
+                </CardDescription>
+                <ErrorMessage error={errors.pedagioPagoPor} />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="pedagio-pago-por">Responsável pelo pagamento *</Label>
+                  <Select 
+                    value={formData.pedagioPagoPor} 
+                    onValueChange={(value) => setFormData({ 
+                      ...formData, 
+                      pedagioPagoPor: value,
+                      pedagioDirecao: value === 'motorista' ? '' : formData.pedagioDirecao
+                    })}
+                  >
+                    <SelectTrigger className={errors.pedagioPagoPor ? 'border-red-300' : ''}>
+                      <SelectValue placeholder="Selecione quem paga" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="motorista">Motorista</SelectItem>
+                      <SelectItem value="empresa">Empresa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {formData.pedagioPagoPor === 'empresa' && (
+                  <div>
+                    <Label htmlFor="pedagio-direcao">Direção do pedágio *</Label>
+                    <Select 
+                      value={formData.pedagioDirecao} 
+                      onValueChange={(value) => setFormData({ ...formData, pedagioDirecao: value })}
+                    >
+                      <SelectTrigger className={errors.pedagioDirecao ? 'border-red-300' : ''}>
+                        <SelectValue placeholder="Selecione a direção" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ida">Apenas ida</SelectItem>
+                        <SelectItem value="volta">Apenas volta</SelectItem>
+                        <SelectItem value="ida_volta">IDA E VOLTA</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <ErrorMessage error={errors.pedagioDirecao} />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Requisitos</CardTitle>
+                <CardDescription>
+                  Defina os requisitos necessários para este frete
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="precisa-seguro"
+                    checked={formData.precisaSeguro}
+                    onCheckedChange={(checked) => setFormData({ ...formData, precisaSeguro: !!checked })}
+                  />
+                  <Label htmlFor="precisa-seguro">Precisa de seguro</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="precisa-ajudante"
+                    checked={formData.precisaAjudante}
+                    onCheckedChange={(checked) => setFormData({ ...formData, precisaAjudante: !!checked })}
+                  />
+                  <Label htmlFor="precisa-ajudante">Precisa de ajudante</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="precisa-rastreador"
+                    checked={formData.precisaRastreador}
+                    onCheckedChange={(checked) => setFormData({ ...formData, precisaRastreador: !!checked })}
+                  />
+                  <Label htmlFor="precisa-rastreador">Precisa de rastreador</Label>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Observações</CardTitle>
+                <CardDescription>
+                  Adicione informações adicionais sobre o frete (máximo 500 caracteres)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  <Label htmlFor="observacoes">Observações</Label>
+                  <Textarea
+                    id="observacoes"
+                    value={formData.observacoes}
+                    onChange={(e) => handleObservationsChange(e.target.value)}
+                    placeholder="Observações adicionais sobre o frete..."
+                    rows={4}
+                    maxLength={500}
+                  />
+                  <div className="text-right text-sm text-gray-500 mt-1">
+                    {formData.observacoes.length}/500 caracteres
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <div className="flex justify-between mt-8">
+          <Button
+            variant="outline"
+            onClick={handlePrevious}
+            disabled={currentStep === 1}
+            className="flex items-center space-x-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Anterior</span>
+          </Button>
+          
+          <Button
+            onClick={handleNext}
+            className="flex items-center space-x-2"
+            disabled={isSubmitting}
+          >
+            <span>{currentStep === 4 ? 'Verificar Dados' : 'Próximo'}</span>
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </main>
+
       <FreightVerificationDialog
         open={showVerificationDialog}
         onOpenChange={setShowVerificationDialog}
-        formData={formData}
-        collaborators={collaborators}
-        onEdit={handleEditFromVerification}
-        onConfirm={handleConfirmFreight}
-        loading={loading}
-      />
-
-      <FreightLoadingAnimation
-        open={showLoadingAnimation}
+        formData={convertedFormData}
+        collaborators={collaborators || []}
+        onEdit={() => setShowVerificationDialog(false)}
+        onConfirm={handleSubmit}
+        loading={isSubmitting}
       />
 
       <FreightSuccessDialog
         open={showSuccessDialog}
-        onOpenChange={setShowSuccessDialog}
+        onOpenChange={(open) => {
+          setShowSuccessDialog(open);
+          if (!open) {
+            navigate('/company-dashboard');
+          }
+        }}
         generatedFreights={generatedFreights}
-        onNewFreight={handleNewFreight}
-        onBackToDashboard={handleBackToDashboardFromSuccess}
+        onNewFreight={() => {
+          setShowSuccessDialog(false);
+          setCurrentStep(1);
+          setFormData({
+            selectedCollaborators: [],
+            origem: { estado: '', cidade: '' },
+            paradas: [],
+            dataColeta: '',
+            horarioColeta: '',
+            dimensoes: { altura: '', largura: '', comprimento: '' },
+            peso: '',
+            tiposVeiculos: [],
+            tiposCarrocerias: [],
+            tipoValor: '',
+            valorOfertado: '',
+            pedagioPagoPor: '',
+            pedagioDirecao: '',
+            precisaSeguro: false,
+            precisaAjudante: false,
+            precisaRastreador: false,
+            observacoes: ''
+          });
+        }}
+        onBackToDashboard={() => {
+          setShowSuccessDialog(false);
+          navigate('/company-dashboard');
+        }}
       />
-    </>
+    </div>
   );
 };
 
