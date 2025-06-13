@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building, User, Phone, MapPin, FileText, Truck } from 'lucide-react';
+import { Building, User, Phone, MapPin, Truck, CheckCircle } from 'lucide-react';
 
 interface Company {
   id: string;
@@ -38,32 +38,47 @@ const CompanyProfileView: React.FC<CompanyProfileViewProps> = ({ company }) => {
     return cep.replace(/(\d{5})(\d{3})/, '$1-$2');
   };
 
+  const InfoItem = ({ label, value, icon: Icon }: { label: string; value: string; icon?: any }) => (
+    <div className="space-y-2">
+      <div className="flex items-center space-x-2">
+        {Icon && <Icon className="w-4 h-4 text-blue-600" />}
+        <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">{label}</label>
+      </div>
+      <p className="text-lg text-gray-900 font-medium pl-6">{value}</p>
+    </div>
+  );
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       {/* Informações da Empresa */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Building className="w-5 h-5" />
+      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
+          <CardTitle className="flex items-center space-x-3 text-xl">
+            <Building className="w-6 h-6" />
             <span>Dados da Empresa</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-gray-600">Nome da Empresa</label>
-            <p className="text-base font-medium text-gray-900">{company.company_name}</p>
-          </div>
+        <CardContent className="p-8 space-y-6">
+          <InfoItem
+            label="Nome da Empresa"
+            value={company.company_name}
+            icon={Building}
+          />
           
-          <div>
-            <label className="text-sm font-medium text-gray-600">CNPJ</label>
-            <p className="text-base text-gray-900">{formatCNPJ(company.cnpj)}</p>
-          </div>
+          <InfoItem
+            label="CNPJ"
+            value={formatCNPJ(company.cnpj)}
+            icon={CheckCircle}
+          />
 
-          <div>
-            <label className="text-sm font-medium text-gray-600">Tipo de Empresa</label>
+          <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <Truck className="w-4 h-4 text-blue-600" />
-              <p className="text-base text-gray-900">
+              <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Tipo de Empresa</label>
+            </div>
+            <div className="flex items-center space-x-3 pl-6">
+              <div className={`w-3 h-3 rounded-full ${company.is_transporter ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+              <p className="text-lg text-gray-900 font-medium">
                 {company.is_transporter ? 'Transportadora' : 'Embarcadora'}
               </p>
             </div>
@@ -72,77 +87,82 @@ const CompanyProfileView: React.FC<CompanyProfileViewProps> = ({ company }) => {
       </Card>
 
       {/* Informações de Contato */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <User className="w-5 h-5" />
+      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <CardHeader className="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-t-lg">
+          <CardTitle className="flex items-center space-x-3 text-xl">
+            <User className="w-6 h-6" />
             <span>Responsável</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-gray-600">Nome do Responsável</label>
-            <p className="text-base font-medium text-gray-900">{company.contact_name}</p>
-          </div>
+        <CardContent className="p-8 space-y-6">
+          <InfoItem
+            label="Nome do Responsável"
+            value={company.contact_name}
+            icon={User}
+          />
           
-          <div>
-            <label className="text-sm font-medium text-gray-600">Telefone Principal</label>
-            <p className="text-base text-gray-900">{formatPhone(company.phone)}</p>
-          </div>
+          <InfoItem
+            label="Telefone Principal"
+            value={formatPhone(company.phone)}
+            icon={Phone}
+          />
 
-          <div>
-            <label className="text-sm font-medium text-gray-600">Telefone Confirmação</label>
-            <p className="text-base text-gray-900">{formatPhone(company.confirm_phone)}</p>
-          </div>
+          <InfoItem
+            label="Telefone Confirmação"
+            value={formatPhone(company.confirm_phone)}
+            icon={Phone}
+          />
         </CardContent>
       </Card>
 
       {/* Endereço */}
-      <Card className="md:col-span-2">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <MapPin className="w-5 h-5" />
-            <span>Endereço</span>
+      <Card className="lg:col-span-2 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
+          <CardTitle className="flex items-center space-x-3 text-xl">
+            <MapPin className="w-6 h-6" />
+            <span>Endereço Completo</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-600">CEP</label>
-              <p className="text-base text-gray-900">{formatCEP(company.cep)}</p>
-            </div>
+        <CardContent className="p-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <InfoItem
+              label="CEP"
+              value={formatCEP(company.cep)}
+            />
             
-            <div className="md:col-span-2">
-              <label className="text-sm font-medium text-gray-600">Rua</label>
-              <p className="text-base text-gray-900">{company.street}</p>
+            <div className="md:col-span-2 lg:col-span-2">
+              <InfoItem
+                label="Rua"
+                value={company.street}
+              />
             </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-600">Número</label>
-              <p className="text-base text-gray-900">{company.number}</p>
-            </div>
+            <InfoItem
+              label="Número"
+              value={company.number}
+            />
 
             {company.complement && (
-              <div>
-                <label className="text-sm font-medium text-gray-600">Complemento</label>
-                <p className="text-base text-gray-900">{company.complement}</p>
-              </div>
+              <InfoItem
+                label="Complemento"
+                value={company.complement}
+              />
             )}
 
-            <div>
-              <label className="text-sm font-medium text-gray-600">Bairro</label>
-              <p className="text-base text-gray-900">{company.neighborhood}</p>
-            </div>
+            <InfoItem
+              label="Bairro"
+              value={company.neighborhood}
+            />
 
-            <div>
-              <label className="text-sm font-medium text-gray-600">Cidade</label>
-              <p className="text-base text-gray-900">{company.city}</p>
-            </div>
+            <InfoItem
+              label="Cidade"
+              value={company.city}
+            />
 
-            <div>
-              <label className="text-sm font-medium text-gray-600">Estado</label>
-              <p className="text-base text-gray-900">{company.state}</p>
-            </div>
+            <InfoItem
+              label="Estado"
+              value={company.state}
+            />
           </div>
         </CardContent>
       </Card>
