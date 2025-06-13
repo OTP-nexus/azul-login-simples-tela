@@ -68,3 +68,62 @@ export const useIBGE = () => {
     loadCities
   };
 };
+
+// Export individual hooks for compatibility with existing components
+export const useEstados = () => {
+  const [estados, setEstados] = useState<Estado[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEstados = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome');
+        if (response.ok) {
+          const data = await response.json();
+          setEstados(data);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar estados:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEstados();
+  }, []);
+
+  return { estados, loading };
+};
+
+export const useCidades = (uf: string) => {
+  const [cidades, setCidades] = useState<Cidade[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchCidades = async () => {
+      if (!uf) {
+        setCidades([]);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`);
+        if (response.ok) {
+          const data = await response.json();
+          setCidades(data);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar cidades:', error);
+        setCidades([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCidades();
+  }, [uf]);
+
+  return { cidades, loading };
+};
