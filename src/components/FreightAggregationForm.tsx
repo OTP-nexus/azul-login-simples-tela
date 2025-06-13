@@ -554,7 +554,7 @@ const FreightAggregationForm = () => {
         throw new Error('Empresa não encontrada');
       }
 
-      // Ensure beneficios is always an array
+      // Ensure beneficios is always an array and convert to proper jsonb format
       const beneficiosArray = Array.isArray(formData.beneficios) ? formData.beneficios : [];
       console.log('Benefits array:', beneficiosArray);
 
@@ -568,11 +568,11 @@ const FreightAggregationForm = () => {
         tipo_mercadoria: formData.tipo_mercadoria,
         peso_carga: null,
         valor_carga: null,
-        tipos_veiculos: JSON.stringify(formData.tipos_veiculos.filter(v => v.selected)),
-        tipos_carrocerias: JSON.stringify(formData.tipos_carrocerias.filter(b => b.selected)),
-        tabelas_preco: JSON.stringify(formData.vehicle_price_tables),
-        regras_agendamento: JSON.stringify(formData.regras_agendamento),
-        beneficios: JSON.stringify(beneficiosArray),
+        tipos_veiculos: formData.tipos_veiculos.filter(v => v.selected),
+        tipos_carrocerias: formData.tipos_carrocerias.filter(b => b.selected),
+        tabelas_preco: formData.vehicle_price_tables,
+        regras_agendamento: formData.regras_agendamento,
+        beneficios: beneficiosArray,
         horario_carregamento: formData.horario_carregamento || null,
         precisa_ajudante: formData.precisa_ajudante,
         precisa_rastreador: formData.precisa_rastreador,
@@ -591,7 +591,7 @@ const FreightAggregationForm = () => {
       for (const destino of formData.destinos) {
         const freightData = {
           ...baseFreightData,
-          destinos: JSON.stringify([destino])
+          destinos: [destino]
         };
 
         console.log('Creating freight with data:', freightData);
