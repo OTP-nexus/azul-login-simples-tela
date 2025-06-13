@@ -93,8 +93,63 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     return new Date(date).toLocaleString('pt-BR');
   };
 
-  // Função melhorada para renderizar itens de array com mais detalhes
-  const renderDetailedArrayItems = (items: any[], emptyMessage: string = 'Não especificado') => {
+  // Função para extrair texto legível de objetos
+  const extractDisplayText = (item: any) => {
+    if (typeof item === 'string') {
+      return item;
+    }
+    
+    if (typeof item === 'object' && item !== null) {
+      // Priorizar campos mais descritivos
+      const textFields = [
+        'nome', 'name', 'tipo', 'type', 'descricao', 'description', 
+        'label', 'title', 'categoria', 'category', 'modelo', 'model'
+      ];
+      
+      for (const field of textFields) {
+        if (item[field] && typeof item[field] === 'string') {
+          return item[field];
+        }
+      }
+      
+      // Se não encontrou campos conhecidos, pegar a primeira propriedade string
+      const firstStringValue = Object.values(item).find(value => typeof value === 'string');
+      if (firstStringValue) {
+        return firstStringValue;
+      }
+    }
+    
+    return String(item);
+  };
+
+  // Função para extrair informações adicionais
+  const extractSubtitle = (item: any) => {
+    if (typeof item !== 'object' || item === null) return '';
+    
+    const subtitleFields = [
+      { key: 'capacidade', label: 'Capacidade' },
+      { key: 'capacity', label: 'Capacidade' },
+      { key: 'peso', label: 'Peso' },
+      { key: 'weight', label: 'Peso' },
+      { key: 'tamanho', label: 'Tamanho' },
+      { key: 'size', label: 'Tamanho' },
+      { key: 'categoria', label: 'Categoria' },
+      { key: 'category', label: 'Categoria' },
+      { key: 'modelo', label: 'Modelo' },
+      { key: 'model', label: 'Modelo' }
+    ];
+    
+    for (const field of subtitleFields) {
+      if (item[field.key]) {
+        return `${field.label}: ${item[field.key]}`;
+      }
+    }
+    
+    return '';
+  };
+
+  // Função melhorada para renderizar itens de array com formatação adequada
+  const renderVehiclesAndBodies = (items: any[], emptyMessage: string = 'Não especificado') => {
     console.log('Renderizando items:', items);
     
     if (!Array.isArray(items) || items.length === 0) {
@@ -102,30 +157,10 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     }
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {items.map((item: any, index: number) => {
-          let displayText = '';
-          let subtitle = '';
-
-          if (typeof item === 'string') {
-            displayText = item;
-          } else if (typeof item === 'object' && item !== null) {
-            // Tenta diferentes propriedades que podem conter o texto principal
-            displayText = item.label || item.name || item.type || item.title || item.description || '';
-            
-            // Tenta obter informações adicionais para subtitle
-            if (item.capacity) subtitle = `Capacidade: ${item.capacity}`;
-            else if (item.weight) subtitle = `Peso: ${item.weight}`;
-            else if (item.size) subtitle = `Tamanho: ${item.size}`;
-            else if (item.category) subtitle = `Categoria: ${item.category}`;
-            
-            // Se não conseguiu extrair texto, usa JSON como fallback
-            if (!displayText) {
-              displayText = JSON.stringify(item);
-            }
-          } else {
-            displayText = String(item);
-          }
+          const displayText = extractDisplayText(item);
+          const subtitle = extractSubtitle(item);
 
           return (
             <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -149,14 +184,7 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     return (
       <div className="flex flex-wrap gap-2">
         {items.map((item: any, index: number) => {
-          let displayText = '';
-          if (typeof item === 'string') {
-            displayText = item;
-          } else if (typeof item === 'object' && item !== null) {
-            displayText = item.type || item.name || item.label || item.description || JSON.stringify(item);
-          } else {
-            displayText = String(item);
-          }
+          const displayText = extractDisplayText(item);
 
           return (
             <Badge key={index} variant="outline" className="mr-1 mb-1">
@@ -179,15 +207,15 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
         <div className="grid grid-cols-3 gap-2 text-sm">
           <div>
             <p className="text-gray-600">Tipo de Veículo</p>
-            <p className="font-medium">{tabela.vehicle_type || 'Não especificado'}</p>
+            <p className="font-medium">{tabela.vehicle_type || tabela.tipo_veiculo || 'Não especificado'}</p>
           </div>
           <div>
             <p className="text-gray-600">Distância (km)</p>
-            <p className="font-medium">{tabela.km_start || 0} - {tabela.km_end || 0} km</p>
+            <p className="font-medium">{tabela.km_start || tabela.km_inicio || 0} - {tabela.km_end || tabela.km_fim || 0} km</p>
           </div>
           <div>
             <p className="text-gray-600">Valor</p>
-            <p className="font-medium text-green-600">{formatValue(tabela.price)}</p>
+            <p className="font-medium text-green-600">{formatValue(tabela.price || tabela.preco)}</p>
           </div>
         </div>
       </div>
@@ -203,14 +231,7 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     return (
       <div className="flex flex-wrap gap-2">
         {freight.beneficios.map((beneficio: any, index: number) => {
-          let displayText = '';
-          if (typeof beneficio === 'string') {
-            displayText = beneficio;
-          } else if (typeof beneficio === 'object' && beneficio !== null) {
-            displayText = beneficio.type || beneficio.name || beneficio.description || JSON.stringify(beneficio);
-          } else {
-            displayText = String(beneficio);
-          }
+          const displayText = extractDisplayText(beneficio);
 
           return (
             <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-800">
@@ -229,14 +250,7 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     }
 
     return freight.regras_agendamento.map((regra: any, index: number) => {
-      let displayText = '';
-      if (typeof regra === 'string') {
-        displayText = regra;
-      } else if (typeof regra === 'object' && regra !== null) {
-        displayText = regra.rule || regra.description || regra.type || JSON.stringify(regra);
-      } else {
-        displayText = String(regra);
-      }
+      const displayText = extractDisplayText(regra);
 
       return (
         <div key={index} className="bg-orange-50 p-3 rounded-lg border border-orange-200">
@@ -388,11 +402,11 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
               <div className="space-y-6">
                 <div>
                   <p className="text-sm text-gray-500 mb-3">Tipos de Veículos Aceitos</p>
-                  {renderDetailedArrayItems(freight.tipos_veiculos, 'Nenhum tipo de veículo especificado')}
+                  {renderVehiclesAndBodies(freight.tipos_veiculos, 'Nenhum tipo de veículo especificado')}
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 mb-3">Tipos de Carrocerias Aceitas</p>
-                  {renderDetailedArrayItems(freight.tipos_carrocerias, 'Nenhum tipo de carroceria especificado')}
+                  {renderVehiclesAndBodies(freight.tipos_carrocerias, 'Nenhum tipo de carroceria especificado')}
                 </div>
               </div>
             </CardContent>
