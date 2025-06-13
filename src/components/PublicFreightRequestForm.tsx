@@ -636,49 +636,45 @@ const PublicFreightRequestForm = () => {
                         </Button>
                       </div>
                       
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {formData.itensDetalhados.map((item, index) => (
-                          <div key={item.id} className="p-4 border rounded-lg bg-gray-50">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                              <div className="md:col-span-2">
-                                <Label className="text-base font-medium">Nome do Item</Label>
-                                <Input
-                                  placeholder="Ex: Geladeira, Sofá, Caixa de livros..."
-                                  value={item.nome}
-                                  onChange={(e) => updateItem(item.id, 'nome', e.target.value)}
-                                  className="h-12 text-base mt-2"
-                                />
-                              </div>
-                              <div className="flex gap-2">
-                                <div className="flex-1">
-                                  <Label className="text-base font-medium">Quantidade</Label>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    value={item.quantidade}
-                                    onChange={(e) => updateItem(item.id, 'quantidade', parseInt(e.target.value) || 1)}
-                                    className="h-12 text-base mt-2"
-                                  />
-                                </div>
-                                <Button 
-                                  type="button" 
-                                  onClick={() => removeItem(item.id)} 
-                                  variant="destructive" 
-                                  className="h-12 mt-8"
-                                >
-                                  ✕
-                                </Button>
-                              </div>
+                          <div key={item.id} className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
+                            <div className="flex-1">
+                              <Input
+                                placeholder="Ex: Geladeira, Sofá, Caixa de livros..."
+                                value={item.nome}
+                                onChange={(e) => updateItem(item.id, 'nome', e.target.value)}
+                                className="h-10 text-base"
+                              />
                             </div>
+                            <div className="w-24">
+                              <Input
+                                type="number"
+                                min="1"
+                                value={item.quantidade}
+                                onChange={(e) => updateItem(item.id, 'quantidade', parseInt(e.target.value) || 1)}
+                                className="h-10 text-base text-center"
+                                placeholder="Qtd"
+                              />
+                            </div>
+                            <Button 
+                              type="button" 
+                              onClick={() => removeItem(item.id)} 
+                              variant="destructive" 
+                              size="sm"
+                              className="h-10 w-10 p-0"
+                            >
+                              ✕
+                            </Button>
                           </div>
                         ))}
                       </div>
                       
                       {formData.itensDetalhados.length === 0 && (
-                        <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
-                          <Package className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                          <p className="text-lg">Nenhum item adicionado ainda</p>
-                          <p className="text-base">Clique em "Adicionar Item" para começar</p>
+                        <div className="text-center py-6 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
+                          <Package className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                          <p className="text-base">Nenhum item adicionado ainda</p>
+                          <p className="text-sm text-gray-400">Clique em "Adicionar Item" para começar</p>
                         </div>
                       )}
                     </div>
