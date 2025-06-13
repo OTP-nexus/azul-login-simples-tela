@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ArrowRight, Users, MapPin, Truck, Settings, Calendar, Package, DollarSign } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Users, MapPin, Truck, Settings, Calendar, Package, DollarSign, Plus, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import FreightLoadingAnimation from './FreightLoadingAnimation';
 import FreightVerificationDialog from './FreightVerificationDialog';
 import FreightSuccessDialog from './FreightSuccessDialog';
+import { useEstados, useCidades } from '@/hooks/useIBGE';
 
 const FreightCompleteForm = () => {
   const navigate = useNavigate();
@@ -28,15 +29,12 @@ const FreightCompleteForm = () => {
     // Etapa 1 - Colaboradores
     selectedCollaborators: [] as string[],
     
-    // Etapa 2 - Origem e Destino
+    // Etapa 2 - Origem e Paradas
     origem: {
       estado: '',
       cidade: ''
     },
-    destino: {
-      estado: '',
-      cidade: ''
-    },
+    paradas: [] as Array<{ id: string; estado: string; cidade: string }>,
     
     // Etapa 3 - Carga e Veículos
     tipoMercadoria: '',
@@ -57,6 +55,9 @@ const FreightCompleteForm = () => {
     beneficios: [] as string[],
     observacoes: ''
   });
+
+  const { estados } = useEstados();
+  const { cidades: cidadesOrigem } = useCidades(formData.origem.estado);
 
   // Fetch collaborators
   const { data: collaborators = [] } = useQuery({
@@ -83,9 +84,40 @@ const FreightCompleteForm = () => {
     },
   });
 
+  // Funções para gerenciar paradas
+  const addParada = () => {
+    const newParada = {
+      id: Date.now().toString(),
+      estado: '',
+      cidade: ''
+    };
+    setFormData({
+      ...formData,
+      paradas: [...formData.paradas, newParada]
+    });
+  };
+
+  const removeParada = (id: string) => {
+    setFormData({
+      ...formData,
+      paradas: formData.paradas.filter(parada => parada.id !== id)
+    });
+  };
+
+  const updateParada = (id: string, field: 'estado' | 'cidade', value: string) => {
+    setFormData({
+      ...formData,
+      paradas: formData.paradas.map(parada =>
+        parada.id === id
+          ? { ...parada, [field]: value, ...(field === 'estado' ? { cidade: '' } : {}) }
+          : parada
+      )
+    });
+  };
+
   const steps = [
     { number: 1, title: 'Colaboradores', icon: Users, description: 'Selecione os responsáveis' },
-    { number: 2, title: 'Origem e Destino', icon: MapPin, description: 'Locais de coleta e entrega' },
+    { number: 2, title: 'Origem e Paradas', icon: MapPin, description: 'Locais de coleta e paradas' },
     { number: 3, title: 'Carga e Veículos', icon: Truck, description: 'Especificações da carga' },
     { number: 4, title: 'Configurações', icon: Settings, description: 'Detalhes finais' }
   ];
@@ -157,7 +189,7 @@ const FreightCompleteForm = () => {
         tipo_frete: 'frete_completo',
         origem_estado: formData.origem.estado,
         origem_cidade: formData.origem.cidade,
-        destinos: [formData.destino],
+        paradas: formData.paradas,
         tipo_mercadoria: formData.tipoMercadoria,
         peso_carga: formData.pesoCarga ? parseFloat(formData.pesoCarga) : null,
         valor_carga: formData.valorCarga ? parseFloat(formData.valorCarga) : null,
@@ -191,8 +223,8 @@ const FreightCompleteForm = () => {
       const generatedFreight = {
         id: data.id,
         codigo_agregamento: data.id, // Use the freight ID as code for now
-        destino_cidade: formData.destino.cidade,
-        destino_estado: formData.destino.estado
+        destino_cidade: formData.paradas.length > 0 ? formData.paradas[0].cidade : '',
+        destino_estado: formData.paradas.length > 0 ? formData.paradas[0].estado : ''
       };
 
       setGeneratedFreights([generatedFreight]);
@@ -218,7 +250,11 @@ const FreightCompleteForm = () => {
     collaborator_ids: formData.selectedCollaborators,
     origem_cidade: formData.origem.cidade,
     origem_estado: formData.origem.estado,
-    destinos: [{ id: '1', state: formData.destino.estado, city: formData.destino.cidade }],
+    destinos: formData.paradas.map((parada, index) => ({ 
+      id: parada.id || index.toString(), 
+      state: parada.estado, 
+      city: parada.cidade 
+    })),
     tipo_mercadoria: formData.tipoMercadoria,
     tipos_veiculos: formData.tiposVeiculos.map((type, index) => ({
       id: index.toString(),
@@ -373,82 +409,162 @@ const FreightCompleteForm = () => {
           </Card>
         )}
 
-        {/* Etapa 2 - Origem e Destino */}
+        {/* Etapa 2 - Origem e Paradas */}
         {currentStep === 2 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <MapPin className="w-5 h-5" />
-                <span>Origem e Destino</span>
-              </CardTitle>
-              <CardDescription>
-                Defina os locais de coleta e entrega da carga
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Origem (Coleta)</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="origem-estado">Estado</Label>
-                      <Input
-                        id="origem-estado"
-                        value={formData.origem.estado}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          origem: { ...formData.origem, estado: e.target.value }
-                        })}
-                        placeholder="Ex: São Paulo"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="origem-cidade">Cidade</Label>
-                      <Input
-                        id="origem-cidade"
-                        value={formData.origem.cidade}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          origem: { ...formData.origem, cidade: e.target.value }
-                        })}
-                        placeholder="Ex: São Paulo"
-                      />
-                    </div>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Origem */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <MapPin className="w-5 h-5 text-green-600" />
+                    <span>Origem</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Local de coleta da carga
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="origem-estado">Estado</Label>
+                    <Select 
+                      value={formData.origem.estado} 
+                      onValueChange={(value) => setFormData({
+                        ...formData,
+                        origem: { estado: value, cidade: '' }
+                      })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {estados.map((estado) => (
+                          <SelectItem key={estado.sigla} value={estado.sigla}>
+                            {estado.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                </div>
+                  <div>
+                    <Label htmlFor="origem-cidade">Cidade</Label>
+                    <Select 
+                      value={formData.origem.cidade} 
+                      onValueChange={(value) => setFormData({
+                        ...formData,
+                        origem: { ...formData.origem, cidade: value }
+                      })}
+                      disabled={!formData.origem.estado}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a cidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cidadesOrigem.map((cidade) => (
+                          <SelectItem key={cidade.id} value={cidade.nome}>
+                            {cidade.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
 
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Destino (Entrega)</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="destino-estado">Estado</Label>
-                      <Input
-                        id="destino-estado"
-                        value={formData.destino.estado}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          destino: { ...formData.destino, estado: e.target.value }
-                        })}
-                        placeholder="Ex: Rio de Janeiro"
-                      />
+              {/* Paradas */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="w-5 h-5 text-red-600" />
+                      <span>Paradas</span>
                     </div>
-                    <div>
-                      <Label htmlFor="destino-cidade">Cidade</Label>
-                      <Input
-                        id="destino-cidade"
-                        value={formData.destino.cidade}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          destino: { ...formData.destino, cidade: e.target.value }
-                        })}
-                        placeholder="Ex: Rio de Janeiro"
-                      />
+                    <Button
+                      onClick={addParada}
+                      size="sm"
+                      className="flex items-center space-x-1"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Adicionar</span>
+                    </Button>
+                  </CardTitle>
+                  <CardDescription>
+                    Locais onde o veículo deve parar durante o trajeto
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {formData.paradas.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <MapPin className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>Nenhuma parada adicionada</p>
+                      <p className="text-sm">Clique em "Adicionar" para incluir paradas</p>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                  ) : (
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                      {formData.paradas.map((parada, index) => {
+                        const { cidades: cidadesParada } = useCidades(parada.estado);
+                        
+                        return (
+                          <div key={parada.id} className="border rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium text-sm">Parada {index + 1}</h4>
+                              <Button
+                                onClick={() => removeParada(parada.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <div className="space-y-3">
+                              <div>
+                                <Label>Estado</Label>
+                                <Select 
+                                  value={parada.estado} 
+                                  onValueChange={(value) => updateParada(parada.id, 'estado', value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione o estado" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {estados.map((estado) => (
+                                      <SelectItem key={estado.sigla} value={estado.sigla}>
+                                        {estado.nome}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label>Cidade</Label>
+                                <Select 
+                                  value={parada.cidade} 
+                                  onValueChange={(value) => updateParada(parada.id, 'cidade', value)}
+                                  disabled={!parada.estado}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione a cidade" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {cidadesParada.map((cidade) => (
+                                      <SelectItem key={cidade.id} value={cidade.nome}>
+                                        {cidade.nome}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         )}
 
         {/* Etapa 3 - Carga e Veículos */}
@@ -791,7 +907,7 @@ const FreightCompleteForm = () => {
           setFormData({
             selectedCollaborators: [],
             origem: { estado: '', cidade: '' },
-            destino: { estado: '', cidade: '' },
+            paradas: [],
             tipoMercadoria: '',
             pesoCarga: '',
             valorCarga: '',
