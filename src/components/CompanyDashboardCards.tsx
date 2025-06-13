@@ -6,17 +6,21 @@ import { Truck, User, Activity, LogOut, Building2, UserCircle } from 'lucide-rea
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useDocumentStatus } from '@/hooks/useDocumentStatus';
+import { useCompany } from '@/hooks/useCompany';
 import { useToast } from '@/hooks/use-toast';
+import LogoRequiredDialog from '@/components/LogoRequiredDialog';
 
 const CompanyDashboardCards = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { documentStatus, loading } = useDocumentStatus();
+  const { company, loading: companyLoading } = useCompany();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [showLogoDialog, setShowLogoDialog] = useState(false);
 
   useEffect(() => {
-    if (!loading && user && documentStatus) {
+    if (!loading && !companyLoading && user && documentStatus) {
       // Verificar se todos os documentos da empresa estão aprovados
       const isCompanyFullyApproved = 
         documentStatus.address_proof_status === 'approved' &&
@@ -31,11 +35,11 @@ const CompanyDashboardCards = () => {
       
       console.log('Access granted - all documents approved');
       setIsLoading(false);
-    } else if (!loading && (!user || !documentStatus)) {
+    } else if (!loading && !companyLoading && (!user || !documentStatus)) {
       console.log('No user or document status, redirecting to login');
       navigate('/login');
     }
-  }, [user, documentStatus, loading, navigate]);
+  }, [user, documentStatus, loading, companyLoading, navigate]);
 
   const handleLogout = async () => {
     try {
@@ -55,8 +59,23 @@ const CompanyDashboardCards = () => {
     }
   };
 
+  const checkLogoRequirement = (cardType: string) => {
+    const restrictedCards = ['SOLICITAR FRETE', 'CADASTRAR COLABORADOR', 'FRETES ATIVOS'];
+    
+    if (restrictedCards.includes(cardType) && (!company?.logo_url)) {
+      setShowLogoDialog(true);
+      return false;
+    }
+    return true;
+  };
+
   const handleCardClick = (cardType: string) => {
     console.log(`Clicked on ${cardType} card`);
+    
+    // Verificar se precisa de logo para esta funcionalidade
+    if (!checkLogoRequirement(cardType)) {
+      return;
+    }
     
     if (cardType === 'SOLICITAR FRETE') {
       navigate('/freight-request');
@@ -84,7 +103,12 @@ const CompanyDashboardCards = () => {
     });
   };
 
-  if (loading || isLoading) {
+  const handleGoToProfile = () => {
+    setShowLogoDialog(false);
+    navigate('/company-profile');
+  };
+
+  if (loading || companyLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center">
         <div className="text-center">
@@ -264,6 +288,13 @@ const CompanyDashboardCards = () => {
           </Card>
         </div>
       </main>
+
+      {/* Logo Required Dialog */}
+      <LogoRequiredDialog
+        isOpen={showLogoDialog}
+        onClose={() => setShowLogoDialog(false)}
+        onGoToProfile={handleGoToProfile}
+      />
     </div>
   );
 };
