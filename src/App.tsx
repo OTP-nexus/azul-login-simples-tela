@@ -19,6 +19,7 @@ import FreightAggregation from "./pages/FreightAggregation";
 import FreightComplete from "./pages/FreightComplete";
 import FreightReturn from "./pages/FreightReturn";
 import CollaboratorRegistration from "./pages/CollaboratorRegistration";
+import ActiveFreights from "./pages/ActiveFreights";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

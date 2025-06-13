@@ -68,6 +68,11 @@ const CompanyDashboardCards = () => {
       return;
     }
     
+    if (cardType === 'FRETES ATIVOS') {
+      navigate('/active-freights');
+      return;
+    }
+    
     toast({
       title: "Em breve",
       description: `Funcionalidade "${cardType}" será implementada em breve!`,
