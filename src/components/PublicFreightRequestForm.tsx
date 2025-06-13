@@ -274,12 +274,20 @@ const PublicFreightRequestForm = () => {
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(4)) return;
+    console.log('🚀 INICIANDO SUBMIT DO FRETE');
+    console.log('📋 Dados do formulário:', formData);
+    
+    if (!validateStep(4)) {
+      console.log('❌ Validação falhou');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
+      console.log('💾 Preparando dados para o banco...');
+      
       const freightData = {
-        tipo_frete: 'comum', // Alterado para 'comum'
+        tipo_frete: 'comum',
         tipo_solicitacao: 'pessoa_comum',
         origem_estado: formData.origemEstado,
         origem_cidade: formData.origemCidade,
@@ -312,12 +320,15 @@ const PublicFreightRequestForm = () => {
         status: 'pendente'
       };
 
-      const { error } = await supabase
+      console.log('📤 Dados que serão enviados:', freightData);
+
+      const { data, error } = await supabase
         .from('fretes')
-        .insert(freightData);
+        .insert(freightData)
+        .select();
 
       if (error) {
-        console.error('Erro ao salvar frete:', error);
+        console.error('💥 Erro ao salvar frete:', error);
         toast({
           title: "Erro ao solicitar frete",
           description: "Tente novamente mais tarde",
@@ -325,6 +336,8 @@ const PublicFreightRequestForm = () => {
         });
         return;
       }
+
+      console.log('✅ Frete salvo com sucesso:', data);
 
       toast({
         title: "Frete solicitado com sucesso!",
@@ -365,7 +378,7 @@ const PublicFreightRequestForm = () => {
       setShowConfirmDialog(false);
 
     } catch (error) {
-      console.error('Erro:', error);
+      console.error('💥 Erro inesperado:', error);
       toast({
         title: "Erro inesperado",
         description: "Tente novamente mais tarde",
