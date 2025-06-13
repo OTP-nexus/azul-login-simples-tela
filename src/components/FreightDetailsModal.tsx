@@ -93,6 +93,45 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     return new Date(date).toLocaleString('pt-BR');
   };
 
+  // Função para "desembrulhar" arrays aninhados
+  const flattenNestedArrays = (data: any): any[] => {
+    if (!data) return [];
+    
+    // Se já é um array
+    if (Array.isArray(data)) {
+      // Se tem apenas um elemento e esse elemento é um array, desembrulhar
+      if (data.length === 1 && Array.isArray(data[0])) {
+        return data[0];
+      }
+      // Se tem apenas um elemento e esse elemento é uma string que parece JSON
+      if (data.length === 1 && typeof data[0] === 'string' && data[0].startsWith('[')) {
+        try {
+          return JSON.parse(data[0]);
+        } catch {
+          return data;
+        }
+      }
+      return data;
+    }
+
+    // Se é uma string que parece JSON
+    if (typeof data === 'string' && data.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(data);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        return [data];
+      }
+    }
+
+    // Se é um objeto único, colocar em array
+    if (typeof data === 'object') {
+      return [data];
+    }
+
+    return [data];
+  };
+
   // Função para extrair texto legível de objetos
   const extractDisplayText = (item: any) => {
     if (typeof item === 'string') {
@@ -150,15 +189,17 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
 
   // Função melhorada para renderizar itens de array com formatação adequada
   const renderVehiclesAndBodies = (items: any[], emptyMessage: string = 'Não especificado') => {
-    console.log('Renderizando items:', items);
+    const flattenedItems = flattenNestedArrays(items);
+    console.log('Items originais:', items);
+    console.log('Items após flatten:', flattenedItems);
     
-    if (!Array.isArray(items) || items.length === 0) {
+    if (!Array.isArray(flattenedItems) || flattenedItems.length === 0) {
       return <p className="text-gray-500 italic">{emptyMessage}</p>;
     }
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {items.map((item: any, index: number) => {
+        {flattenedItems.map((item: any, index: number) => {
           const displayText = extractDisplayText(item);
           const subtitle = extractSubtitle(item);
 
@@ -177,13 +218,15 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
 
   // Função específica para renderizar badges simples
   const renderSimpleBadges = (items: any[], emptyMessage: string = 'Não especificado') => {
-    if (!Array.isArray(items) || items.length === 0) {
+    const flattenedItems = flattenNestedArrays(items);
+    
+    if (!Array.isArray(flattenedItems) || flattenedItems.length === 0) {
       return <p className="text-gray-500 italic">{emptyMessage}</p>;
     }
 
     return (
       <div className="flex flex-wrap gap-2">
-        {items.map((item: any, index: number) => {
+        {flattenedItems.map((item: any, index: number) => {
           const displayText = extractDisplayText(item);
 
           return (
@@ -198,11 +241,13 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
 
   // Helper function to render pricing tables for agregamento
   const renderPricingTables = () => {
-    if (!freight.tabelas_preco || freight.tabelas_preco.length === 0) {
+    const flattenedTables = flattenNestedArrays(freight.tabelas_preco);
+    
+    if (!Array.isArray(flattenedTables) || flattenedTables.length === 0) {
       return <p className="text-gray-500 italic">Nenhuma tabela de preços definida</p>;
     }
 
-    return freight.tabelas_preco.map((tabela: any, index: number) => (
+    return flattenedTables.map((tabela: any, index: number) => (
       <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
         <div className="grid grid-cols-3 gap-2 text-sm">
           <div>
@@ -224,32 +269,18 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
 
   // Helper function to render benefits for agregamento
   const renderBenefits = () => {
-    if (!freight.beneficios || freight.beneficios.length === 0) {
-      return <p className="text-gray-500 italic">Nenhum benefício definido</p>;
-    }
-
-    return (
-      <div className="flex flex-wrap gap-2">
-        {freight.beneficios.map((beneficio: any, index: number) => {
-          const displayText = extractDisplayText(beneficio);
-
-          return (
-            <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-800">
-              {displayText}
-            </Badge>
-          );
-        })}
-      </div>
-    );
+    return renderSimpleBadges(freight.beneficios, 'Nenhum benefício definido');
   };
 
   // Helper function to render scheduling rules for agregamento
   const renderSchedulingRules = () => {
-    if (!freight.regras_agendamento || freight.regras_agendamento.length === 0) {
+    const flattenedRules = flattenNestedArrays(freight.regras_agendamento);
+    
+    if (!Array.isArray(flattenedRules) || flattenedRules.length === 0) {
       return <p className="text-gray-500 italic">Nenhuma regra de agendamento definida</p>;
     }
 
-    return freight.regras_agendamento.map((regra: any, index: number) => {
+    return flattenedRules.map((regra: any, index: number) => {
       const displayText = extractDisplayText(regra);
 
       return (
