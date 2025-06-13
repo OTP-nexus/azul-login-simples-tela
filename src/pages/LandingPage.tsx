@@ -24,6 +24,10 @@ const LandingPage = () => {
     navigate('/register/company');
   };
 
+  const handlePublicFreightRequest = () => {
+    navigate('/solicitar-frete');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
       {/* Header */}
@@ -40,8 +44,8 @@ const LandingPage = () => {
               <Button variant="outline" onClick={handleDriverLogin}>
                 Login
               </Button>
-              <Button onClick={handleCompanyRegister}>
-                Começar Agora
+              <Button onClick={handlePublicFreightRequest}>
+                Solicitar Frete
               </Button>
             </div>
           </div>
@@ -52,14 +56,14 @@ const LandingPage = () => {
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
           <h2 className="text-5xl font-bold text-gray-800 mb-6">
-            Conectamos <span className="text-blue-600">Motoristas</span> e <span className="text-blue-600">Empresas</span>
+            Conectamos <span className="text-blue-600">Motoristas</span>, <span className="text-blue-600">Empresas</span> e <span className="text-blue-600">Pessoas</span>
           </h2>
           <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto">
-            A plataforma completa para gestão de fretes que simplifica a conexão entre transportadores e empresas, 
-            otimizando custos e aumentando a eficiência logística.
+            A plataforma completa para gestão de fretes que conecta transportadores, empresas e pessoas físicas,
+            otimizando custos e aumentando a eficiência logística para todos.
           </p>
           
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {/* Card para Motoristas */}
             <Card className="p-8 bg-white/80 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
               <CardHeader className="text-center pb-6">
@@ -157,6 +161,48 @@ const LandingPage = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Card para Pessoas Comuns */}
+            <Card className="p-8 bg-white/80 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+              <CardHeader className="text-center pb-6">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center mb-4">
+                  <Users className="w-8 h-8 text-white" />
+                </div>
+                <CardTitle className="text-2xl text-gray-800">Para Pessoas</CardTitle>
+                <CardDescription className="text-gray-600">
+                  Solicite fretes de forma rápida e segura
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <CheckCircle className="w-5 h-5 text-purple-500" />
+                    <span className="text-gray-700">Processo simples e rápido</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <CheckCircle className="w-5 h-5 text-purple-500" />
+                    <span className="text-gray-700">Sem necessidade de cadastro</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <CheckCircle className="w-5 h-5 text-purple-500" />
+                    <span className="text-gray-700">Motoristas verificados</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <CheckCircle className="w-5 h-5 text-purple-500" />
+                    <span className="text-gray-700">Acompanhamento da entrega</span>
+                  </div>
+                </div>
+                <div className="pt-6 space-y-3">
+                  <Button 
+                    onClick={handlePublicFreightRequest}
+                    className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white"
+                  >
+                    Solicitar Frete Agora
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
@@ -215,7 +261,7 @@ const LandingPage = () => {
             Pronto para revolucionar sua logística?
           </h3>
           <p className="text-blue-100 mb-8 max-w-2xl mx-auto">
-            Junte-se a milhares de motoristas e empresas que já confiam em nossa plataforma
+            Junte-se a milhares de motoristas, empresas e pessoas que já confiam em nossa plataforma
             para otimizar seus processos logísticos.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -233,6 +279,14 @@ const LandingPage = () => {
               className="border-white text-white hover:bg-white hover:text-blue-600 font-semibold"
             >
               Cadastrar Motorista
+            </Button>
+            <Button 
+              onClick={handlePublicFreightRequest}
+              size="lg"
+              variant="outline"
+              className="border-white text-white hover:bg-white hover:text-blue-600 font-semibold"
+            >
+              Solicitar Frete
             </Button>
           </div>
         </div>
