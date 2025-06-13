@@ -21,29 +21,33 @@ const FreightCard = ({ freight, onViewDetails, onComplete, onDelete }: FreightCa
         return {
           icon: Combine,
           label: 'Agregamento',
-          color: 'text-amber-600',
-          bgColor: 'bg-amber-50'
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-100',
+          cardBgColor: 'bg-blue-50'
         };
       case 'frete_completo':
         return {
           icon: Truck,
           label: 'Frete Completo',
           color: 'text-green-600',
-          bgColor: 'bg-green-50'
+          bgColor: 'bg-green-100',
+          cardBgColor: 'bg-green-50'
         };
       case 'frete_de_retorno':
         return {
           icon: RotateCcw,
           label: 'Frete de Retorno',
-          color: 'text-blue-600',
-          bgColor: 'bg-blue-50'
+          color: 'text-orange-600',
+          bgColor: 'bg-orange-100',
+          cardBgColor: 'bg-orange-50'
         };
       default:
         return {
           icon: Package,
           label: tipo,
           color: 'text-gray-600',
-          bgColor: 'bg-gray-50'
+          bgColor: 'bg-gray-50',
+          cardBgColor: 'bg-gray-50'
         };
     }
   };
@@ -78,7 +82,7 @@ const FreightCard = ({ freight, onViewDetails, onComplete, onDelete }: FreightCa
   };
 
   return (
-    <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer group">
+    <Card className={`hover:shadow-lg transition-all duration-300 cursor-pointer group ${typeConfig.cardBgColor} border-l-4 ${typeConfig.bgColor.replace('bg-', 'border-')}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
