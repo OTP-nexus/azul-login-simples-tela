@@ -140,7 +140,7 @@ const PublicFreightRequestForm = () => {
     };
     setFormData(prev => ({
       ...prev,
-      itensDetalhados: [...prev.itensDetalhados, newItem]
+      itensDetalhados: [newItem, ...prev.itensDetalhados] // Adiciona no início do array
     }));
   };
 
