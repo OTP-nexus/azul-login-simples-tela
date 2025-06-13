@@ -24,10 +24,15 @@ import {
   Combine,
   Calculator,
   Route,
-  Settings
+  Settings,
+  User,
+  Phone,
+  Mail
 } from "lucide-react";
 import FreightStatusBadge from './FreightStatusBadge';
 import type { ActiveFreight } from '@/hooks/useActiveFreights';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FreightDetailsModalProps {
   freight: ActiveFreight | null;
@@ -36,6 +41,29 @@ interface FreightDetailsModalProps {
 }
 
 const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalProps) => {
+  // Buscar dados dos colaboradores
+  const { data: collaborators } = useQuery({
+    queryKey: ['collaborators', freight?.collaborator_ids],
+    queryFn: async () => {
+      if (!freight?.collaborator_ids || freight.collaborator_ids.length === 0) {
+        return [];
+      }
+      
+      const { data, error } = await supabase
+        .from('collaborators')
+        .select('*')
+        .in('id', freight.collaborator_ids);
+      
+      if (error) {
+        console.error('Erro ao buscar colaboradores:', error);
+        return [];
+      }
+      
+      return data || [];
+    },
+    enabled: !!freight?.collaborator_ids && freight.collaborator_ids.length > 0
+  });
+
   if (!freight) return null;
 
   const getFreightTypeConfig = (tipo: string) => {
@@ -393,6 +421,43 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     });
   };
 
+  // Função para renderizar colaboradores responsáveis
+  const renderCollaborators = () => {
+    if (!collaborators || collaborators.length === 0) {
+      return <p className="text-gray-500 italic">Nenhum colaborador atribuído</p>;
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {collaborators.map((collaborator: any) => (
+          <div key={collaborator.id} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <div className="flex items-start space-x-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <User className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-medium text-blue-900">{collaborator.name}</h4>
+                <p className="text-sm text-blue-700">{collaborator.sector}</p>
+                {collaborator.email && (
+                  <div className="flex items-center space-x-1 mt-1">
+                    <Mail className="w-3 h-3 text-blue-600" />
+                    <span className="text-xs text-blue-600">{collaborator.email}</span>
+                  </div>
+                )}
+                {collaborator.phone && (
+                  <div className="flex items-center space-x-1 mt-1">
+                    <Phone className="w-3 h-3 text-blue-600" />
+                    <span className="text-xs text-blue-600">{collaborator.phone}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -623,12 +688,7 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600">
-                {freight.collaborator_ids && freight.collaborator_ids.length > 0 
-                  ? `${freight.collaborator_ids.length} colaborador(es) responsável(is)`
-                  : 'Nenhum colaborador atribuído'
-                }
-              </p>
+              {renderCollaborators()}
             </CardContent>
           </Card>
 
