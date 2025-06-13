@@ -23,6 +23,11 @@ const FreightRequestCards = () => {
       return;
     }
     
+    if (freightType === 'FRETE DE RETORNO') {
+      navigate('/freight-return');
+      return;
+    }
+    
     toast({
       title: "Em breve",
       description: `Funcionalidade "${freightType}" será implementada em breve!`,

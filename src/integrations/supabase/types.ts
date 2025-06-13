@@ -491,6 +491,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      generate_return_freight_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       document_status: "not_submitted" | "pending" | "approved" | "rejected"
