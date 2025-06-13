@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,17 +59,45 @@ const FreightCompleteForm = () => {
   const { estados } = useEstados();
   const { cidades: cidadesOrigem } = useCidades(formData.origem.estado);
 
-  // Get unique states from paradas to fetch cities for each
+  // Create a custom hook for fetching cities for multiple states
+  const useMultipleCidades = (estados: string[]) => {
+    return useQuery({
+      queryKey: ['multiple-cidades', estados],
+      queryFn: async () => {
+        if (!estados.length) return {};
+        
+        const cidadesByState: Record<string, any[]> = {};
+        
+        for (const estado of estados) {
+          if (estado) {
+            try {
+              const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${estado}/municipios?orderBy=nome`);
+              if (response.ok) {
+                const data = await response.json();
+                cidadesByState[estado] = data;
+              } else {
+                cidadesByState[estado] = [];
+              }
+            } catch (error) {
+              console.error(`Erro ao buscar cidades para ${estado}:`, error);
+              cidadesByState[estado] = [];
+            }
+          }
+        }
+        
+        return cidadesByState;
+      },
+      enabled: estados.length > 0,
+    });
+  };
+
+  // Get unique states from paradas
   const paradaStates = useMemo(() => {
     return [...new Set(formData.paradas.map(p => p.estado).filter(Boolean))];
   }, [formData.paradas]);
 
-  // Fetch cities for all parada states
-  const cidadesByState = {};
-  paradaStates.forEach(estado => {
-    const { cidades } = useCidades(estado);
-    cidadesByState[estado] = cidades;
-  });
+  // Fetch cities for all parada states using the custom hook
+  const { data: cidadesByState = {} } = useMultipleCidades(paradaStates);
 
   // Fetch collaborators
   const { data: collaborators = [] } = useQuery({
@@ -578,7 +605,6 @@ const FreightCompleteForm = () => {
           </div>
         )}
 
-        {/* Etapa 3 - Carga e Veículos */}
         {currentStep === 3 && (
           <div className="space-y-6">
             <Card>
@@ -730,7 +756,6 @@ const FreightCompleteForm = () => {
           </div>
         )}
 
-        {/* Etapa 4 - Configurações */}
         {currentStep === 4 && (
           <div className="space-y-6">
             <Card>
