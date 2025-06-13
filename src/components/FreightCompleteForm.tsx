@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ArrowLeft, ArrowRight, Users, MapPin, Truck, Settings, Calendar, Package, DollarSign, Plus, X, GripVertical } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Users, MapPin, Truck, Settings, Calendar, Package, DollarSign, Plus, X, GripVertical, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,8 +17,9 @@ import FreightVerificationDialog from './FreightVerificationDialog';
 import FreightSuccessDialog from './FreightSuccessDialog';
 import { useEstados, useCidades } from '@/hooks/useIBGE';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { useFreightFormValidation, FreightFormData } from '@/hooks/useFreightFormValidation';
+import { formatCurrency, formatNumericInput, formatWeight, parseCurrencyValue, validateNumericInput, limitTextInput } from '@/utils/freightFormatters';
 
-// Vehicle types by category - updated with all types
 const vehicleTypes = {
   heavy: [
     { id: 'carreta', type: 'Carreta', category: 'heavy' as const },
@@ -45,7 +45,6 @@ const vehicleTypes = {
   ]
 };
 
-// Body types by category - updated with all types
 const bodyTypes = {
   open: [
     { id: 'graneleiro', type: 'Graneleiro', category: 'open' as const },
@@ -84,18 +83,22 @@ const FreightCompleteForm = () => {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [generatedFreights, setGeneratedFreights] = useState([]);
 
-  const [formData, setFormData] = useState({
-    // Etapa 1 - Colaboradores
+  const {
+    errors,
+    validateStep1,
+    validateStep2,
+    validateStep3,
+    validateStep4,
+    clearErrors
+  } = useFreightFormValidation();
+
+  const [formData, setFormData] = useState<FreightFormData>({
     selectedCollaborators: [] as string[],
-    
-    // Etapa 2 - Origem e Paradas
     origem: {
       estado: '',
       cidade: ''
     },
     paradas: [] as Array<{ id: string; estado: string; cidade: string }>,
-    
-    // Etapa 3 - Carga e Veículos (reformulada)
     dataColeta: '',
     horarioColeta: '',
     dimensoes: {
@@ -106,12 +109,10 @@ const FreightCompleteForm = () => {
     peso: '',
     tiposVeiculos: [] as Array<{ id: string; type: string; category: 'heavy' | 'medium' | 'light'; selected: boolean }>,
     tiposCarrocerias: [] as Array<{ id: string; type: string; category: 'closed' | 'open' | 'special'; selected: boolean }>,
-    tipoValor: '', // 'combinar' ou 'valor'
+    tipoValor: '',
     valorOfertado: '',
-    
-    // Etapa 4 - Configurações (reformulada)
-    pedagioPagoPor: '', // 'motorista' ou 'empresa'
-    pedagioDirecao: '', // 'ida', 'volta', 'ida_volta' (só quando empresa paga)
+    pedagioPagoPor: '',
+    pedagioDirecao: '',
     precisaSeguro: false,
     precisaAjudante: false,
     precisaRastreador: false,
@@ -121,7 +122,6 @@ const FreightCompleteForm = () => {
   const { estados } = useEstados();
   const { cidades: cidadesOrigem } = useCidades(formData.origem.estado);
 
-  // Create a custom hook for fetching cities for multiple states
   const useMultipleCidades = (estados: string[]) => {
     return useQuery({
       queryKey: ['multiple-cidades', estados],
@@ -153,15 +153,12 @@ const FreightCompleteForm = () => {
     });
   };
 
-  // Get unique states from paradas
   const paradaStates = useMemo(() => {
     return [...new Set(formData.paradas.map(p => p.estado).filter(Boolean))];
   }, [formData.paradas]);
 
-  // Fetch cities for all parada states using the custom hook
   const { data: cidadesByState = {} } = useMultipleCidades(paradaStates);
 
-  // Fetch collaborators
   const { data: collaborators = [] } = useQuery({
     queryKey: ['collaborators'],
     queryFn: async () => {
@@ -186,7 +183,6 @@ const FreightCompleteForm = () => {
     },
   });
 
-  // Funções para gerenciar paradas
   const addParada = () => {
     const newParada = {
       id: Date.now().toString(),
@@ -217,7 +213,6 @@ const FreightCompleteForm = () => {
     });
   };
 
-  // Nova função para lidar com o drag and drop
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) {
       return;
@@ -233,7 +228,6 @@ const FreightCompleteForm = () => {
     });
   };
 
-  // Vehicle selection functions
   const toggleVehicleType = (vehicleId: string, type: string, category: 'heavy' | 'medium' | 'light') => {
     const existing = formData.tiposVeiculos.find(v => v.id === vehicleId);
     if (existing) {
@@ -249,7 +243,6 @@ const FreightCompleteForm = () => {
     }
   };
 
-  // Body type selection functions
   const toggleBodyType = (bodyId: string, type: string, category: 'closed' | 'open' | 'special') => {
     const existing = formData.tiposCarrocerias.find(b => b.id === bodyId);
     if (existing) {
@@ -265,6 +258,38 @@ const FreightCompleteForm = () => {
     }
   };
 
+  const handleCurrencyChange = (value: string, field: string) => {
+    const formatted = formatCurrency(value);
+    setFormData({
+      ...formData,
+      [field]: parseCurrencyValue(formatted)
+    });
+  };
+
+  const handleNumericChange = (value: string, field: string, maxDecimals: number = 2) => {
+    const formatted = formatNumericInput(value, maxDecimals);
+    setFormData({
+      ...formData,
+      [field]: formatted
+    });
+  };
+
+  const handleWeightChange = (value: string) => {
+    const formatted = formatWeight(value);
+    setFormData({
+      ...formData,
+      peso: formatted
+    });
+  };
+
+  const handleObservationsChange = (value: string) => {
+    const limited = limitTextInput(value, 500);
+    setFormData({
+      ...formData,
+      observacoes: limited
+    });
+  };
+
   const steps = [
     { number: 1, title: 'Colaboradores', icon: Users, description: 'Selecione os responsáveis' },
     { number: 2, title: 'Origem e Paradas', icon: MapPin, description: 'Locais de coleta e paradas' },
@@ -273,20 +298,54 @@ const FreightCompleteForm = () => {
   ];
 
   const handleNext = () => {
-    if (currentStep < 4) {
+    clearErrors();
+    
+    let isValid = false;
+    
+    switch (currentStep) {
+      case 1:
+        isValid = validateStep1(formData);
+        break;
+      case 2:
+        isValid = validateStep2(formData);
+        break;
+      case 3:
+        isValid = validateStep3(formData);
+        break;
+      case 4:
+        isValid = validateStep4(formData);
+        if (isValid) {
+          handleSubmit();
+          return;
+        }
+        break;
+    }
+    
+    if (isValid && currentStep < 4) {
       setCurrentStep(currentStep + 1);
-    } else {
-      handleSubmit();
     }
   };
 
   const handlePrevious = () => {
+    clearErrors();
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
   };
 
+  const checkForDuplicateParada = (estado: string, cidade: string, currentId: string): boolean => {
+    return formData.paradas.some(parada => 
+      parada.id !== currentId && 
+      parada.estado === estado && 
+      parada.cidade === cidade
+    );
+  };
+
   const handleSubmit = async () => {
+    if (!validateStep4(formData)) {
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       
@@ -301,7 +360,6 @@ const FreightCompleteForm = () => {
 
       if (!company) throw new Error('Empresa não encontrada');
 
-      // Convert paradas to destinos format
       const destinos = formData.paradas.map((parada, index) => ({
         id: parada.id || index.toString(),
         state: parada.estado,
@@ -314,11 +372,11 @@ const FreightCompleteForm = () => {
         origem_estado: formData.origem.estado,
         origem_cidade: formData.origem.cidade,
         destinos: destinos,
-        tipo_mercadoria: 'Geral', // Default value required by schema
+        tipo_mercadoria: 'Geral',
         paradas: formData.paradas,
         data_coleta: formData.dataColeta || null,
         horario_carregamento: formData.horarioColeta || null,
-        peso_carga: formData.peso ? parseFloat(formData.peso) : null,
+        peso_carga: formData.peso ? parseFloat(formData.peso.replace(/\./g, '')) : null,
         tipos_veiculos: formData.tiposVeiculos,
         tipos_carrocerias: formData.tiposCarrocerias,
         valores_definidos: formData.tipoValor === 'valor' ? {
@@ -345,10 +403,9 @@ const FreightCompleteForm = () => {
 
       if (error) throw error;
 
-      // Convert the single freight to the format expected by FreightSuccessDialog
       const generatedFreight = {
         id: data.id,
-        codigo_agregamento: data.id, // Use the freight ID as code for now
+        codigo_agregamento: data.id,
         destino_cidade: formData.paradas.length > 0 ? formData.paradas[0].cidade : '',
         destino_estado: formData.paradas.length > 0 ? formData.paradas[0].estado : ''
       };
@@ -371,7 +428,6 @@ const FreightCompleteForm = () => {
     navigate('/freight-request');
   };
 
-  // Convert formData to the format expected by FreightVerificationDialog
   const convertedFormData = {
     collaborator_ids: formData.selectedCollaborators,
     origem_cidade: formData.origem.cidade,
@@ -394,7 +450,7 @@ const FreightCompleteForm = () => {
       }]
     }],
     regras_agendamento: [],
-    beneficios: [], // Added missing beneficios property
+    beneficios: [],
     horario_carregamento: formData.horarioColeta,
     precisa_ajudante: formData.precisaAjudante,
     precisa_rastreador: formData.precisaRastreador,
@@ -410,7 +466,6 @@ const FreightCompleteForm = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -433,7 +488,6 @@ const FreightCompleteForm = () => {
         </div>
       </header>
 
-      {/* Progress Bar */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
@@ -463,19 +517,18 @@ const FreightCompleteForm = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Etapa 1 - Colaboradores */}
         {currentStep === 1 && (
-          <Card>
+          <Card className={errors.collaborators ? 'border-red-300' : ''}>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Users className="w-5 h-5" />
-                <span>Selecionar Colaboradores Responsáveis</span>
+                <span>Selecionar Colaboradores Responsáveis *</span>
               </CardTitle>
               <CardDescription>
                 Escolha os colaboradores que serão responsáveis por este frete
               </CardDescription>
+              <ErrorMessage error={errors.collaborators} />
             </CardHeader>
             <CardContent className="space-y-4">
               {collaborators.length === 0 ? (
@@ -525,23 +578,22 @@ const FreightCompleteForm = () => {
           </Card>
         )}
 
-        {/* Etapa 2 - Origem e Paradas */}
         {currentStep === 2 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Origem */}
-            <Card>
+            <Card className={errors.origem ? 'border-red-300' : ''}>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <MapPin className="w-5 h-5 text-green-600" />
-                  <span>Origem</span>
+                  <span>Origem *</span>
                 </CardTitle>
                 <CardDescription>
                   Local de coleta da carga
                 </CardDescription>
+                <ErrorMessage error={errors.origem} />
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="origem-estado">Estado</Label>
+                  <Label htmlFor="origem-estado">Estado *</Label>
                   <Select 
                     value={formData.origem.estado} 
                     onValueChange={(value) => setFormData({
@@ -549,7 +601,7 @@ const FreightCompleteForm = () => {
                       origem: { estado: value, cidade: '' }
                     })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors.origem ? 'border-red-300' : ''}>
                       <SelectValue placeholder="Selecione o estado" />
                     </SelectTrigger>
                     <SelectContent>
@@ -562,7 +614,7 @@ const FreightCompleteForm = () => {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="origem-cidade">Cidade</Label>
+                  <Label htmlFor="origem-cidade">Cidade *</Label>
                   <Select 
                     value={formData.origem.cidade} 
                     onValueChange={(value) => setFormData({
@@ -571,7 +623,7 @@ const FreightCompleteForm = () => {
                     })}
                     disabled={!formData.origem.estado}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors.origem ? 'border-red-300' : ''}>
                       <SelectValue placeholder="Selecione a cidade" />
                     </SelectTrigger>
                     <SelectContent>
@@ -586,13 +638,12 @@ const FreightCompleteForm = () => {
               </CardContent>
             </Card>
 
-            {/* Paradas */}
-            <Card>
+            <Card className={errors.paradas ? 'border-red-300' : ''}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <MapPin className="w-5 h-5 text-red-600" />
-                    <span>Paradas</span>
+                    <span>Paradas *</span>
                   </div>
                   <Button
                     onClick={addParada}
@@ -606,6 +657,7 @@ const FreightCompleteForm = () => {
                 <CardDescription>
                   Locais onde o veículo deve parar durante o trajeto. Arraste os cards para reordenar.
                 </CardDescription>
+                <ErrorMessage error={errors.paradas} />
               </CardHeader>
               <CardContent className="space-y-4">
                 {formData.paradas.length === 0 ? (
@@ -625,6 +677,7 @@ const FreightCompleteForm = () => {
                         >
                           {formData.paradas.map((parada, index) => {
                             const cidadesParada = cidadesByState[parada.estado] || [];
+                            const isDuplicate = checkForDuplicateParada(parada.estado, parada.cidade, parada.id);
                             
                             return (
                               <Draggable key={parada.id} draggableId={parada.id} index={index}>
@@ -632,8 +685,10 @@ const FreightCompleteForm = () => {
                                   <div
                                     ref={provided.innerRef}
                                     {...provided.draggableProps}
-                                    className={`border border-gray-200 rounded-lg p-4 bg-gray-50 transition-all ${
+                                    className={`border rounded-lg p-4 transition-all ${
                                       snapshot.isDragging ? 'shadow-lg scale-105 bg-white border-blue-300 rotate-2' : 'hover:shadow-md'
+                                    } ${
+                                      isDuplicate ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'
                                     }`}
                                     style={provided.draggableProps.style}
                                   >
@@ -656,9 +711,14 @@ const FreightCompleteForm = () => {
                                         <X className="w-4 h-4" />
                                       </Button>
                                     </div>
+                                    {isDuplicate && (
+                                      <div className="mb-2">
+                                        <ErrorMessage error="Parada duplicada detectada" />
+                                      </div>
+                                    )}
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                       <div>
-                                        <Label className="text-xs font-medium text-gray-600">Estado</Label>
+                                        <Label className="text-xs font-medium text-gray-600">Estado *</Label>
                                         <Select 
                                           value={parada.estado} 
                                           onValueChange={(value) => updateParada(parada.id, 'estado', value)}
@@ -676,7 +736,7 @@ const FreightCompleteForm = () => {
                                         </Select>
                                       </div>
                                       <div>
-                                        <Label className="text-xs font-medium text-gray-600">Cidade</Label>
+                                        <Label className="text-xs font-medium text-gray-600">Cidade *</Label>
                                         <Select 
                                           value={parada.cidade} 
                                           onValueChange={(value) => updateParada(parada.id, 'cidade', value)}
@@ -711,11 +771,9 @@ const FreightCompleteForm = () => {
           </div>
         )}
 
-        {/* Etapa 3 - Carga e Veículos */}
         {currentStep === 3 && (
           <div className="space-y-6">
-            {/* Data e Horário de Coleta */}
-            <Card>
+            <Card className={errors.dataColeta || errors.horarioColeta ? 'border-red-300' : ''}>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Calendar className="w-5 h-5" />
@@ -734,8 +792,11 @@ const FreightCompleteForm = () => {
                       type="date"
                       value={formData.dataColeta}
                       onChange={(e) => setFormData({ ...formData, dataColeta: e.target.value })}
+                      className={errors.dataColeta ? 'border-red-300' : ''}
+                      min={new Date().toISOString().split('T')[0]}
                       required
                     />
+                    <ErrorMessage error={errors.dataColeta} />
                   </div>
                   <div>
                     <Label htmlFor="horario-coleta">Horário de Coleta *</Label>
@@ -744,14 +805,15 @@ const FreightCompleteForm = () => {
                       type="time"
                       value={formData.horarioColeta}
                       onChange={(e) => setFormData({ ...formData, horarioColeta: e.target.value })}
+                      className={errors.horarioColeta ? 'border-red-300' : ''}
                       required
                     />
+                    <ErrorMessage error={errors.horarioColeta} />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Dimensões e Peso */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -768,60 +830,65 @@ const FreightCompleteForm = () => {
                     <Label htmlFor="altura">Altura (m)</Label>
                     <Input
                       id="altura"
-                      type="number"
-                      step="0.01"
+                      type="text"
                       placeholder="Ex: 2.5"
                       value={formData.dimensoes.altura}
-                      onChange={(e) => setFormData({ 
-                        ...formData, 
-                        dimensoes: { ...formData.dimensoes, altura: e.target.value }
-                      })}
+                      onChange={(e) => {
+                        const formatted = formatNumericInput(e.target.value, 2);
+                        setFormData({ 
+                          ...formData, 
+                          dimensoes: { ...formData.dimensoes, altura: formatted }
+                        });
+                      }}
                     />
                   </div>
                   <div>
                     <Label htmlFor="largura">Largura (m)</Label>
                     <Input
                       id="largura"
-                      type="number"
-                      step="0.01"
+                      type="text"
                       placeholder="Ex: 2.4"
                       value={formData.dimensoes.largura}
-                      onChange={(e) => setFormData({ 
-                        ...formData, 
-                        dimensoes: { ...formData.dimensoes, largura: e.target.value }
-                      })}
+                      onChange={(e) => {
+                        const formatted = formatNumericInput(e.target.value, 2);
+                        setFormData({ 
+                          ...formData, 
+                          dimensoes: { ...formData.dimensoes, largura: formatted }
+                        });
+                      }}
                     />
                   </div>
                   <div>
                     <Label htmlFor="comprimento">Comprimento (m)</Label>
                     <Input
                       id="comprimento"
-                      type="number"
-                      step="0.01"
+                      type="text"
                       placeholder="Ex: 14.0"
                       value={formData.dimensoes.comprimento}
-                      onChange={(e) => setFormData({ 
-                        ...formData, 
-                        dimensoes: { ...formData.dimensoes, comprimento: e.target.value }
-                      })}
+                      onChange={(e) => {
+                        const formatted = formatNumericInput(e.target.value, 2);
+                        setFormData({ 
+                          ...formData, 
+                          dimensoes: { ...formData.dimensoes, comprimento: formatted }
+                        });
+                      }}
                     />
                   </div>
                   <div>
                     <Label htmlFor="peso">Peso (kg)</Label>
                     <Input
                       id="peso"
-                      type="number"
-                      placeholder="Ex: 25000"
+                      type="text"
+                      placeholder="Ex: 25.000"
                       value={formData.peso}
-                      onChange={(e) => setFormData({ ...formData, peso: e.target.value })}
+                      onChange={(e) => handleWeightChange(e.target.value)}
                     />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Tipos de Veículos */}
-            <Card>
+            <Card className={errors.tiposVeiculos ? 'border-red-300' : ''}>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Truck className="w-5 h-5" />
@@ -830,10 +897,10 @@ const FreightCompleteForm = () => {
                 <CardDescription>
                   Selecione os tipos de veículos aceitos para este frete
                 </CardDescription>
+                <ErrorMessage error={errors.tiposVeiculos} />
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {/* Veículos Pesados */}
                   <div>
                     <h4 className="font-medium text-gray-700 mb-3">Veículos Pesados</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -853,7 +920,6 @@ const FreightCompleteForm = () => {
                     </div>
                   </div>
 
-                  {/* Veículos Médios */}
                   <div>
                     <h4 className="font-medium text-gray-700 mb-3">Veículos Médios</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -873,7 +939,6 @@ const FreightCompleteForm = () => {
                     </div>
                   </div>
 
-                  {/* Veículos Leves */}
                   <div>
                     <h4 className="font-medium text-gray-700 mb-3">Veículos Leves</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -896,17 +961,16 @@ const FreightCompleteForm = () => {
               </CardContent>
             </Card>
 
-            {/* Tipos de Carroceria */}
-            <Card>
+            <Card className={errors.tiposCarrocerias ? 'border-red-300' : ''}>
               <CardHeader>
                 <CardTitle>Tipos de Carroceria *</CardTitle>
                 <CardDescription>
                   Selecione os tipos de carroceria aceitos para este frete
                 </CardDescription>
+                <ErrorMessage error={errors.tiposCarrocerias} />
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {/* Carrocerias Abertas */}
                   <div>
                     <h4 className="font-medium text-gray-700 mb-3">Carrocerias Abertas</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -926,7 +990,6 @@ const FreightCompleteForm = () => {
                     </div>
                   </div>
 
-                  {/* Carrocerias Fechadas */}
                   <div>
                     <h4 className="font-medium text-gray-700 mb-3">Carrocerias Fechadas</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -946,7 +1009,6 @@ const FreightCompleteForm = () => {
                     </div>
                   </div>
 
-                  {/* Carrocerias Especiais */}
                   <div>
                     <h4 className="font-medium text-gray-700 mb-3">Carrocerias Especiais</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -969,8 +1031,7 @@ const FreightCompleteForm = () => {
               </CardContent>
             </Card>
 
-            {/* Valor do Frete */}
-            <Card>
+            <Card className={errors.tipoValor || errors.valorOfertado ? 'border-red-300' : ''}>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <DollarSign className="w-5 h-5" />
@@ -979,6 +1040,7 @@ const FreightCompleteForm = () => {
                 <CardDescription>
                   Escolha como será definido o valor do frete
                 </CardDescription>
+                <ErrorMessage error={errors.tipoValor} />
               </CardHeader>
               <CardContent className="space-y-4">
                 <RadioGroup 
@@ -1025,15 +1087,16 @@ const FreightCompleteForm = () => {
 
                 {formData.tipoValor === 'valor' && (
                   <div className="mt-4">
-                    <Label htmlFor="valor-ofertado">Valor Ofertado (R$)</Label>
+                    <Label htmlFor="valor-ofertado">Valor Ofertado (R$) *</Label>
                     <Input
                       id="valor-ofertado"
-                      type="number"
-                      step="0.01"
-                      placeholder="Ex: 5000.00"
-                      value={formData.valorOfertado}
-                      onChange={(e) => setFormData({ ...formData, valorOfertado: e.target.value })}
+                      type="text"
+                      placeholder="Ex: R$ 5.000,00"
+                      value={formData.valorOfertado ? formatCurrency(formData.valorOfertado) : ''}
+                      onChange={(e) => handleCurrencyChange(e.target.value, 'valorOfertado')}
+                      className={errors.valorOfertado ? 'border-red-300' : ''}
                     />
+                    <ErrorMessage error={errors.valorOfertado} />
                   </div>
                 )}
               </CardContent>
@@ -1041,20 +1104,19 @@ const FreightCompleteForm = () => {
           </div>
         )}
 
-        {/* Etapa 4 - Configurações REFORMULADA */}
         {currentStep === 4 && (
           <div className="space-y-6">
-            {/* Configurações de Pedágio */}
-            <Card>
+            <Card className={errors.pedagioPagoPor || errors.pedagioDirecao ? 'border-red-300' : ''}>
               <CardHeader>
-                <CardTitle>Quem paga o pedágio</CardTitle>
+                <CardTitle>Quem paga o pedágio *</CardTitle>
                 <CardDescription>
                   Defina quem será responsável pelo pagamento do pedágio
                 </CardDescription>
+                <ErrorMessage error={errors.pedagioPagoPor} />
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="pedagio-pago-por">Responsável pelo pagamento</Label>
+                  <Label htmlFor="pedagio-pago-por">Responsável pelo pagamento *</Label>
                   <Select 
                     value={formData.pedagioPagoPor} 
                     onValueChange={(value) => setFormData({ 
@@ -1063,7 +1125,7 @@ const FreightCompleteForm = () => {
                       pedagioDirecao: value === 'motorista' ? '' : formData.pedagioDirecao
                     })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors.pedagioPagoPor ? 'border-red-300' : ''}>
                       <SelectValue placeholder="Selecione quem paga" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1075,12 +1137,12 @@ const FreightCompleteForm = () => {
                 
                 {formData.pedagioPagoPor === 'empresa' && (
                   <div>
-                    <Label htmlFor="pedagio-direcao">Direção do pedágio</Label>
+                    <Label htmlFor="pedagio-direcao">Direção do pedágio *</Label>
                     <Select 
                       value={formData.pedagioDirecao} 
                       onValueChange={(value) => setFormData({ ...formData, pedagioDirecao: value })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className={errors.pedagioDirecao ? 'border-red-300' : ''}>
                         <SelectValue placeholder="Selecione a direção" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1089,12 +1151,12 @@ const FreightCompleteForm = () => {
                         <SelectItem value="ida_volta">IDA E VOLTA</SelectItem>
                       </SelectContent>
                     </Select>
+                    <ErrorMessage error={errors.pedagioDirecao} />
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Requisitos */}
             <Card>
               <CardHeader>
                 <CardTitle>Requisitos</CardTitle>
@@ -1130,12 +1192,11 @@ const FreightCompleteForm = () => {
               </CardContent>
             </Card>
 
-            {/* Observações */}
             <Card>
               <CardHeader>
                 <CardTitle>Observações</CardTitle>
                 <CardDescription>
-                  Adicione informações adicionais sobre o frete
+                  Adicione informações adicionais sobre o frete (máximo 500 caracteres)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1144,17 +1205,20 @@ const FreightCompleteForm = () => {
                   <Textarea
                     id="observacoes"
                     value={formData.observacoes}
-                    onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                    onChange={(e) => handleObservationsChange(e.target.value)}
                     placeholder="Observações adicionais sobre o frete..."
                     rows={4}
+                    maxLength={500}
                   />
+                  <div className="text-right text-sm text-gray-500 mt-1">
+                    {formData.observacoes.length}/500 caracteres
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
         )}
 
-        {/* Navigation Buttons */}
         <div className="flex justify-between mt-8">
           <Button
             variant="outline"
@@ -1169,6 +1233,7 @@ const FreightCompleteForm = () => {
           <Button
             onClick={handleNext}
             className="flex items-center space-x-2"
+            disabled={isSubmitting}
           >
             <span>{currentStep === 4 ? 'Finalizar' : 'Próximo'}</span>
             <ArrowRight className="w-4 h-4" />
@@ -1200,7 +1265,6 @@ const FreightCompleteForm = () => {
         generatedFreights={generatedFreights}
         onNewFreight={() => {
           setShowSuccessDialog(false);
-          // Reset form for new freight
           setCurrentStep(1);
           setFormData({
             selectedCollaborators: [],
