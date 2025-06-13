@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -358,8 +357,22 @@ const FreightAggregationForm = () => {
     }));
   };
 
-  // Enhanced functions for managing price tables with automatic formatting
+  // Enhanced functions for managing price tables with automatic formatting and validation
   const addPriceRange = (vehicleType: string) => {
+    // Check if there are any ranges with price 0 or less
+    const currentTable = formData.vehicle_price_tables.find(table => table.vehicleType === vehicleType);
+    if (currentTable) {
+      const hasInvalidPrice = currentTable.ranges.some(range => range.price <= 0);
+      if (hasInvalidPrice) {
+        toast({
+          title: "Validação de preço",
+          description: "Não é possível adicionar uma nova faixa enquanto houver faixas com valor igual ou menor que zero",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
       vehicle_price_tables: prev.vehicle_price_tables.map(table =>
@@ -480,6 +493,26 @@ const FreightAggregationForm = () => {
     );
   };
 
+  // Enhanced validation function for price ranges
+  const validatePriceRanges = () => {
+    const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
+    
+    for (const vehicle of selectedVehicles) {
+      const table = formData.vehicle_price_tables.find(t => t.vehicleType === vehicle.type);
+      if (table) {
+        const hasInvalidPrice = table.ranges.some(range => range.price <= 0);
+        if (hasInvalidPrice) {
+          return {
+            isValid: false,
+            message: `O veículo "${vehicle.type}" possui faixas de preço com valor igual ou menor que zero`
+          };
+        }
+      }
+    }
+    
+    return { isValid: true, message: '' };
+  };
+
   const handleNextStep = () => {
     if (currentStep === 1) {
       if (formData.collaborator_ids.length === 0) {
@@ -534,6 +567,17 @@ const FreightAggregationForm = () => {
         });
         return;
       }
+
+      // Validate price ranges
+      const priceValidation = validatePriceRanges();
+      if (!priceValidation.isValid) {
+        toast({
+          title: "Erro de validação",
+          description: priceValidation.message,
+          variant: "destructive"
+        });
+        return;
+      }
     }
     
     setCurrentStep(currentStep + 1);
@@ -545,7 +589,7 @@ const FreightAggregationForm = () => {
     }
   };
 
-  // New function to handle opening verification dialog
+  // New function to handle opening verification dialog with validation
   const handleOpenVerificationDialog = () => {
     // Final validation before showing verification dialog
     if (!formData.tipo_mercadoria) {
@@ -562,6 +606,17 @@ const FreightAggregationForm = () => {
       toast({
         title: "Erro de validação",
         description: "Selecione pelo menos um tipo de veículo",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate price ranges
+    const priceValidation = validatePriceRanges();
+    if (!priceValidation.isValid) {
+      toast({
+        title: "Erro de validação",
+        description: priceValidation.message,
         variant: "destructive"
       });
       return;
