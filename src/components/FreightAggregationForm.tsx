@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -402,15 +403,22 @@ const FreightAggregationForm = () => {
           const updatedRanges = table.ranges.map((range, index) => {
             if (range.id === rangeId) {
               const updatedRange = { ...range, [field]: value };
-              // If kmEnd changed, update kmStart of next range
+              
+              // If kmEnd changed, update kmStart of next range automatically
               if (field === 'kmEnd' && index < table.ranges.length - 1) {
-                const nextRange = table.ranges[index + 1];
-                return [updatedRange, { ...nextRange, kmStart: value }];
+                // We need to update the next range's kmStart
+                const nextRangeId = table.ranges[index + 1].id;
+                // This will be handled by returning updated ranges array
+                return updatedRange;
               }
               return updatedRange;
             }
+            // If this is the range after the one that was updated and kmEnd changed
+            if (field === 'kmEnd' && index > 0 && table.ranges[index - 1].id === rangeId) {
+              return { ...range, kmStart: value };
+            }
             return range;
-          }).flat();
+          });
           return { ...table, ranges: updatedRanges };
         }
         return table;
@@ -418,7 +426,7 @@ const FreightAggregationForm = () => {
     }));
   };
 
-  // Currency formatter for price inputs
+  // Enhanced price formatting functions
   const formatPriceInput = (value: string): string => {
     // Remove all non-digit characters
     const cleanValue = value.replace(/\D/g, '');
@@ -600,9 +608,27 @@ const FreightAggregationForm = () => {
         tipo_mercadoria: formData.tipo_mercadoria,
         peso_carga: null,
         valor_carga: null,
-        tipos_veiculos: formData.tipos_veiculos.filter(v => v.selected),
-        tipos_carrocerias: formData.tipos_carrocerias.filter(b => b.selected),
-        tabelas_preco: formData.vehicle_price_tables,
+        tipos_veiculos: formData.tipos_veiculos.filter(v => v.selected).map(v => ({
+          id: v.id,
+          type: v.type,
+          category: v.category,
+          selected: v.selected
+        })),
+        tipos_carrocerias: formData.tipos_carrocerias.filter(b => b.selected).map(b => ({
+          id: b.id,
+          type: b.type,
+          category: b.category,
+          selected: b.selected
+        })),
+        tabelas_preco: formData.vehicle_price_tables.map(table => ({
+          vehicleType: table.vehicleType,
+          ranges: table.ranges.map(range => ({
+            id: range.id,
+            kmStart: range.kmStart,
+            kmEnd: range.kmEnd,
+            price: range.price
+          }))
+        })),
         regras_agendamento: formData.regras_agendamento,
         beneficios: beneficiosArray,
         horario_carregamento: formData.horario_carregamento || null,
@@ -621,9 +647,16 @@ const FreightAggregationForm = () => {
 
       // Create one freight for each destination
       for (const destino of formData.destinos) {
+        // Convert destination to plain object for JSON compatibility
+        const destinoPlainObject = {
+          id: destino.id,
+          state: destino.state,
+          city: destino.city
+        };
+
         const freightData = {
           ...baseFreightData,
-          destinos: [destino]
+          destinos: [destinoPlainObject]
         };
 
         console.log('Creating freight with data:', freightData);
