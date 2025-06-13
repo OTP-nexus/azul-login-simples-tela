@@ -997,28 +997,36 @@ const FreightCompleteForm = () => {
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="combinar" id="combinar" />
-                    <Label htmlFor="combinar" className="cursor-pointer">
+                    <Label htmlFor="combinar" className="cursor-pointer flex-1">
                       <div className={`border rounded-lg p-4 transition-all ${
                         formData.tipoValor === 'combinar' 
-                          ? 'border-blue-500 bg-blue-50' 
-                          : 'border-gray-200 hover:border-gray-300'
+                          ? 'border-purple-500 bg-purple-50' 
+                          : 'border-gray-200 hover:border-purple-300 hover:bg-purple-25'
                       }`}>
-                        <h3 className="font-medium">A Combinar</h3>
-                        <p className="text-sm text-gray-500">Valor será negociado com o transportador</p>
+                        <h3 className={`font-medium ${
+                          formData.tipoValor === 'combinar' ? 'text-purple-800' : 'text-gray-800'
+                        }`}>A Combinar</h3>
+                        <p className={`text-sm ${
+                          formData.tipoValor === 'combinar' ? 'text-purple-600' : 'text-gray-500'
+                        }`}>Valor será negociado com o transportador</p>
                       </div>
                     </Label>
                   </div>
                   
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="valor" id="valor" />
-                    <Label htmlFor="valor" className="cursor-pointer">
+                    <Label htmlFor="valor" className="cursor-pointer flex-1">
                       <div className={`border rounded-lg p-4 transition-all ${
                         formData.tipoValor === 'valor' 
-                          ? 'border-blue-500 bg-blue-50' 
-                          : 'border-gray-200 hover:border-gray-300'
+                          ? 'border-green-500 bg-green-50' 
+                          : 'border-gray-200 hover:border-green-300 hover:bg-green-25'
                       }`}>
-                        <h3 className="font-medium">Valor Fixo</h3>
-                        <p className="text-sm text-gray-500">Definir um valor específico para o frete</p>
+                        <h3 className={`font-medium ${
+                          formData.tipoValor === 'valor' ? 'text-green-800' : 'text-gray-800'
+                        }`}>Valor Fixo</h3>
+                        <p className={`text-sm ${
+                          formData.tipoValor === 'valor' ? 'text-green-600' : 'text-gray-500'
+                        }`}>Definir um valor específico para o frete</p>
                       </div>
                     </Label>
                   </div>
