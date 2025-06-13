@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useEstados } from '@/hooks/useIBGE';
 import { ChevronLeft, ChevronRight, Package, MapPin, Clock, User, Home, Check } from 'lucide-react';
+import FreightConfirmationDialog from './FreightConfirmationDialog';
+import { formatNameInput, formatPhoneInput, isValidPhone } from '@/utils/formatters';
 
 interface ItemDetalhado {
   id: string;
@@ -26,6 +28,7 @@ interface Cidade {
 const PublicFreightRequestForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { toast } = useToast();
 
   // Estados e cidades
@@ -154,10 +157,26 @@ const PublicFreightRequestForm = () => {
   const updateItem = (id: string, field: 'nome' | 'quantidade', value: string | number) => {
     setFormData(prev => ({
       ...prev,
-      itensDetalhados: prev.itensDetalhados.map(item =>
-        item.id === id ? { ...item, [field]: value } : item
-      )
+      itensDetalhados: prev.itensDetalhados.map(item => {
+        if (item.id === id) {
+          if (field === 'nome' && typeof value === 'string') {
+            return { ...item, [field]: formatNameInput(value) };
+          }
+          return { ...item, [field]: value };
+        }
+        return item;
+      })
     }));
+  };
+
+  // Handler para formatação do nome do solicitante
+  const handleNomeChange = (value: string) => {
+    setFormData(prev => ({ ...prev, solicitanteNome: formatNameInput(value) }));
+  };
+
+  // Handler para formatação do telefone
+  const handleTelefoneChange = (field: 'solicitanteTelefone' | 'solicitanteConfirmarTelefone', value: string) => {
+    setFormData(prev => ({ ...prev, [field]: formatPhoneInput(value) }));
   };
 
   const validateStep = (step: number): boolean => {
@@ -205,6 +224,14 @@ const PublicFreightRequestForm = () => {
           });
           return false;
         }
+        if (!isValidPhone(formData.solicitanteTelefone)) {
+          toast({
+            title: "Telefone inválido",
+            description: "Informe um telefone válido com pelo menos 10 dígitos",
+            variant: "destructive"
+          });
+          return false;
+        }
         if (formData.solicitanteTelefone !== formData.solicitanteConfirmarTelefone) {
           toast({
             title: "Telefones não conferem",
@@ -234,7 +261,7 @@ const PublicFreightRequestForm = () => {
     setIsSubmitting(true);
     try {
       const freightData = {
-        tipo_frete: 'comum',
+        tipo_frete: 'comum', // Alterado para 'comum'
         tipo_solicitacao: 'pessoa_comum',
         origem_estado: formData.origemEstado,
         origem_cidade: formData.origemCidade,
@@ -317,6 +344,7 @@ const PublicFreightRequestForm = () => {
         solicitanteConfirmarTelefone: ''
       });
       setCurrentStep(1);
+      setShowConfirmDialog(false);
 
     } catch (error) {
       console.error('Erro:', error);
@@ -777,7 +805,7 @@ const PublicFreightRequestForm = () => {
                     <Input
                       placeholder="Digite seu nome completo"
                       value={formData.solicitanteNome}
-                      onChange={(e) => setFormData(prev => ({ ...prev, solicitanteNome: e.target.value }))}
+                      onChange={(e) => handleNomeChange(e.target.value)}
                       className="h-12 text-base mt-2"
                     />
                   </div>
@@ -787,7 +815,7 @@ const PublicFreightRequestForm = () => {
                     <Input
                       placeholder="(11) 99999-9999"
                       value={formData.solicitanteTelefone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, solicitanteTelefone: e.target.value }))}
+                      onChange={(e) => handleTelefoneChange('solicitanteTelefone', e.target.value)}
                       className="h-12 text-base mt-2"
                     />
                   </div>
@@ -797,7 +825,7 @@ const PublicFreightRequestForm = () => {
                     <Input
                       placeholder="(11) 99999-9999"
                       value={formData.solicitanteConfirmarTelefone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, solicitanteConfirmarTelefone: e.target.value }))}
+                      onChange={(e) => handleTelefoneChange('solicitanteConfirmarTelefone', e.target.value)}
                       className="h-12 text-base mt-2"
                     />
                   </div>
@@ -869,25 +897,24 @@ const PublicFreightRequestForm = () => {
             </Button>
           ) : (
             <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
+              onClick={() => setShowConfirmDialog(true)}
               className="flex items-center space-x-2 h-12 px-8 text-base bg-green-600 hover:bg-green-700"
             >
-              {isSubmitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
-                  <span>Enviando...</span>
-                </>
-              ) : (
-                <>
-                  <Check className="w-5 h-5" />
-                  <span>Solicitar Frete</span>
-                </>
-              )}
+              <Check className="w-5 h-5" />
+              <span>Solicitar Frete</span>
             </Button>
           )}
         </div>
       </main>
+
+      {/* Dialog de Confirmação */}
+      <FreightConfirmationDialog 
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        formData={formData}
+        onConfirm={handleSubmit}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 };

@@ -556,6 +556,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      generate_common_freight_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       generate_freight_code: {
         Args: Record<PropertyKey, never>
         Returns: string
