@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +13,7 @@ import { ArrowLeft, ArrowRight, MapPin, Truck, Package, Calendar, Clock, Weight,
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useIBGE } from "@/hooks/useIBGE";
+import { useEstados } from "@/hooks/useIBGE";
 import FreightVerificationDialog from './FreightVerificationDialog';
 import FreightSuccessDialog from './FreightSuccessDialog';
 import FreightLoadingAnimation from './FreightLoadingAnimation';
@@ -72,7 +73,7 @@ const validateFormData = (formData: FreightFormData): string | null => {
 
 const FreightCompleteForm = () => {
   const { user } = useAuth();
-  const { estados } = useIBGE();
+  const { estados } = useEstados();
   const { toast } = useToast();
 
   const [company, setCompany] = useState(null);
@@ -148,8 +149,7 @@ const FreightCompleteForm = () => {
     }));
   };
 
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
+  const handleCheckboxChange = (name: string, checked: boolean) => {
     setFormData(prevData => ({
       ...prevData,
       [name]: checked
@@ -508,27 +508,24 @@ const FreightCompleteForm = () => {
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="precisaAjudante"
-                name="precisaAjudante"
                 checked={formData.precisaAjudante}
-                onCheckedChange={handleCheckboxChange}
+                onCheckedChange={(checked) => handleCheckboxChange('precisaAjudante', checked as boolean)}
               />
               <Label htmlFor="precisaAjudante">Precisa de Ajudante</Label>
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="precisaRastreador"
-                name="precisaRastreador"
                 checked={formData.precisaRastreador}
-                onCheckedChange={handleCheckboxChange}
+                onCheckedChange={(checked) => handleCheckboxChange('precisaRastreador', checked as boolean)}
               />
               <Label htmlFor="precisaRastreador">Precisa de Rastreador</Label>
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="precisaSeguro"
-                name="precisaSeguro"
                 checked={formData.precisaSeguro}
-                onCheckedChange={handleCheckboxChange}
+                onCheckedChange={(checked) => handleCheckboxChange('precisaSeguro', checked as boolean)}
               />
               <Label htmlFor="precisaSeguro">Precisa de Seguro</Label>
             </div>
@@ -599,7 +596,25 @@ const FreightCompleteForm = () => {
       <FreightVerificationDialog
         open={showVerificationDialog}
         onOpenChange={setShowVerificationDialog}
-        formData={formData}
+        formData={{
+          selectedCollaborators: [],
+          origem: formData.origem,
+          paradas: formData.paradas.map((p, index) => ({ ...p, id: index.toString() })),
+          dataColeta: formData.dataColeta,
+          horarioColeta: formData.horarioColeta,
+          dimensoes: { altura: '', largura: '', comprimento: '' },
+          peso: formData.peso,
+          tiposVeiculos: formData.tiposVeiculos,
+          tiposCarrocerias: formData.tiposCarrocerias,
+          tipoValor: formData.tipoValor,
+          valorOfertado: formData.valorOfertado,
+          pedagioPagoPor: formData.pedagioPagoPor,
+          pedagioDirecao: formData.pedagioDirecao,
+          precisaSeguro: formData.precisaSeguro,
+          precisaAjudante: formData.precisaAjudante,
+          precisaRastreador: formData.precisaRastreador,
+          observacoes: formData.observacoes
+        }}
         collaborators={[]}
         onEdit={editFreight}
         onConfirm={handleSubmit}
@@ -609,10 +624,43 @@ const FreightCompleteForm = () => {
       <FreightSuccessDialog
         open={showSuccessDialog}
         onOpenChange={setShowSuccessDialog}
-        freights={generatedFreights}
+        generatedFreights={generatedFreights}
+        onNewFreight={() => {
+          setShowSuccessDialog(false);
+          setFormData({
+            origem: { estado: '', cidade: '' },
+            paradas: [],
+            dataColeta: '',
+            horarioColeta: '',
+            peso: '',
+            tipoValor: '',
+            valorOfertado: '',
+            tiposVeiculos: [
+              { id: 'truck', type: 'Caminhão', category: 'heavy', selected: false },
+              { id: 'van', type: 'Van', category: 'medium', selected: false },
+              { id: 'car', type: 'Carro', category: 'light', selected: false },
+            ],
+            tiposCarrocerias: [
+              { id: 'open', type: 'Aberta', category: 'open', selected: false },
+              { id: 'closed', type: 'Fechada', category: 'closed', selected: false },
+              { id: 'refrigerated', type: 'Refrigerada', category: 'special', selected: false },
+            ],
+            precisaAjudante: false,
+            precisaRastreador: false,
+            precisaSeguro: false,
+            pedagioPagoPor: '',
+            pedagioDirecao: '',
+            observacoes: '',
+          });
+          setCurrentStep(1);
+        }}
+        onBackToDashboard={() => {
+          setShowSuccessDialog(false);
+          // Navigate back to dashboard
+        }}
       />
 
-      {isSubmitting && <FreightLoadingAnimation />}
+      <FreightLoadingAnimation open={isSubmitting} />
     </div>
   );
 };
