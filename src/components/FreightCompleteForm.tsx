@@ -108,13 +108,12 @@ const FreightCompleteForm = () => {
     tipoValor: '', // 'combinar' ou 'valor'
     valorOfertado: '',
     
-    // Etapa 4 - Configurações
-    valorFrete: '',
-    pedagioPagoPor: '',
-    pedagioDirecao: '',
+    // Etapa 4 - Configurações (reformulada)
+    pedagioPagoPor: '', // 'motorista' ou 'empresa'
+    pedagioDirecao: '', // 'ida', 'volta', 'ida_volta' (só quando empresa paga)
+    precisaSeguro: false,
     precisaAjudante: false,
     precisaRastreador: false,
-    beneficios: [] as string[],
     observacoes: ''
   });
 
@@ -272,15 +271,6 @@ const FreightCompleteForm = () => {
     { number: 4, title: 'Configurações', icon: Settings, description: 'Detalhes finais' }
   ];
 
-  const benefitOptions = [
-    'Vale combustível',
-    'Adiantamento',
-    'Desconto no óleo diesel',
-    'Seguro carga incluso',
-    'Manutenção coberta',
-    'Pneus inclusos'
-  ];
-
   const handleNext = () => {
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
@@ -338,9 +328,9 @@ const FreightCompleteForm = () => {
         },
         precisa_ajudante: formData.precisaAjudante,
         precisa_rastreador: formData.precisaRastreador,
+        precisa_seguro: formData.precisaSeguro,
         pedagio_pago_por: formData.pedagioPagoPor,
         pedagio_direcao: formData.pedagioDirecao,
-        beneficios: formData.beneficios,
         observacoes: formData.observacoes,
         collaborator_ids: formData.selectedCollaborators,
         status: 'pendente'
@@ -403,11 +393,10 @@ const FreightCompleteForm = () => {
       }]
     }],
     regras_agendamento: [],
-    beneficios: formData.beneficios,
     horario_carregamento: formData.horarioColeta,
     precisa_ajudante: formData.precisaAjudante,
     precisa_rastreador: formData.precisaRastreador,
-    precisa_seguro: false,
+    precisa_seguro: formData.precisaSeguro,
     pedagio_pago_por: formData.pedagioPagoPor,
     pedagio_direcao: formData.pedagioDirecao,
     observacoes: formData.observacoes
@@ -720,7 +709,7 @@ const FreightCompleteForm = () => {
           </div>
         )}
 
-        {/* Etapa 3 - Carga e Veículos (UPDATED WITH ALL TYPES) */}
+        {/* Etapa 3 - Carga e Veículos */}
         {currentStep === 3 && (
           <div className="space-y-6">
             {/* Data e Horário de Coleta */}
@@ -829,7 +818,7 @@ const FreightCompleteForm = () => {
               </CardContent>
             </Card>
 
-            {/* Tipos de Veículos - UPDATED WITH ALL VEHICLE TYPES */}
+            {/* Tipos de Veículos */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -905,7 +894,7 @@ const FreightCompleteForm = () => {
               </CardContent>
             </Card>
 
-            {/* Tipos de Carroceria - UPDATED WITH ALL BODY TYPES */}
+            {/* Tipos de Carroceria */}
             <Card>
               <CardHeader>
                 <CardTitle>Tipos de Carroceria *</CardTitle>
@@ -1050,90 +1039,76 @@ const FreightCompleteForm = () => {
           </div>
         )}
 
-        {/* Etapa 4 - Configurações */}
+        {/* Etapa 4 - Configurações REFORMULADA */}
         {currentStep === 4 && (
           <div className="space-y-6">
+            {/* Configurações de Pedágio */}
             <Card>
               <CardHeader>
-                <CardTitle>Configurações de Pedágio</CardTitle>
+                <CardTitle>Quem paga o pedágio</CardTitle>
+                <CardDescription>
+                  Defina quem será responsável pelo pagamento do pedágio
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="pedagio-pago-por">Pedágio pago por</Label>
+                  <Label htmlFor="pedagio-pago-por">Responsável pelo pagamento</Label>
                   <Select 
                     value={formData.pedagioPagoPor} 
-                    onValueChange={(value) => setFormData({ ...formData, pedagioPagoPor: value })}
+                    onValueChange={(value) => setFormData({ 
+                      ...formData, 
+                      pedagioPagoPor: value,
+                      pedagioDirecao: value === 'motorista' ? '' : formData.pedagioDirecao
+                    })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione quem paga" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="embarcador">Embarcador</SelectItem>
-                      <SelectItem value="transportador">Transportador</SelectItem>
                       <SelectItem value="motorista">Motorista</SelectItem>
+                      <SelectItem value="empresa">Empresa</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label htmlFor="pedagio-direcao">Direção do pedágio</Label>
-                  <Select 
-                    value={formData.pedagioDirecao} 
-                    onValueChange={(value) => setFormData({ ...formData, pedagioDirecao: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a direção" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ida">Só ida</SelectItem>
-                      <SelectItem value="volta">Só volta</SelectItem>
-                      <SelectItem value="ida_volta">Ida e volta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Benefícios</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {benefitOptions.map((benefit) => (
-                    <div
-                      key={benefit}
-                      className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                        formData.beneficios.includes(benefit)
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => {
-                        const selected = formData.beneficios.includes(benefit);
-                        if (selected) {
-                          setFormData({
-                            ...formData,
-                            beneficios: formData.beneficios.filter(b => b !== benefit)
-                          });
-                        } else {
-                          setFormData({
-                            ...formData,
-                            beneficios: [...formData.beneficios, benefit]
-                          });
-                        }
-                      }}
+                
+                {formData.pedagioPagoPor === 'empresa' && (
+                  <div>
+                    <Label htmlFor="pedagio-direcao">Direção do pedágio</Label>
+                    <Select 
+                      value={formData.pedagioDirecao} 
+                      onValueChange={(value) => setFormData({ ...formData, pedagioDirecao: value })}
                     >
-                      <p className="text-sm font-medium">{benefit}</p>
-                    </div>
-                  ))}
-                </div>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a direção" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ida">Apenas ida</SelectItem>
+                        <SelectItem value="volta">Apenas volta</SelectItem>
+                        <SelectItem value="ida_volta">IDA E VOLTA</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
+            {/* Requisitos */}
             <Card>
               <CardHeader>
-                <CardTitle>Configurações Adicionais</CardTitle>
+                <CardTitle>Requisitos</CardTitle>
+                <CardDescription>
+                  Defina os requisitos necessários para este frete
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="precisa-seguro"
+                    checked={formData.precisaSeguro}
+                    onCheckedChange={(checked) => setFormData({ ...formData, precisaSeguro: !!checked })}
+                  />
+                  <Label htmlFor="precisa-seguro">Precisa de seguro</Label>
+                </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="precisa-ajudante"
@@ -1150,6 +1125,18 @@ const FreightCompleteForm = () => {
                   />
                   <Label htmlFor="precisa-rastreador">Precisa de rastreador</Label>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Observações */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Observações</CardTitle>
+                <CardDescription>
+                  Adicione informações adicionais sobre o frete
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
                 <div>
                   <Label htmlFor="observacoes">Observações</Label>
                   <Textarea
@@ -1225,12 +1212,11 @@ const FreightCompleteForm = () => {
             tiposCarrocerias: [],
             tipoValor: '',
             valorOfertado: '',
-            valorFrete: '',
             pedagioPagoPor: '',
             pedagioDirecao: '',
+            precisaSeguro: false,
             precisaAjudante: false,
             precisaRastreador: false,
-            beneficios: [],
             observacoes: ''
           });
         }}
