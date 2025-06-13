@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ArrowRight, Users, MapPin, Truck, Settings, Calendar, Package, DollarSign, Plus, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Users, MapPin, Truck, Settings, Calendar, Package, DollarSign, Plus, X, GripVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +15,7 @@ import FreightLoadingAnimation from './FreightLoadingAnimation';
 import FreightVerificationDialog from './FreightVerificationDialog';
 import FreightSuccessDialog from './FreightSuccessDialog';
 import { useEstados, useCidades } from '@/hooks/useIBGE';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
 const FreightCompleteForm = () => {
   const navigate = useNavigate();
@@ -152,6 +153,22 @@ const FreightCompleteForm = () => {
           ? { ...parada, [field]: value, ...(field === 'estado' ? { cidade: '' } : {}) }
           : parada
       )
+    });
+  };
+
+  // Nova função para lidar com o drag and drop
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) {
+      return;
+    }
+
+    const items = Array.from(formData.paradas);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    setFormData({
+      ...formData,
+      paradas: items
     });
   };
 
@@ -528,7 +545,7 @@ const FreightCompleteForm = () => {
                   </Button>
                 </CardTitle>
                 <CardDescription>
-                  Locais onde o veículo deve parar durante o trajeto
+                  Locais onde o veículo deve parar durante o trajeto. Arraste os cards para reordenar.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -539,66 +556,95 @@ const FreightCompleteForm = () => {
                     <p className="text-sm mt-1">Clique em "Adicionar Parada" para incluir paradas no trajeto</p>
                   </div>
                 ) : (
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {formData.paradas.map((parada, index) => {
-                      const cidadesParada = cidadesByState[parada.estado] || [];
-                      
-                      return (
-                        <div key={parada.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-medium text-sm text-gray-700">Parada {index + 1}</h4>
-                            <Button
-                              onClick={() => removeParada(parada.id)}
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <Label className="text-xs font-medium text-gray-600">Estado</Label>
-                              <Select 
-                                value={parada.estado} 
-                                onValueChange={(value) => updateParada(parada.id, 'estado', value)}
-                              >
-                                <SelectTrigger className="h-9">
-                                  <SelectValue placeholder="Estado" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {estados.map((estado) => (
-                                    <SelectItem key={estado.sigla} value={estado.sigla}>
-                                      {estado.nome}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label className="text-xs font-medium text-gray-600">Cidade</Label>
-                              <Select 
-                                value={parada.cidade} 
-                                onValueChange={(value) => updateParada(parada.id, 'cidade', value)}
-                                disabled={!parada.estado}
-                              >
-                                <SelectTrigger className="h-9">
-                                  <SelectValue placeholder="Cidade" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {cidadesParada.map((cidade) => (
-                                    <SelectItem key={cidade.id} value={cidade.nome}>
-                                      {cidade.nome}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
+                  <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable droppableId="paradas">
+                      {(provided) => (
+                        <div
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
+                          className="space-y-4 max-h-96 overflow-y-auto"
+                        >
+                          {formData.paradas.map((parada, index) => {
+                            const cidadesParada = cidadesByState[parada.estado] || [];
+                            
+                            return (
+                              <Draggable key={parada.id} draggableId={parada.id} index={index}>
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    className={`border border-gray-200 rounded-lg p-4 bg-gray-50 transition-all ${
+                                      snapshot.isDragging ? 'shadow-lg scale-105 bg-white border-blue-300' : 'hover:shadow-md'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center space-x-2">
+                                        <div
+                                          {...provided.dragHandleProps}
+                                          className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                                        >
+                                          <GripVertical className="w-4 h-4" />
+                                        </div>
+                                        <h4 className="font-medium text-sm text-gray-700">Parada {index + 1}</h4>
+                                      </div>
+                                      <Button
+                                        onClick={() => removeParada(parada.id)}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                      <div>
+                                        <Label className="text-xs font-medium text-gray-600">Estado</Label>
+                                        <Select 
+                                          value={parada.estado} 
+                                          onValueChange={(value) => updateParada(parada.id, 'estado', value)}
+                                        >
+                                          <SelectTrigger className="h-9">
+                                            <SelectValue placeholder="Estado" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {estados.map((estado) => (
+                                              <SelectItem key={estado.sigla} value={estado.sigla}>
+                                                {estado.nome}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs font-medium text-gray-600">Cidade</Label>
+                                        <Select 
+                                          value={parada.cidade} 
+                                          onValueChange={(value) => updateParada(parada.id, 'cidade', value)}
+                                          disabled={!parada.estado}
+                                        >
+                                          <SelectTrigger className="h-9">
+                                            <SelectValue placeholder="Cidade" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {cidadesParada.map((cidade) => (
+                                              <SelectItem key={cidade.id} value={cidade.nome}>
+                                                {cidade.nome}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            );
+                          })}
+                          {provided.placeholder}
                         </div>
-                      );
-                    })}
-                  </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
                 )}
               </CardContent>
             </Card>
