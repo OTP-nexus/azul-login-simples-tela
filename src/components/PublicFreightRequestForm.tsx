@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEstados } from '@/hooks/useIBGE';
 import { ChevronLeft, ChevronRight, Package, MapPin, Clock, User, Home, Check } from 'lucide-react';
 import FreightConfirmationDialog from './FreightConfirmationDialog';
+import FreightLoadingAnimation from './FreightLoadingAnimation';
+import FreightSuccessDialog from './FreightSuccessDialog';
 import { formatNameInput, formatPhoneInput, isValidPhone } from '@/utils/formatters';
 
 interface ItemDetalhado {
@@ -26,10 +27,20 @@ interface Cidade {
   nome: string;
 }
 
+interface GeneratedFreight {
+  id: string;
+  codigo_agregamento: string;
+  destino_cidade: string;
+  destino_estado: string;
+}
+
 const PublicFreightRequestForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showLoadingAnimation, setShowLoadingAnimation] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [generatedFreights, setGeneratedFreights] = useState<GeneratedFreight[]>([]);
   const { toast } = useToast();
 
   // Estados e cidades
@@ -80,6 +91,48 @@ const PublicFreightRequestForm = () => {
     solicitanteTelefone: '',
     solicitanteConfirmarTelefone: ''
   });
+
+  const resetForm = () => {
+    setFormData({
+      origemEstado: '',
+      origemCidade: '',
+      origemTipoEndereco: '',
+      origemPossuiCargaDescarga: false,
+      origemPossuiEscada: false,
+      origemPossuiElevador: false,
+      origemPossuiDoca: false,
+      destinoEstado: '',
+      destinoCidade: '',
+      destinoTipoEndereco: '',
+      destinoPossuiCargaDescarga: false,
+      destinoPossuiEscada: false,
+      destinoPossuiElevador: false,
+      destinoPossuiDoca: false,
+      dataCarregamento: '',
+      horarioCarregamento: '',
+      tipoListagemItens: 'detalhada',
+      itensDetalhados: [],
+      descricaoLivreItens: '',
+      precisaAjudante: false,
+      precisaMontarDesmontar: false,
+      localPossuiRestricao: false,
+      descricaoRestricao: '',
+      precisaEmbalagem: false,
+      solicitanteNome: '',
+      solicitanteTelefone: '',
+      solicitanteConfirmarTelefone: ''
+    });
+    setCurrentStep(1);
+  };
+
+  const handleNewFreight = () => {
+    setShowSuccessDialog(false);
+    resetForm();
+  };
+
+  const handleBackToDashboard = () => {
+    window.location.href = '/';
+  };
 
   // Função para carregar cidades
   const loadCidades = async (uf: string, tipo: 'origem' | 'destino') => {
@@ -283,7 +336,10 @@ const PublicFreightRequestForm = () => {
       return;
     }
 
+    setShowConfirmDialog(false);
+    setShowLoadingAnimation(true);
     setIsSubmitting(true);
+
     try {
       console.log('💾 Preparando dados para o banco...');
       
@@ -340,43 +396,10 @@ const PublicFreightRequestForm = () => {
 
       console.log('✅ Frete salvo com sucesso:', data);
 
-      toast({
-        title: "Frete solicitado com sucesso!",
-        description: "Sua solicitação foi enviada e será analisada"
-      });
-
-      // Reset form
-      setFormData({
-        origemEstado: '',
-        origemCidade: '',
-        origemTipoEndereco: '',
-        origemPossuiCargaDescarga: false,
-        origemPossuiEscada: false,
-        origemPossuiElevador: false,
-        origemPossuiDoca: false,
-        destinoEstado: '',
-        destinoCidade: '',
-        destinoTipoEndereco: '',
-        destinoPossuiCargaDescarga: false,
-        destinoPossuiEscada: false,
-        destinoPossuiElevador: false,
-        destinoPossuiDoca: false,
-        dataCarregamento: '',
-        horarioCarregamento: '',
-        tipoListagemItens: 'detalhada',
-        itensDetalhados: [],
-        descricaoLivreItens: '',
-        precisaAjudante: false,
-        precisaMontarDesmontar: false,
-        localPossuiRestricao: false,
-        descricaoRestricao: '',
-        precisaEmbalagem: false,
-        solicitanteNome: '',
-        solicitanteTelefone: '',
-        solicitanteConfirmarTelefone: ''
-      });
-      setCurrentStep(1);
-      setShowConfirmDialog(false);
+      if (data) {
+        setGeneratedFreights(data as GeneratedFreight[]);
+      }
+      setShowSuccessDialog(true);
 
     } catch (error) {
       console.error('💥 Erro inesperado:', error);
@@ -387,6 +410,7 @@ const PublicFreightRequestForm = () => {
       });
     } finally {
       setIsSubmitting(false);
+      setShowLoadingAnimation(false);
     }
   };
 
@@ -946,6 +970,16 @@ const PublicFreightRequestForm = () => {
         formData={formData}
         onConfirm={handleSubmit}
         isSubmitting={isSubmitting}
+      />
+
+      <FreightLoadingAnimation open={showLoadingAnimation} />
+
+      <FreightSuccessDialog
+        open={showSuccessDialog}
+        onOpenChange={setShowSuccessDialog}
+        generatedFreights={generatedFreights}
+        onNewFreight={handleNewFreight}
+        onBackToDashboard={handleBackToDashboard}
       />
     </div>
   );
