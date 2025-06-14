@@ -402,7 +402,7 @@ const PublicFreightRequestForm = () => {
               <p className="text-gray-600 text-lg">Informe os locais de origem e destino da sua carga</p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 gap-8">
               {/* Origem */}
               <Card className="border-2 border-gray-100 hover:border-blue-200 transition-colors">
                 <CardHeader className="pb-4">
