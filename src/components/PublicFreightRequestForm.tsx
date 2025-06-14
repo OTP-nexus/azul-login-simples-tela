@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -684,12 +685,12 @@ const PublicFreightRequestForm = () => {
 
                   {formData.tipoListagemItens === 'detalhada' ? (
                     <div className="space-y-6">
-                      <div className="flex justify-between items-center">
+                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                         <h4 className="text-lg font-medium">Lista de Itens</h4>
                         <Button 
                           type="button" 
                           onClick={addItem} 
-                          className="bg-blue-600 hover:bg-blue-700 text-base px-6"
+                          className="bg-blue-600 hover:bg-blue-700 text-sm sm:text-base px-4 sm:px-6 w-full sm:w-auto"
                         >
                           + Adicionar Item
                         </Button>
@@ -697,8 +698,8 @@ const PublicFreightRequestForm = () => {
                       
                       <div className="space-y-3">
                         {formData.itensDetalhados.map((item, index) => (
-                          <div key={item.id} className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
-                            <div className="flex-1">
+                          <div key={item.id} className="flex flex-col sm:flex-row items-center gap-3 p-3 border rounded-lg bg-gray-50">
+                            <div className="flex-1 w-full">
                               <Input
                                 placeholder="Ex: Geladeira, Sofá, Caixa de livros..."
                                 value={item.nome}
@@ -706,7 +707,7 @@ const PublicFreightRequestForm = () => {
                                 className="h-10 text-base"
                               />
                             </div>
-                            <div className="w-24">
+                            <div className="w-full sm:w-24">
                               <Input
                                 type="number"
                                 min="1"
@@ -721,7 +722,7 @@ const PublicFreightRequestForm = () => {
                               onClick={() => removeItem(item.id)} 
                               variant="destructive" 
                               size="sm"
-                              className="h-10 w-10 p-0"
+                              className="h-10 w-full sm:w-10 p-0"
                             >
                               ✕
                             </Button>
@@ -875,18 +876,18 @@ const PublicFreightRequestForm = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Solicitar Frete</h1>
+        <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 sm:py-0 sm:h-20 gap-4 sm:gap-0">
+            <div className="text-center sm:text-left">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Solicitar Frete</h1>
               <p className="text-gray-600">Etapa {currentStep} de 4</p>
             </div>
             
-            <div className="flex space-x-2">
+            <div className="flex justify-center space-x-1 sm:space-x-2">
               {[1, 2, 3, 4].map((step) => (
                 <div
                   key={step}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-medium transition-colors ${
+                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-base font-medium transition-colors ${
                     step === currentStep
                       ? 'bg-blue-600 text-white'
                       : step < currentStep
@@ -903,7 +904,7 @@ const PublicFreightRequestForm = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-8">
         {renderStep()}
 
         {/* Navigation Buttons */}
@@ -912,7 +913,7 @@ const PublicFreightRequestForm = () => {
             onClick={prevStep}
             disabled={currentStep === 1}
             variant="outline"
-            className="flex items-center space-x-2 h-12 px-6 text-base"
+            className="flex items-center space-x-2 h-12 px-4 sm:px-6 text-sm sm:text-base"
           >
             <ChevronLeft className="w-5 h-5" />
             <span>Voltar</span>
@@ -921,7 +922,7 @@ const PublicFreightRequestForm = () => {
           {currentStep < 4 ? (
             <Button
               onClick={nextStep}
-              className="flex items-center space-x-2 h-12 px-6 text-base bg-blue-600 hover:bg-blue-700"
+              className="flex items-center space-x-2 h-12 px-4 sm:px-6 text-sm sm:text-base bg-blue-600 hover:bg-blue-700"
             >
               <span>Continuar</span>
               <ChevronRight className="w-5 h-5" />
@@ -929,7 +930,7 @@ const PublicFreightRequestForm = () => {
           ) : (
             <Button
               onClick={() => setShowConfirmDialog(true)}
-              className="flex items-center space-x-2 h-12 px-8 text-base bg-green-600 hover:bg-green-700"
+              className="flex items-center space-x-2 h-12 px-6 sm:px-8 text-sm sm:text-base bg-green-600 hover:bg-green-700"
             >
               <Check className="w-5 h-5" />
               <span>Solicitar Frete</span>
