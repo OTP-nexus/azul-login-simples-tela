@@ -3,8 +3,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+
+// Page Imports
 import Login from "./pages/Login";
 import UserTypeSelection from "./pages/UserTypeSelection";
 import CompanyRegistration from "./pages/CompanyRegistration";
@@ -24,6 +26,11 @@ import PublicFreightRequest from "./pages/PublicFreightRequest";
 import NotFound from "./pages/NotFound";
 import LandingPage from "./pages/LandingPage";
 
+// Layout and Route Protection
+import MainLayout from "@/components/MainLayout";
+import ProtectedRoute from "@/components/ProtectedRoute";
+
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -34,23 +41,32 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<UserTypeSelection />} />
             <Route path="/register/company" element={<CompanyTypeSelection />} />
             <Route path="/register/company/form" element={<CompanyRegistration />} />
             <Route path="/register/driver" element={<DriverRegistration />} />
-            <Route path="/document-verification" element={<DocumentVerification />} />
-            <Route path="/driver-document-verification" element={<DriverDocumentVerification />} />
-            <Route path="/company-dashboard" element={<CompanyDashboard />} />
-            <Route path="/company-profile" element={<CompanyProfile />} />
-            <Route path="/freight-request" element={<FreightRequest />} />
-            <Route path="/freight-aggregation" element={<FreightAggregation />} />
-            <Route path="/freight-complete" element={<FreightComplete />} />
-            <Route path="/freight-return" element={<FreightReturn />} />
-            <Route path="/collaborator-registration" element={<CollaboratorRegistration />} />
-            <Route path="/active-freights" element={<ActiveFreights />} />
             <Route path="/solicitar-frete" element={<PublicFreightRequest />} />
+
+            {/* Protected Routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<MainLayout />}>
+                <Route path="/document-verification" element={<DocumentVerification />} />
+                <Route path="/driver-document-verification" element={<DriverDocumentVerification />} />
+                <Route path="/company-dashboard" element={<CompanyDashboard />} />
+                <Route path="/company-profile" element={<CompanyProfile />} />
+                <Route path="/freight-request" element={<FreightRequest />} />
+                <Route path="/freight-aggregation" element={<FreightAggregation />} />
+                <Route path="/freight-complete" element={<FreightComplete />} />
+                <Route path="/freight-return" element={<FreightReturn />} />
+                <Route path="/collaborator-registration" element={<CollaboratorRegistration />} />
+                <Route path="/active-freights" element={<ActiveFreights />} />
+              </Route>
+            </Route>
+
+            {/* Not Found Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
