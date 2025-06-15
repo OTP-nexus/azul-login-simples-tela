@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -222,16 +221,11 @@ const PublicFreightCard = ({
               <p className="text-gray-500">Veículos compatíveis</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {freight.tipos_veiculos.slice(0, 3).map((type, index) => (
+              {freight.tipos_veiculos.map((type, index) => (
                 <Badge key={index} variant="secondary" className="font-normal">
                   {getVehicleLabel(type)}
                 </Badge>
               ))}
-              {freight.tipos_veiculos.length > 3 && (
-                <Badge variant="outline">
-                  +{freight.tipos_veiculos.length - 3}
-                </Badge>
-              )}
             </div>
           </div>
         )}
