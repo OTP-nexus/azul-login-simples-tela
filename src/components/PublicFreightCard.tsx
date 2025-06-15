@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -139,12 +138,16 @@ const PublicFreightCard = ({ freight }: PublicFreightCardProps) => {
           </div>
         </div>
 
-        {freight.valor_carga && (
+        {(freight.tipo_frete === 'frete_completo' || freight.tipo_frete === 'frete_de_retorno') && (
           <div className="flex items-center space-x-2 text-sm">
             <DollarSign className="w-4 h-4 text-green-600" />
             <div>
-              <p className="text-gray-500">Valor da Carga</p>
-              <p className="font-medium text-green-600">{formatValue(freight.valor_carga)}</p>
+              <p className="text-gray-500">Valor do Frete</p>
+              {freight.valor_carga && freight.valor_carga > 0 ? (
+                <p className="font-medium text-green-600">{formatValue(freight.valor_carga)}</p>
+              ) : (
+                <p className="font-medium text-gray-700">A combinar</p>
+              )}
             </div>
           </div>
         )}
