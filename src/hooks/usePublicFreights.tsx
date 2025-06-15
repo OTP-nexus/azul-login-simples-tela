@@ -31,7 +31,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}) => {
       let query = supabase
         .from('fretes')
         .select('*')
-        .in('status', ['ativo', 'pendente']) // Alterado para incluir fretes pendentes
+        .in('status', ['ativo', 'pendente'])
         .order('created_at', { ascending: false });
 
       if (filters.origin) {
@@ -43,13 +43,19 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}) => {
       }
       
       if (filters.vehicleTypes && filters.vehicleTypes.length > 0) {
-        const vehicleClauses = filters.vehicleTypes.map(vt => `tipos_veiculos::text.ilike.%${vt}%`).join(',');
-        query = query.or(vehicleClauses);
+        // Para campos JSONB, usamos a função overlaps para verificar se há elementos em comum
+        const vehicleConditions = filters.vehicleTypes.map(vt => 
+          `tipos_veiculos @> '[{"value": "${vt}"}]' OR tipos_veiculos @> '[{"type": "${vt}"}]' OR tipos_veiculos @> '["${vt}"]'`
+        ).join(' OR ');
+        query = query.or(vehicleConditions);
       }
       
       if (filters.bodyTypes && filters.bodyTypes.length > 0) {
-        const bodyClauses = filters.bodyTypes.map(bt => `tipos_carrocerias::text.ilike.%${bt}%`).join(',');
-        query = query.or(bodyClauses);
+        // Para campos JSONB, usamos a função overlaps para verificar se há elementos em comum
+        const bodyConditions = filters.bodyTypes.map(bt => 
+          `tipos_carrocerias @> '[{"value": "${bt}"}]' OR tipos_carrocerias @> '[{"type": "${bt}"}]' OR tipos_carrocerias @> '["${bt}"]'`
+        ).join(' OR ');
+        query = query.or(bodyConditions);
       }
       
       if (filters.freightType) {
@@ -61,7 +67,6 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}) => {
       } else if (filters.tracker === 'nao') {
         query = query.eq('precisa_rastreador', false);
       }
-
 
       const { data: freightData, error: freightError } = await query;
 
@@ -125,4 +130,3 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}) => {
     refetch: fetchFreights,
   };
 };
-
