@@ -14,6 +14,7 @@ export interface PublicFreightFilters {
   vehicleTypes?: string[];
   bodyTypes?: string[];
   freightType?: string;
+  tracker?: string;
 }
 
 export const usePublicFreights = (filters: PublicFreightFilters = {}) => {
@@ -51,6 +52,13 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}) => {
       if (filters.freightType) {
         query = query.eq('tipo_frete', filters.freightType);
       }
+      
+      if (filters.tracker === 'sim') {
+        query = query.eq('precisa_rastreador', true);
+      } else if (filters.tracker === 'nao') {
+        query = query.eq('precisa_rastreador', false);
+      }
+
 
       const { data: freightData, error: freightError } = await query;
 

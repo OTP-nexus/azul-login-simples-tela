@@ -4,12 +4,20 @@ import { usePublicFreights, PublicFreightFilters } from '@/hooks/usePublicFreigh
 import PublicFreightCard from '@/components/PublicFreightCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal } from 'lucide-react';
+import { Terminal, Filter } from 'lucide-react';
 import PublicFreightsFilter from '@/components/PublicFreightsFilter';
+import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+
 
 const PublicFreightsList = () => {
   const [filters, setFilters] = useState<PublicFreightFilters>({});
   const { freights, loading, error } = usePublicFreights(filters);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   const renderSkeletons = () => {
     return Array.from({ length: 6 }).map((_, index) => (
@@ -35,11 +43,32 @@ const PublicFreightsList = () => {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        <div className="lg:w-80 xl:w-96 lg:sticky top-8 self-start">
+        {/* Desktop Sidebar */}
+        <div className="hidden lg:block lg:w-80 xl:w-96 lg:sticky top-8 self-start">
           <PublicFreightsFilter onFilterChange={setFilters} initialFilters={filters} />
         </div>
+        
+        {/* Mobile Collapsible Filter */}
+        <div className="lg:hidden px-4">
+          <Collapsible
+            open={isMobileFilterOpen}
+            onOpenChange={setIsMobileFilterOpen}
+            className="w-full space-y-2"
+          >
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" className="w-full flex justify-center items-center">
+                <Filter className="mr-2 h-4 w-4" />
+                {isMobileFilterOpen ? "Esconder Filtros" : "Mostrar Filtros"}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+               <PublicFreightsFilter onFilterChange={setFilters} initialFilters={filters} />
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
 
-        <main className="flex-1">
+
+        <main className="flex-1 px-4 lg:px-0">
           {loading && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
               {renderSkeletons()}
@@ -75,4 +104,3 @@ const PublicFreightsList = () => {
 };
 
 export default PublicFreightsList;
-
