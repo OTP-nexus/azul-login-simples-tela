@@ -16,64 +16,43 @@ interface PublicFreightCardProps {
 const allVehicleTypes = vehicleTypeGroups.flatMap(group => group.types);
 const vehicleTypeMap = new Map(allVehicleTypes.map(type => [type.value, type.label]));
 
-const getVehicleLabel = (value: unknown): string => {
-  // Case 1: Value is a string
+const getVehicleLabel = (value: unknown): string | null => {
+  // Case 1: Value is a string (e.g., 'carreta', or a JSON string)
   if (typeof value === 'string') {
-    // It might be a simple value like 'carreta' or a JSON string.
     try {
+      // It might be a JSON string, so we parse and recurse.
       const parsed = JSON.parse(value);
-      // If parsing succeeds, it's a JSON object/array, process it recursively.
       return getVehicleLabel(parsed);
     } catch (e) {
-      // If parsing fails, it's a plain string value e.g., 'caminhao_toco'
-      const label = vehicleTypeMap.get(value);
-      if (label) {
-        return label;
-      }
-      // Fallback for values not in the map
-      return value
-        .split('_')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
+      // It's a plain string value e.g., 'carreta'
+      // Return the label from the map, or null if it doesn't exist.
+      return vehicleTypeMap.get(value) || null;
     }
   }
 
-  // Case 2: Value is an object (and not null)
+  // Case 2: Value is an object
   if (typeof value === 'object' && value !== null) {
-    // The freight form sometimes wraps the array in another array
+    // It might be nested in an array e.g., [['carreta']] or [[{ "value": "carreta" }]]
     if (Array.isArray(value) && value.length > 0) {
-      // Handle nested array, e.g. [['carreta']] or [[{type: 'Carreta'}]]
       return getVehicleLabel(value[0]);
     }
-
+    
     const vehicleObject = value as any;
-    
-    // Priority 1: 'label' property (most explicit)
-    if (typeof vehicleObject.label === 'string' && vehicleObject.label) {
-      return vehicleObject.label;
-    }
-    
-    // Priority 2: 'type' property (found in some Supabase records)
-    if (typeof vehicleObject.type === 'string' && vehicleObject.type) {
-      return vehicleObject.type;
-    }
 
-    // Priority 3: 'value' property (standard from select components)
+    // The primary source of truth should be the 'value' property.
     if (typeof vehicleObject.value === 'string') {
-      const label = vehicleTypeMap.get(vehicleObject.value);
-      if (label) {
-        return label;
-      }
-      // Fallback for value string
-      return vehicleObject.value
-        .split('_')
-        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
+      return vehicleTypeMap.get(vehicleObject.value) || null;
+    }
+    
+    // Fallback for 'type' property which might hold the value.
+    if (typeof vehicleObject.type === 'string') {
+        // We assume 'type' holds a value like 'carreta', not a label like 'Carreta'.
+        return vehicleTypeMap.get(vehicleObject.type) || null;
     }
   }
 
-  // If none of the above, it's an invalid format
-  return 'Inválido';
+  // If it's not a recognizable format, it's invalid.
+  return null;
 };
 
 
@@ -82,6 +61,11 @@ const PublicFreightCard = ({
 }: PublicFreightCardProps) => {
   const navigate = useNavigate();
   const [isStopsExpanded, setIsStopsExpanded] = useState(false);
+
+  const validVehicleLabels = (freight.tipos_veiculos || [])
+    .map(getVehicleLabel)
+    .filter((label): label is string => !!label);
+
   const getFreightTypeConfig = (tipo: string) => {
     switch (tipo) {
       case 'agregamento':
@@ -214,21 +198,21 @@ const PublicFreightCard = ({
           </div>
         </div>
 
-        {freight.tipos_veiculos && freight.tipos_veiculos.length > 0 && (
+        {validVehicleLabels.length > 0 && (
           <div className="text-sm">
             <div className="flex items-center space-x-2 mb-2">
               <Truck className="w-4 h-4 text-gray-500" />
               <p className="text-gray-500">Veículos compatíveis</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {freight.tipos_veiculos.slice(0, 3).map((type, index) => (
+              {validVehicleLabels.slice(0, 3).map((label, index) => (
                 <Badge key={index} variant="secondary" className="font-normal">
-                  {getVehicleLabel(type)}
+                  {label}
                 </Badge>
               ))}
-              {freight.tipos_veiculos.length > 3 && (
+              {validVehicleLabels.length > 3 && (
                 <Badge variant="outline">
-                  +{freight.tipos_veiculos.length - 3}
+                  +{validVehicleLabels.length - 3}
                 </Badge>
               )}
             </div>
