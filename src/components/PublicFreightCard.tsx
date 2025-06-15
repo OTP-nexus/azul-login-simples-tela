@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -147,21 +146,11 @@ const PublicFreightCard = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div className="flex items-center space-x-2">
-            <Package className="w-4 h-4 text-gray-500" />
-            <div>
-              <p className="text-gray-500">Mercadoria</p>
-              <p className="font-medium">{freight.tipo_mercadoria || 'Não especificado'}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Calendar className="w-4 h-4 text-gray-500" />
-            <div>
-              <p className="text-gray-500">Coleta</p>
-              <p className="font-medium text-base">{formatDate(freight.data_coleta)}</p>
-            </div>
+        <div className="flex items-center space-x-2 text-sm">
+          <Calendar className="w-4 h-4 text-gray-500" />
+          <div>
+            <p className="text-gray-500">Coleta</p>
+            <p className="font-medium text-base">{formatDate(freight.data_coleta)}</p>
           </div>
         </div>
 
