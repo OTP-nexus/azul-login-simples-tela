@@ -1,17 +1,12 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Form,
   FormControl,
@@ -19,15 +14,14 @@ import {
   FormItem,
   FormLabel,
 } from '@/components/ui/form';
-import { Card, CardContent } from '@/components/ui/card';
-import { vehicleTypes, bodyTypes, freightTypes } from '@/lib/freightOptions';
-import { Filter, X } from 'lucide-react';
+import { vehicleTypeGroups, bodyTypeGroups, freightTypes } from '@/lib/freightOptions';
+import { X } from 'lucide-react';
 
 const filterSchema = z.object({
   origin: z.string().optional(),
   destination: z.string().optional(),
-  vehicleType: z.string().optional(),
-  bodyType: z.string().optional(),
+  vehicleTypes: z.array(z.string()).optional(),
+  bodyTypes: z.array(z.string()).optional(),
   freightType: z.string().optional(),
 });
 
@@ -41,103 +35,201 @@ interface PublicFreightsFilterProps {
 const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreightsFilterProps) => {
   const form = useForm<FilterFormValues>({
     resolver: zodResolver(filterSchema),
-    defaultValues: initialFilters,
+    defaultValues: {
+      ...initialFilters,
+      vehicleTypes: initialFilters.vehicleTypes || [],
+      bodyTypes: initialFilters.bodyTypes || [],
+    },
   });
 
-  const onSubmit = (values: FilterFormValues) => {
-    const cleanFilters = Object.fromEntries(
-      Object.entries(values).filter(([, v]) => v != null && v !== '' && v !== 'all')
-    );
-    onFilterChange(cleanFilters);
-  };
+  const { watch, handleSubmit } = form;
+
+  useEffect(() => {
+    const subscription = watch((values) => {
+      const cleanFilters = Object.fromEntries(
+        Object.entries(values).filter(([, v]) => {
+          if (Array.isArray(v)) return v.length > 0;
+          return v != null && v !== '';
+        })
+      );
+      onFilterChange(cleanFilters);
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, onFilterChange]);
+
 
   const handleClear = () => {
     form.reset({
       origin: '',
       destination: '',
-      vehicleType: '',
-      bodyType: '',
+      vehicleTypes: [],
+      bodyTypes: [],
       freightType: '',
     });
     onFilterChange({});
   };
 
-  const createSelectField = (name: keyof FilterFormValues, label: string, options: { value: string; label: string }[]) => (
-    <FormField
-      control={form.control}
-      name={name}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>{label}</FormLabel>
-          <Select onValueChange={field.onChange} value={field.value || ""}>
-            <FormControl>
-              <SelectTrigger>
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {options.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FormItem>
-      )}
-    />
-  );
-
   return (
-    <Card className="mb-6">
-      <CardContent className="p-4 sm:p-6">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end">
+    <aside className="bg-white p-6 rounded-lg shadow-md border">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold">Filtros</h3>
+        <Button type="button" variant="ghost" onClick={handleClear} size="sm">
+          <X className="mr-2 h-4 w-4" />
+          Limpar
+        </Button>
+      </div>
+      <Form {...form}>
+        <form onSubmit={handleSubmit(() => {})} className="space-y-6">
+          
+          <div className="space-y-4 pb-4 border-b">
+            <h4 className="text-lg font-semibold">Localização</h4>
+            <FormField
+              control={form.control}
+              name="origin"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Origem</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Cidade ou estado" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="destination"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Destino</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Cidade ou estado" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="space-y-4 pb-4 border-b">
+            <h4 className="text-lg font-semibold">Tipo de Veículo</h4>
+            <FormField
+              control={form.control}
+              name="vehicleTypes"
+              render={() => (
+                <FormItem>
+                  {vehicleTypeGroups.map((group) => (
+                    <div key={group.groupLabel} className="mb-2">
+                       <p className="font-medium text-sm text-gray-700 mb-2">{group.groupLabel}</p>
+                      {group.types.map((item) => (
+                        <FormField
+                          key={item.value}
+                          control={form.control}
+                          name="vehicleTypes"
+                          render={({ field }) => {
+                            return (
+                              <FormItem
+                                key={item.value}
+                                className="flex flex-row items-center space-x-2 space-y-1"
+                              >
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(item.value)}
+                                    onCheckedChange={(checked) => {
+                                      return checked
+                                        ? field.onChange([...(field.value || []), item.value])
+                                        : field.onChange(
+                                            field.value?.filter(
+                                              (value) => value !== item.value
+                                            )
+                                          )
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormLabel className="font-normal text-sm">
+                                  {item.label}
+                                </FormLabel>
+                              </FormItem>
+                            )
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="space-y-4 pb-4 border-b">
+            <h4 className="text-lg font-semibold">Tipo de Carroceria</h4>
               <FormField
                 control={form.control}
-                name="origin"
-                render={({ field }) => (
+                name="bodyTypes"
+                render={() => (
                   <FormItem>
-                    <FormLabel>Origem</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Cidade ou estado" {...field} />
-                    </FormControl>
+                    {bodyTypeGroups.map((group) => (
+                      <div key={group.groupLabel} className="mb-2">
+                        <p className="font-medium text-sm text-gray-700 mb-2">{group.groupLabel}</p>
+                        {group.types.map((item) => (
+                          <FormField
+                            key={item.value}
+                            control={form.control}
+                            name="bodyTypes"
+                            render={({ field }) => (
+                              <FormItem key={item.value} className="flex flex-row items-center space-x-2 space-y-1">
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(item.value)}
+                                    onCheckedChange={(checked) => {
+                                      return checked
+                                        ? field.onChange([...(field.value || []), item.value])
+                                        : field.onChange(field.value?.filter((value) => value !== item.value));
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormLabel className="font-normal text-sm">{item.label}</FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                        ))}
+                      </div>
+                    ))}
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="destination"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Destino</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Cidade ou estado" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              {createSelectField('vehicleType', 'Tipo de Veículo', vehicleTypes)}
-              {createSelectField('bodyType', 'Tipo de Carroceria', bodyTypes)}
-              {createSelectField('freightType', 'Tipo de Frete', freightTypes)}
-            </div>
-            <div className="flex justify-end space-x-2 pt-4 mt-4 border-t">
-              <Button type="button" variant="ghost" onClick={handleClear} size="sm">
-                <X className="mr-2 h-4 w-4" />
-                Limpar
-              </Button>
-              <Button type="submit" size="sm">
-                <Filter className="mr-2 h-4 w-4" />
-                Aplicar Filtros
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+          </div>
+          
+          <div className="space-y-4">
+            <h4 className="text-lg font-semibold">Tipo de Frete</h4>
+            <FormField
+              control={form.control}
+              name="freightType"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex flex-col space-y-1"
+                    >
+                      {freightTypes.map((item) => (
+                        <FormItem key={item.value} className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value={item.value} />
+                          </FormControl>
+                          <FormLabel className="font-normal">{item.label}</FormLabel>
+                        </FormItem>
+                      ))}
+                    </RadioGroup>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+        </form>
+      </Form>
+    </aside>
   );
 };
 
 export default PublicFreightsFilter;
+
