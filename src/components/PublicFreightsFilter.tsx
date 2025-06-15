@@ -46,7 +46,7 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
 
   const onSubmit = (values: FilterFormValues) => {
     const cleanFilters = Object.fromEntries(
-      Object.entries(values).filter(([, v]) => v != null && v !== '')
+      Object.entries(values).filter(([, v]) => v != null && v !== '' && v !== 'all')
     );
     onFilterChange(cleanFilters);
   };
@@ -76,7 +76,7 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
               </SelectTrigger>
             </FormControl>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               {options.map((type) => (
                 <SelectItem key={type.value} value={type.value}>
                   {type.label}
