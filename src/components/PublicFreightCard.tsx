@@ -90,9 +90,9 @@ const PublicFreightCard = ({
   };
   return <Card className={`hover:shadow-lg transition-all duration-300 group ${typeConfig.cardBgColor} border-l-4 ${typeConfig.bgColor.replace('bg-', 'border-')}`}>
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center space-x-3">
-            <div className={`w-12 h-12 ${typeConfig.bgColor} rounded-lg flex items-center justify-center`}>
+            <div className={`w-12 h-12 ${typeConfig.bgColor} rounded-lg flex items-center justify-center flex-shrink-0`}>
               <TypeIcon className={`w-6 h-6 ${typeConfig.color}`} />
             </div>
             <div>
@@ -101,7 +101,9 @@ const PublicFreightCard = ({
               </h3>
             </div>
           </div>
-          <FreightTypeBadge type={freight.tipo_frete} />
+          <div className="self-end sm:self-auto">
+            <FreightTypeBadge type={freight.tipo_frete} />
+          </div>
         </div>
       </CardHeader>
 
