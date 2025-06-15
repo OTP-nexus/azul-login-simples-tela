@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -17,16 +16,35 @@ interface PublicFreightCardProps {
 const allVehicleTypes = vehicleTypeGroups.flatMap(group => group.types);
 const vehicleTypeMap = new Map(allVehicleTypes.map(type => [type.value, type.label]));
 
-const getVehicleLabel = (value: unknown) => {
-  if (typeof value !== 'string') {
-    return "Inválido";
+const getVehicleLabel = (value: unknown): string => {
+  let vehicleValue: string | undefined;
+
+  if (typeof value === 'string') {
+    vehicleValue = value;
+  } else if (typeof value === 'object' && value !== null) {
+    // If the object has a 'label' property, use it directly.
+    if ('label' in value && typeof (value as any).label === 'string' && (value as any).label) {
+      return (value as any).label;
+    }
+    // Otherwise, try to use the 'value' property.
+    if ('value' in value && typeof (value as any).value === 'string') {
+      vehicleValue = (value as any).value;
+    }
   }
-  const label = vehicleTypeMap.get(value);
-  if (label) return label;
-  return value
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+
+  if (typeof vehicleValue === 'string') {
+    const label = vehicleTypeMap.get(vehicleValue);
+    if (label) {
+      return label;
+    }
+    // Fallback for values not in the map
+    return vehicleValue
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+  
+  return 'Inválido';
 };
 
 const PublicFreightCard = ({
