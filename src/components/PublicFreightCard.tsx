@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -6,9 +7,25 @@ import { Truck, Package, MapPin, Calendar, DollarSign, RotateCcw, Combine, Hands
 import FreightTypeBadge from './FreightTypeBadge';
 import type { Freight } from '@/hooks/usePublicFreights';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
+import { vehicleTypeGroups } from "@/lib/freightOptions";
+
 interface PublicFreightCardProps {
   freight: Freight;
 }
+
+const allVehicleTypes = vehicleTypeGroups.flatMap(group => group.types);
+const vehicleTypeMap = new Map(allVehicleTypes.map(type => [type.value, type.label]));
+
+const getVehicleLabel = (value: string) => {
+  const label = vehicleTypeMap.get(value);
+  if (label) return label;
+  return value
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 const PublicFreightCard = ({
   freight
 }: PublicFreightCardProps) => {
@@ -145,6 +162,27 @@ const PublicFreightCard = ({
             <span className="font-medium text-base">{getDestinationsText()}</span>
           </div>
         </div>
+
+        {freight.tipos_veiculos && freight.tipos_veiculos.length > 0 && (
+          <div className="text-sm">
+            <div className="flex items-center space-x-2 mb-2">
+              <Truck className="w-4 h-4 text-gray-500" />
+              <p className="text-gray-500">Veículos compatíveis</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {freight.tipos_veiculos.slice(0, 3).map((type) => (
+                <Badge key={type} variant="secondary" className="font-normal">
+                  {getVehicleLabel(type)}
+                </Badge>
+              ))}
+              {freight.tipos_veiculos.length > 3 && (
+                <Badge variant="outline">
+                  +{freight.tipos_veiculos.length - 3}
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center space-x-2 text-sm">
           <Calendar className="w-4 h-4 text-gray-500" />
