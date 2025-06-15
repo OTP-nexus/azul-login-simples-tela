@@ -96,7 +96,7 @@ const PublicFreightCard = ({
               <TypeIcon className={`w-6 h-6 ${typeConfig.color}`} />
             </div>
             <div>
-              <h3 className="font-bold text-base md:text-lg text-gray-800">
+              <h3 className="font-bold text-xs md:text-lg text-gray-800">
                 {freight.codigo_agregamento || 'Frete Disponível'}
               </h3>
             </div>
