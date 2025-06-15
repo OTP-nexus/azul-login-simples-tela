@@ -17,7 +17,10 @@ interface PublicFreightCardProps {
 const allVehicleTypes = vehicleTypeGroups.flatMap(group => group.types);
 const vehicleTypeMap = new Map(allVehicleTypes.map(type => [type.value, type.label]));
 
-const getVehicleLabel = (value: string) => {
+const getVehicleLabel = (value: unknown) => {
+  if (typeof value !== 'string') {
+    return "Inválido";
+  }
   const label = vehicleTypeMap.get(value);
   if (label) return label;
   return value
@@ -170,8 +173,8 @@ const PublicFreightCard = ({
               <p className="text-gray-500">Veículos compatíveis</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {freight.tipos_veiculos.slice(0, 3).map((type) => (
-                <Badge key={type} variant="secondary" className="font-normal">
+              {freight.tipos_veiculos.slice(0, 3).map((type, index) => (
+                <Badge key={index} variant="secondary" className="font-normal">
                   {getVehicleLabel(type)}
                 </Badge>
               ))}
