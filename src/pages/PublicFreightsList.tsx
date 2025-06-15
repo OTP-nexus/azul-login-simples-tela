@@ -4,7 +4,7 @@ import { usePublicFreights, PublicFreightFilters } from '@/hooks/usePublicFreigh
 import PublicFreightCard from '@/components/PublicFreightCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, Filter } from 'lucide-react';
+import { Terminal, Filter, LayoutGrid, List } from 'lucide-react';
 import PublicFreightsFilter from '@/components/PublicFreightsFilter';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,12 +12,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 
 const PublicFreightsList = () => {
   const [filters, setFilters] = useState<PublicFreightFilters>({});
   const { freights, loading, error } = usePublicFreights(filters);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const renderSkeletons = () => {
     return Array.from({ length: 6 }).map((_, index) => (
@@ -69,6 +71,19 @@ const PublicFreightsList = () => {
 
 
         <main className="flex-1 px-4 lg:px-0">
+          <div className="flex justify-between items-center mb-4">
+            <div/>
+            <ToggleGroup type="single" value={viewMode} onValueChange={(value) => {
+              if (value) setViewMode(value as 'grid' | 'list');
+            }} aria-label="Modo de visualização">
+              <ToggleGroupItem value="grid" aria-label="Visualização em grade">
+                <LayoutGrid />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="list" aria-label="Visualização em lista">
+                <List />
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
           {loading && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
               {renderSkeletons()}
@@ -91,9 +106,12 @@ const PublicFreightsList = () => {
           )}
 
           {!loading && !error && freights.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
+            <div className={viewMode === 'grid'
+                ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6"
+                : "flex flex-col gap-4"
+            }>
               {freights.map((freight) => (
-                <PublicFreightCard key={freight.id} freight={freight} />
+                <PublicFreightCard key={freight.id} freight={freight} view={viewMode} />
               ))}
             </div>
           )}

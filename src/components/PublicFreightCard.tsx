@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { vehicleTypeGroups } from "@/lib/freightOptions";
 
 interface PublicFreightCardProps {
   freight: Freight;
+  view?: 'grid' | 'list';
 }
 
 const allVehicleTypes = vehicleTypeGroups.flatMap(group => group.types);
@@ -78,7 +80,8 @@ const getVehicleLabel = (value: unknown): string => {
 
 
 const PublicFreightCard = ({
-  freight
+  freight,
+  view = 'grid'
 }: PublicFreightCardProps) => {
   const navigate = useNavigate();
   const [isStopsExpanded, setIsStopsExpanded] = useState(false);
@@ -155,6 +158,77 @@ const PublicFreightCard = ({
   const handleInterest = () => {
     navigate('/login');
   };
+
+  if (view === 'list') {
+    return (
+      <Card className={`hover:shadow-lg transition-all duration-300 group ${typeConfig.cardBgColor} border-l-4 ${typeConfig.bgColor.replace('bg-', 'border-')}`}>
+        <div className="p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          {/* Main Info */}
+          <div className="flex-grow space-y-2 w-full">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-bold text-base md:text-lg text-gray-800">
+                  {freight.codigo_agregamento || 'Frete Disponível'}
+                </h3>
+                <div className="flex flex-wrap items-center space-x-2 text-sm text-gray-600 mt-1">
+                  <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span className="font-semibold text-blue-700">{freight.origem_cidade}, {freight.origem_estado}</span>
+                  <span className="text-gray-400 mx-1">&rarr;</span>
+                  <MapPin className="w-4 h-4 text-green-600 shrink-0" />
+                  <span className="font-medium">{getDestinationsText()}</span>
+                </div>
+              </div>
+              <div className="flex-shrink-0 ml-2">
+                <FreightTypeBadge type={freight.tipo_frete} />
+              </div>
+            </div>
+            {freight.tipos_veiculos && freight.tipos_veiculos.length > 0 && (
+              <div className="flex items-center space-x-2 text-sm pt-1">
+                <Truck className="w-4 h-4 text-gray-500 shrink-0" />
+                <div className="flex flex-wrap gap-1">
+                  {freight.tipos_veiculos.slice(0, 3).map((type, index) => (
+                    <Badge key={index} variant="secondary" className="font-normal text-xs">
+                      {getVehicleLabel(type)}
+                    </Badge>
+                  ))}
+                  {freight.tipos_veiculos.length > 3 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{freight.tipos_veiculos.length - 3}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Details & Action */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-6 w-full sm:w-auto border-t sm:border-t-0 sm:border-l pt-4 sm:pt-0 sm:pl-6 mt-4 sm:mt-0">
+             <div className="flex flex-row sm:flex-col justify-around sm:justify-center text-sm text-center gap-4">
+               <div className="flex items-center space-x-2 sm:space-x-0 sm:flex-col">
+                 <Calendar className="w-4 h-4 text-gray-500 sm:mb-1" />
+                 <p className="font-medium">{formatDate(freight.data_coleta)}</p>
+               </div>
+               {(freight.tipo_frete === 'frete_completo' || freight.tipo_frete === 'frete_de_retorno') && (
+                 <div className="flex items-center space-x-2 sm:space-x-0 sm:flex-col sm:mt-2">
+                   <DollarSign className="w-4 h-4 text-green-600 sm:mb-1" />
+                   {freight.valor_carga && freight.valor_carga > 0 
+                     ? <p className="font-medium text-green-600">{formatValue(freight.valor_carga)}</p> 
+                     : <p className="font-medium text-gray-700 text-xs">A combinar</p>
+                   }
+                 </div>
+               )}
+            </div>
+            <div className="flex-shrink-0">
+              <Button onClick={handleInterest} className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
+                <Handshake className="w-4 h-4 mr-2" />
+                Tenho Interesse
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
   return <Card className={`hover:shadow-lg transition-all duration-300 group ${typeConfig.cardBgColor} border-l-4 ${typeConfig.bgColor.replace('bg-', 'border-')}`}>
       <CardHeader className="pb-3">
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-start sm:justify-between">
