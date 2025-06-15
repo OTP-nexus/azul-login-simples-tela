@@ -1,10 +1,16 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Truck, Package, MapPin, Calendar, DollarSign, RotateCcw, Combine, Handshake } from "lucide-react";
+import { Truck, Package, MapPin, Calendar, DollarSign, RotateCcw, Combine, Handshake, ChevronDown } from "lucide-react";
 import FreightTypeBadge from './FreightTypeBadge';
 import type { Freight } from '@/hooks/usePublicFreights';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface PublicFreightCardProps {
   freight: Freight;
@@ -12,6 +18,7 @@ interface PublicFreightCardProps {
 
 const PublicFreightCard = ({ freight }: PublicFreightCardProps) => {
   const navigate = useNavigate();
+  const [isStopsExpanded, setIsStopsExpanded] = useState(false);
 
   const getFreightTypeConfig = (tipo: string) => {
     switch (tipo) {
@@ -113,11 +120,49 @@ const PublicFreightCard = ({ freight }: PublicFreightCardProps) => {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <MapPin className="w-4 h-4" />
-          <span className="font-medium">{freight.origem_cidade}, {freight.origem_estado}</span>
-          <span>→</span>
-          <span>{getDestinationsText()}</span>
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center space-x-2 text-gray-600">
+            <MapPin className="w-4 h-4 text-blue-600" />
+            <span className="font-medium">{freight.origem_cidade}, {freight.origem_estado}</span>
+          </div>
+
+          <div className="pl-2">
+            {freight.paradas && freight.paradas.length > 0 && (
+              <Collapsible open={isStopsExpanded} onOpenChange={setIsStopsExpanded}>
+                <div className="border-l-2 border-dashed border-gray-300 ml-[7px] pl-4 py-1 space-y-2">
+                  {/* First stop is always visible */}
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full shrink-0 -ml-[9px]"></div>
+                    <span className="text-gray-500">{freight.paradas[0].cidade}, {freight.paradas[0].estado}</span>
+                  </div>
+
+                  {/* The rest of the stops are collapsible */}
+                  <CollapsibleContent className="space-y-2">
+                    {freight.paradas.slice(1).map((parada: any, index: number) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full shrink-0 -ml-[9px]"></div>
+                        <span className="text-gray-500">{parada.cidade}, {parada.estado}</span>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </div>
+
+                {freight.paradas.length > 1 && (
+                  <CollapsibleTrigger asChild>
+                    <Button variant="link" className="text-blue-600 hover:text-blue-800 text-xs h-auto py-1 px-0 ml-5 flex items-center">
+                      {isStopsExpanded ? 'Ver menos' : `+ ${freight.paradas.length - 1} parada(s)`}
+                      <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${isStopsExpanded ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                )}
+              </Collapsible>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-2 text-gray-600">
+            <MapPin className="w-4 h-4 text-green-600" />
+            <span className="font-medium">{getDestinationsText()}</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 text-sm">
