@@ -76,16 +76,19 @@ const PublicFreightCard = ({ freight }: PublicFreightCardProps) => {
   };
 
   const getDestinationsText = () => {
-    if (!freight.destinos || freight.destinos.length === 0) {
-      return 'Destino não definido';
+    if (freight.destinos && freight.destinos.length > 0) {
+      if (freight.destinos.length === 1) {
+        const dest: any = freight.destinos[0];
+        return `${dest.city || dest.cidade}, ${dest.state || dest.estado}`;
+      }
+      return `${freight.destinos.length} destinos`;
     }
-    
-    if (freight.destinos.length === 1) {
-      const dest = freight.destinos[0];
-      return `${dest.cidade}, ${dest.estado}`;
+
+    if (freight.destino_cidade && freight.destino_estado) {
+      return `${freight.destino_cidade}, ${freight.destino_estado}`;
     }
-    
-    return `${freight.destinos.length} destinos`;
+
+    return 'Destino não definido';
   };
 
   const handleInterest = () => {

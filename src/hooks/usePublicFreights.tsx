@@ -1,10 +1,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { ActiveFreight as Freight } from '@/hooks/useActiveFreights';
+import type { ActiveFreight } from '@/hooks/useActiveFreights';
 
-// Re-exporting the type for convenience
-export type { Freight };
+// Re-exporting the type for convenience, now extended
+export type Freight = ActiveFreight & {
+  destino_cidade?: string | null;
+  destino_estado?: string | null;
+};
 
 export interface PublicFreightFilters {
   origin?: string;
@@ -88,7 +91,9 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}) => {
         paradas: Array.isArray(freight.paradas) ? freight.paradas : [],
         beneficios: Array.isArray(freight.beneficios) ? freight.beneficios : [],
         regras_agendamento: Array.isArray(freight.regras_agendamento) ? freight.regras_agendamento : [],
-        tabelas_preco: Array.isArray(freight.tabelas_preco) ? freight.tabelas_preco : []
+        tabelas_preco: Array.isArray(freight.tabelas_preco) ? freight.tabelas_preco : [],
+        destino_cidade: freight.destino_cidade,
+        destino_estado: freight.destino_estado
       }));
       setFreights(formattedFreights);
     } catch (err) {
@@ -110,3 +115,4 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}) => {
     refetch: fetchFreights,
   };
 };
+
