@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -17,18 +18,30 @@ const allVehicleTypes = vehicleTypeGroups.flatMap(group => group.types);
 const vehicleTypeMap = new Map(allVehicleTypes.map(type => [type.value, type.label]));
 
 const getVehicleLabel = (value: unknown): string => {
+  let vehicleObject = value;
+
+  // If value is a string, it might be a JSON string that needs to be parsed.
+  if (typeof value === 'string') {
+    try {
+      // Attempt to parse the string as JSON.
+      vehicleObject = JSON.parse(value);
+    } catch (e) {
+      // If parsing fails, it's just a regular string.
+      // vehicleObject is already `value`, so no change needed.
+    }
+  }
+
+  // Now vehicleObject is either the original value, a parsed object/value, or a plain string.
   let vehicleValue: string | undefined;
 
-  if (typeof value === 'string') {
-    vehicleValue = value;
-  } else if (typeof value === 'object' && value !== null) {
-    // If the object has a 'label' property, use it directly.
-    if ('label' in value && typeof (value as any).label === 'string' && (value as any).label) {
-      return (value as any).label;
+  if (typeof vehicleObject === 'string') {
+    vehicleValue = vehicleObject;
+  } else if (typeof vehicleObject === 'object' && vehicleObject !== null) {
+    if ('label' in vehicleObject && typeof (vehicleObject as any).label === 'string' && (vehicleObject as any).label) {
+      return (vehicleObject as any).label;
     }
-    // Otherwise, try to use the 'value' property.
-    if ('value' in value && typeof (value as any).value === 'string') {
-      vehicleValue = (value as any).value;
+    if ('value' in vehicleObject && typeof (vehicleObject as any).value === 'string') {
+      vehicleValue = (vehicleObject as any).value;
     }
   }
 
@@ -37,7 +50,7 @@ const getVehicleLabel = (value: unknown): string => {
     if (label) {
       return label;
     }
-    // Fallback for values not in the map
+    // Fallback for values not in the map (e.g. 'caminhao_toco')
     return vehicleValue
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -46,6 +59,7 @@ const getVehicleLabel = (value: unknown): string => {
   
   return 'Inválido';
 };
+
 
 const PublicFreightCard = ({
   freight
