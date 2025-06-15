@@ -28,6 +28,10 @@ const LandingPage = () => {
     navigate('/solicitar-frete');
   };
 
+  const handleViewFreights = () => {
+    navigate('/lista-fretes');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
       {/* Header */}
@@ -40,7 +44,10 @@ const LandingPage = () => {
               </div>
               <h1 className="text-2xl font-bold text-gray-800">FreightConnect</h1>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Button variant="ghost" onClick={handleViewFreights}>
+                Ver Fretes
+              </Button>
               <Button variant="outline" onClick={handleDriverLogin}>
                 Login
               </Button>
@@ -200,6 +207,13 @@ const LandingPage = () => {
                     Solicitar Frete Agora
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleViewFreights}
+                    className="w-full border-purple-500 text-purple-600 hover:bg-purple-50"
+                  >
+                    Ver Fretes Disponíveis
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -281,12 +295,12 @@ const LandingPage = () => {
               Cadastrar Motorista
             </Button>
             <Button 
-              onClick={handlePublicFreightRequest}
+              onClick={handleViewFreights}
               size="lg"
               variant="outline"
               className="border-white text-white hover:bg-white hover:text-blue-600 font-semibold"
             >
-              Solicitar Frete
+              Ver Fretes Disponíveis
             </Button>
           </div>
         </div>

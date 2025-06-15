@@ -23,6 +23,7 @@ import FreightReturn from "./pages/FreightReturn";
 import CollaboratorRegistration from "./pages/CollaboratorRegistration";
 import ActiveFreights from "./pages/ActiveFreights";
 import PublicFreightRequest from "./pages/PublicFreightRequest";
+import PublicFreightsList from "./pages/PublicFreightsList";
 import NotFound from "./pages/NotFound";
 import LandingPage from "./pages/LandingPage";
 
@@ -53,6 +54,7 @@ const App = () => (
             <Route element={<MainLayout />}>
               {/* Public route with navbar */}
               <Route path="/solicitar-frete" element={<PublicFreightRequest />} />
+              <Route path="/lista-fretes" element={<PublicFreightsList />} />
 
               {/* Protected Routes */}
               <Route element={<ProtectedRoute />}>

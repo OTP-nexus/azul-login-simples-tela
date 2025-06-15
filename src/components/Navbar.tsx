@@ -73,7 +73,7 @@ const Navbar = () => {
             </NavigationMenu>
           )}
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
             {user && profile ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -104,7 +104,10 @@ const Navbar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button onClick={() => navigate('/login')}>Login</Button>
+              <>
+                <Button variant="ghost" onClick={() => navigate('/lista-fretes')}>Ver Fretes</Button>
+                <Button onClick={() => navigate('/login')}>Login</Button>
+              </>
             )}
           </div>
         </div>
