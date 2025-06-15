@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -38,6 +39,14 @@ const PublicFreightCard = ({ freight }: PublicFreightCardProps) => {
           color: 'text-orange-600',
           bgColor: 'bg-orange-100',
           cardBgColor: 'bg-orange-50'
+        };
+      case 'comum':
+        return {
+          icon: Package,
+          label: 'Frete Comum',
+          color: 'text-purple-600',
+          bgColor: 'bg-purple-100',
+          cardBgColor: 'bg-purple-50'
         };
       default:
         return {

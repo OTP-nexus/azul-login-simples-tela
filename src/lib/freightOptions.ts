@@ -28,5 +28,5 @@ export const freightTypes = [
     { value: 'agregamento', label: 'Agregamento' },
     { value: 'frete_completo', label: 'Frete Completo' },
     { value: 'frete_de_retorno', label: 'Frete de Retorno' },
+    { value: 'comum', label: 'Frete Comum' },
 ];
-

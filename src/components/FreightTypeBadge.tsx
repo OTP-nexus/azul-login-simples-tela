@@ -28,6 +28,12 @@ const FreightTypeBadge = ({ type }: FreightTypeBadgeProps) => {
           label: 'Retorno',
           className: 'bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200',
         };
+      case 'comum':
+        return {
+          icon: <Package className="w-3.5 h-3.5 mr-1.5" />,
+          label: 'Comum',
+          className: 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200',
+        };
       default:
         return {
           icon: <Package className="w-3.5 h-3.5 mr-1.5" />,
