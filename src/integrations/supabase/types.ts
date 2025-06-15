@@ -568,6 +568,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      search_body_types: {
+        Args: { body_data: Json; search_values: string[] }
+        Returns: boolean
+      }
+      search_vehicle_types: {
+        Args: { vehicle_data: Json; search_values: string[] }
+        Returns: boolean
+      }
     }
     Enums: {
       document_status: "not_submitted" | "pending" | "approved" | "rejected"

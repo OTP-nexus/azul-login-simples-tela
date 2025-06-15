@@ -43,19 +43,24 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}) => {
       }
       
       if (filters.vehicleTypes && filters.vehicleTypes.length > 0) {
-        // Para campos JSONB, usamos a função overlaps para verificar se há elementos em comum
-        const vehicleConditions = filters.vehicleTypes.map(vt => 
-          `tipos_veiculos @> '[{"value": "${vt}"}]' OR tipos_veiculos @> '[{"type": "${vt}"}]' OR tipos_veiculos @> '["${vt}"]'`
-        ).join(' OR ');
-        query = query.or(vehicleConditions);
+        // Usar a função SQL customizada para buscar tipos de veículos
+        const { data: vehicleFilteredData, error: vehicleError } = await supabase
+          .rpc('search_vehicle_types', {
+            vehicle_data: null,
+            search_values: filters.vehicleTypes
+          });
+
+        if (vehicleError) {
+          console.error('Erro na função search_vehicle_types:', vehicleError);
+        }
+
+        // Aplicar filtro usando a função customizada
+        query = query.filter('tipos_veiculos', 'search_vehicle_types', filters.vehicleTypes);
       }
       
       if (filters.bodyTypes && filters.bodyTypes.length > 0) {
-        // Para campos JSONB, usamos a função overlaps para verificar se há elementos em comum
-        const bodyConditions = filters.bodyTypes.map(bt => 
-          `tipos_carrocerias @> '[{"value": "${bt}"}]' OR tipos_carrocerias @> '[{"type": "${bt}"}]' OR tipos_carrocerias @> '["${bt}"]'`
-        ).join(' OR ');
-        query = query.or(bodyConditions);
+        // Usar a função SQL customizada para buscar tipos de carroceria
+        query = query.filter('tipos_carrocerias', 'search_body_types', filters.bodyTypes);
       }
       
       if (filters.freightType) {
