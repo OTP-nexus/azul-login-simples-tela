@@ -18,45 +18,62 @@ const allVehicleTypes = vehicleTypeGroups.flatMap(group => group.types);
 const vehicleTypeMap = new Map(allVehicleTypes.map(type => [type.value, type.label]));
 
 const getVehicleLabel = (value: unknown): string => {
-  let vehicleObject = value;
-
-  // If value is a string, it might be a JSON string that needs to be parsed.
+  // Case 1: Value is a string
   if (typeof value === 'string') {
+    // It might be a simple value like 'carreta' or a JSON string.
     try {
-      // Attempt to parse the string as JSON.
-      vehicleObject = JSON.parse(value);
+      const parsed = JSON.parse(value);
+      // If parsing succeeds, it's a JSON object/array, process it recursively.
+      return getVehicleLabel(parsed);
     } catch (e) {
-      // If parsing fails, it's just a regular string.
-      // vehicleObject is already `value`, so no change needed.
+      // If parsing fails, it's a plain string value e.g., 'caminhao_toco'
+      const label = vehicleTypeMap.get(value);
+      if (label) {
+        return label;
+      }
+      // Fallback for values not in the map
+      return value
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
     }
   }
 
-  // Now vehicleObject is either the original value, a parsed object/value, or a plain string.
-  let vehicleValue: string | undefined;
-
-  if (typeof vehicleObject === 'string') {
-    vehicleValue = vehicleObject;
-  } else if (typeof vehicleObject === 'object' && vehicleObject !== null) {
-    if ('label' in vehicleObject && typeof (vehicleObject as any).label === 'string' && (vehicleObject as any).label) {
-      return (vehicleObject as any).label;
+  // Case 2: Value is an object (and not null)
+  if (typeof value === 'object' && value !== null) {
+    // The freight form sometimes wraps the array in another array
+    if (Array.isArray(value) && value.length > 0) {
+      // Handle nested array, e.g. [['carreta']] or [[{type: 'Carreta'}]]
+      return getVehicleLabel(value[0]);
     }
-    if ('value' in vehicleObject && typeof (vehicleObject as any).value === 'string') {
-      vehicleValue = (vehicleObject as any).value;
+
+    const vehicleObject = value as any;
+    
+    // Priority 1: 'label' property (most explicit)
+    if (typeof vehicleObject.label === 'string' && vehicleObject.label) {
+      return vehicleObject.label;
+    }
+    
+    // Priority 2: 'type' property (found in some Supabase records)
+    if (typeof vehicleObject.type === 'string' && vehicleObject.type) {
+      return vehicleObject.type;
+    }
+
+    // Priority 3: 'value' property (standard from select components)
+    if (typeof vehicleObject.value === 'string') {
+      const label = vehicleTypeMap.get(vehicleObject.value);
+      if (label) {
+        return label;
+      }
+      // Fallback for value string
+      return vehicleObject.value
+        .split('_')
+        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
     }
   }
 
-  if (typeof vehicleValue === 'string') {
-    const label = vehicleTypeMap.get(vehicleValue);
-    if (label) {
-      return label;
-    }
-    // Fallback for values not in the map (e.g. 'caminhao_toco')
-    return vehicleValue
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  }
-  
+  // If none of the above, it's an invalid format
   return 'Inválido';
 };
 
