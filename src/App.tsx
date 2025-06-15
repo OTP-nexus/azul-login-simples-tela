@@ -41,18 +41,21 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Public Routes */}
+            {/* Public Routes without Navbar */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<UserTypeSelection />} />
             <Route path="/register/company" element={<CompanyTypeSelection />} />
             <Route path="/register/company/form" element={<CompanyRegistration />} />
             <Route path="/register/driver" element={<DriverRegistration />} />
-            <Route path="/solicitar-frete" element={<PublicFreightRequest />} />
 
-            {/* Protected Routes */}
-            <Route element={<ProtectedRoute />}>
-              <Route element={<MainLayout />}>
+            {/* Routes with Navbar */}
+            <Route element={<MainLayout />}>
+              {/* Public route with navbar */}
+              <Route path="/solicitar-frete" element={<PublicFreightRequest />} />
+
+              {/* Protected Routes */}
+              <Route element={<ProtectedRoute />}>
                 <Route path="/document-verification" element={<DocumentVerification />} />
                 <Route path="/driver-document-verification" element={<DriverDocumentVerification />} />
                 <Route path="/company-dashboard" element={<CompanyDashboard />} />
