@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -6,20 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Truck, Package, MapPin, Calendar, DollarSign, RotateCcw, Combine, Handshake, ChevronDown } from "lucide-react";
 import FreightTypeBadge from './FreightTypeBadge';
 import type { Freight } from '@/hooks/usePublicFreights';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 interface PublicFreightCardProps {
   freight: Freight;
 }
-
-const PublicFreightCard = ({ freight }: PublicFreightCardProps) => {
+const PublicFreightCard = ({
+  freight
+}: PublicFreightCardProps) => {
   const navigate = useNavigate();
   const [isStopsExpanded, setIsStopsExpanded] = useState(false);
-
   const getFreightTypeConfig = (tipo: string) => {
     switch (tipo) {
       case 'agregamento':
@@ -64,10 +58,8 @@ const PublicFreightCard = ({ freight }: PublicFreightCardProps) => {
         };
     }
   };
-
   const typeConfig = getFreightTypeConfig(freight.tipo_frete);
   const TypeIcon = typeConfig.icon;
-
   const formatValue = (value: number | null) => {
     if (!value) return 'Não definido';
     return new Intl.NumberFormat('pt-BR', {
@@ -75,12 +67,10 @@ const PublicFreightCard = ({ freight }: PublicFreightCardProps) => {
       currency: 'BRL'
     }).format(value);
   };
-
   const formatDate = (date: string | null) => {
     if (!date) return 'Não definida';
     return new Date(date).toLocaleDateString('pt-BR');
   };
-
   const getDestinationsText = () => {
     if (freight.destinos && freight.destinos.length > 0) {
       if (freight.destinos.length === 1) {
@@ -89,20 +79,15 @@ const PublicFreightCard = ({ freight }: PublicFreightCardProps) => {
       }
       return `${freight.destinos.length} destinos`;
     }
-
     if (freight.destino_cidade && freight.destino_estado) {
       return `${freight.destino_cidade}, ${freight.destino_estado}`;
     }
-
     return 'Destino não definido';
   };
-
   const handleInterest = () => {
     navigate('/login');
   };
-
-  return (
-    <Card className={`hover:shadow-lg transition-all duration-300 group ${typeConfig.cardBgColor} border-l-4 ${typeConfig.bgColor.replace('bg-', 'border-')}`}>
+  return <Card className={`hover:shadow-lg transition-all duration-300 group ${typeConfig.cardBgColor} border-l-4 ${typeConfig.bgColor.replace('bg-', 'border-')}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
@@ -123,12 +108,11 @@ const PublicFreightCard = ({ freight }: PublicFreightCardProps) => {
         <div className="space-y-2 text-sm">
           <div className="flex items-center space-x-2 text-gray-600">
             <MapPin className="w-4 h-4 text-blue-600" />
-            <span className="font-medium">{freight.origem_cidade}, {freight.origem_estado}</span>
+            <span className="font-semibold text-blue-700 text-base">{freight.origem_cidade}, {freight.origem_estado}</span>
           </div>
 
           <div className="pl-2">
-            {freight.paradas && freight.paradas.length > 0 && (
-              <Collapsible open={isStopsExpanded} onOpenChange={setIsStopsExpanded}>
+            {freight.paradas && freight.paradas.length > 0 && <Collapsible open={isStopsExpanded} onOpenChange={setIsStopsExpanded}>
                 <div className="border-l-2 border-dashed border-gray-300 ml-[7px] pl-4 py-1 space-y-2">
                   {/* First stop is always visible */}
                   <div className="flex items-center space-x-2">
@@ -138,30 +122,25 @@ const PublicFreightCard = ({ freight }: PublicFreightCardProps) => {
 
                   {/* The rest of the stops are collapsible */}
                   <CollapsibleContent className="space-y-2">
-                    {freight.paradas.slice(1).map((parada: any, index: number) => (
-                      <div key={index} className="flex items-center space-x-2">
+                    {freight.paradas.slice(1).map((parada: any, index: number) => <div key={index} className="flex items-center space-x-2">
                         <div className="w-2 h-2 bg-gray-400 rounded-full shrink-0 -ml-[9px]"></div>
                         <span className="text-gray-500">{parada.cidade}, {parada.estado}</span>
-                      </div>
-                    ))}
+                      </div>)}
                   </CollapsibleContent>
                 </div>
 
-                {freight.paradas.length > 1 && (
-                  <CollapsibleTrigger asChild>
+                {freight.paradas.length > 1 && <CollapsibleTrigger asChild>
                     <Button variant="link" className="text-blue-600 hover:text-blue-800 text-xs h-auto py-1 px-0 ml-5 flex items-center">
                       {isStopsExpanded ? 'Ver menos' : `+ ${freight.paradas.length - 1} parada(s)`}
                       <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${isStopsExpanded ? 'rotate-180' : ''}`} />
                     </Button>
-                  </CollapsibleTrigger>
-                )}
-              </Collapsible>
-            )}
+                  </CollapsibleTrigger>}
+              </Collapsible>}
           </div>
           
           <div className="flex items-center space-x-2 text-gray-600">
             <MapPin className="w-4 h-4 text-green-600" />
-            <span className="font-medium">{getDestinationsText()}</span>
+            <span className="font-medium text-base">{getDestinationsText()}</span>
           </div>
         </div>
 
@@ -178,37 +157,26 @@ const PublicFreightCard = ({ freight }: PublicFreightCardProps) => {
             <Calendar className="w-4 h-4 text-gray-500" />
             <div>
               <p className="text-gray-500">Coleta</p>
-              <p className="font-medium">{formatDate(freight.data_coleta)}</p>
+              <p className="font-medium text-base">{formatDate(freight.data_coleta)}</p>
             </div>
           </div>
         </div>
 
-        {(freight.tipo_frete === 'frete_completo' || freight.tipo_frete === 'frete_de_retorno') && (
-          <div className="flex items-center space-x-2 text-sm">
+        {(freight.tipo_frete === 'frete_completo' || freight.tipo_frete === 'frete_de_retorno') && <div className="flex items-center space-x-2 text-sm">
             <DollarSign className="w-4 h-4 text-green-600" />
             <div>
               <p className="text-gray-500">Valor do Frete</p>
-              {freight.valor_carga && freight.valor_carga > 0 ? (
-                <p className="font-medium text-green-600">{formatValue(freight.valor_carga)}</p>
-              ) : (
-                <p className="font-medium text-gray-700">A combinar</p>
-              )}
+              {freight.valor_carga && freight.valor_carga > 0 ? <p className="font-medium text-green-600">{formatValue(freight.valor_carga)}</p> : <p className="font-medium text-gray-700">A combinar</p>}
             </div>
-          </div>
-        )}
+          </div>}
 
         <div className="flex pt-2 border-t">
-          <Button
-            onClick={handleInterest}
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
-          >
+          <Button onClick={handleInterest} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
             <Handshake className="w-4 h-4 mr-2" />
             Tenho Interesse
           </Button>
         </div>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };
-
 export default PublicFreightCard;
