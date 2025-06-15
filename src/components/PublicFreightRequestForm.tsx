@@ -264,6 +264,21 @@ const PublicFreightRequestForm = () => {
           });
           return false;
         }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const [year, month, day] = formData.dataCarregamento.split('-').map(Number);
+        const selectedDate = new Date(year, month - 1, day);
+
+        if (selectedDate < today) {
+          toast({
+            title: "Data inválida",
+            description: "A data da coleta não pode ser no passado.",
+            variant: "destructive"
+          });
+          return false;
+        }
         break;
       case 2:
         if (formData.tipoListagemItens === 'detalhada') {
@@ -651,6 +666,7 @@ const PublicFreightRequestForm = () => {
                       value={formData.dataCarregamento}
                       onChange={(e) => setFormData(prev => ({ ...prev, dataCarregamento: e.target.value }))}
                       className="h-12 text-base"
+                      min={new Date().toISOString().split('T')[0]}
                     />
                   </div>
                   <div>
