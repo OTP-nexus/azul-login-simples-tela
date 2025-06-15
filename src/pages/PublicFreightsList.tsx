@@ -19,7 +19,7 @@ const PublicFreightsList = () => {
   const [filters, setFilters] = useState<PublicFreightFilters>({});
   const { freights, loading, error } = usePublicFreights(filters);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
   const renderSkeletons = () => {
     return Array.from({ length: 6 }).map((_, index) => (
