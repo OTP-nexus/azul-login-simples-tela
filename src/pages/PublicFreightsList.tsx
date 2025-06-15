@@ -1,13 +1,15 @@
 
-import React from 'react';
-import { usePublicFreights } from '@/hooks/usePublicFreights';
+import React, { useState } from 'react';
+import { usePublicFreights, PublicFreightFilters } from '@/hooks/usePublicFreights';
 import PublicFreightCard from '@/components/PublicFreightCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
+import PublicFreightsFilter from '@/components/PublicFreightsFilter';
 
 const PublicFreightsList = () => {
-  const { freights, loading, error } = usePublicFreights();
+  const [filters, setFilters] = useState<PublicFreightFilters>({});
+  const { freights, loading, error } = usePublicFreights(filters);
 
   const renderSkeletons = () => {
     return Array.from({ length: 6 }).map((_, index) => (
@@ -28,9 +30,11 @@ const PublicFreightsList = () => {
           Fretes Disponíveis
         </h1>
         <p className="mt-4 text-lg leading-8 text-gray-600">
-          Encontre o frete ideal para você. Veja as oportunidades abertas e conecte-se.
+          Encontre o frete ideal para você. Filtre as oportunidades e conecte-se.
         </p>
       </div>
+
+      <PublicFreightsFilter onFilterChange={setFilters} initialFilters={filters} />
 
       {loading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -48,8 +52,8 @@ const PublicFreightsList = () => {
 
       {!loading && !error && freights.length === 0 && (
         <div className="text-center py-12">
-            <h3 className="text-xl font-semibold text-gray-700">Nenhum frete disponível no momento</h3>
-            <p className="text-gray-500 mt-2">Por favor, volte mais tarde para novas oportunidades.</p>
+            <h3 className="text-xl font-semibold text-gray-700">Nenhum frete encontrado com os filtros aplicados</h3>
+            <p className="text-gray-500 mt-2">Tente alterar ou limpar os filtros para ver mais oportunidades.</p>
         </div>
       )}
 

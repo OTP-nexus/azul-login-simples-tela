@@ -1,26 +1,56 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ActiveFreight as Freight } from '@/hooks/useActiveFreights';
 
 // Re-exporting the type for convenience
 export type { Freight };
 
-export const usePublicFreights = () => {
+export interface PublicFreightFilters {
+  origin?: string;
+  destination?: string;
+  vehicleType?: string;
+  bodyType?: string;
+  freightType?: string;
+}
+
+export const usePublicFreights = (filters: PublicFreightFilters = {}) => {
   const [freights, setFreights] = useState<Freight[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchFreights = async () => {
+  const fetchFreights = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data: freightData, error: freightError } = await supabase
+      let query = supabase
         .from('fretes')
         .select('*')
         .eq('status', 'ativo')
         .order('created_at', { ascending: false });
+
+      if (filters.origin) {
+        query = query.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
+      }
+      
+      if (filters.destination) {
+        query = query.ilike('destinos::text', `%${filters.destination}%`);
+      }
+      
+      if (filters.vehicleType) {
+        query = query.contains('tipos_veiculos', [filters.vehicleType]);
+      }
+      
+      if (filters.bodyType) {
+        query = query.contains('tipos_carrocerias', [filters.bodyType]);
+      }
+      
+      if (filters.freightType) {
+        query = query.eq('tipo_frete', filters.freightType);
+      }
+
+      const { data: freightData, error: freightError } = await query;
 
       if (freightError) {
         console.error('Erro ao buscar fretes públicos:', freightError);
@@ -67,11 +97,11 @@ export const usePublicFreights = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [JSON.stringify(filters)]);
 
   useEffect(() => {
     fetchFreights();
-  }, []);
+  }, [fetchFreights]);
 
   return {
     freights,
