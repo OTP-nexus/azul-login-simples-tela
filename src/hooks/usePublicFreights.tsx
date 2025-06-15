@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ActiveFreight as Freight } from '@/hooks/useActiveFreights';
@@ -15,9 +14,9 @@ export interface PublicFreightFilters {
 }
 
 export const usePublicFreights = (filters: PublicFreightFilters = {}) => {
-  const [freights, setFreights] = useState<Freight[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [freights, setFreights = useState<Freight[]>([]);
+  const [loading, setLoading = useState(true);
+  const [error, setError = useState<string | null>(null);
 
   const fetchFreights = useCallback(async () => {
     try {
@@ -27,7 +26,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}) => {
       let query = supabase
         .from('fretes')
         .select('*')
-        .eq('status', 'ativo')
+        .in('status', ['ativo', 'pendente']) // Alterado para incluir fretes pendentes
         .order('created_at', { ascending: false });
 
       if (filters.origin) {
