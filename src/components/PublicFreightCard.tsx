@@ -1,11 +1,9 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Truck, Package, MapPin, Calendar, DollarSign, RotateCcw, Combine, Handshake } from "lucide-react";
-import FreightStatusBadge from './FreightStatusBadge';
+import FreightTypeBadge from './FreightTypeBadge';
 import type { Freight } from '@/hooks/usePublicFreights';
 
 interface PublicFreightCardProps {
@@ -97,12 +95,9 @@ const PublicFreightCard = ({ freight }: PublicFreightCardProps) => {
               <h3 className="font-bold text-lg text-gray-800">
                 {freight.codigo_agregamento || 'Frete Disponível'}
               </h3>
-              <Badge variant="outline" className="text-xs">
-                {typeConfig.label}
-              </Badge>
             </div>
           </div>
-          <FreightStatusBadge status={freight.status} />
+          <FreightTypeBadge type={freight.tipo_frete} />
         </div>
       </CardHeader>
 
