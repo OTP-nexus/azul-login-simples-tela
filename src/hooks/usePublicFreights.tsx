@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ActiveFreight } from '@/hooks/useActiveFreights';
@@ -42,11 +43,13 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}) => {
       }
       
       if (filters.vehicleTypes && filters.vehicleTypes.length > 0) {
-        query = query.contains('tipos_veiculos', filters.vehicleTypes);
+        const vehicleClauses = filters.vehicleTypes.map(vt => `tipos_veiculos::text.ilike.%${vt}%`).join(',');
+        query = query.or(vehicleClauses);
       }
       
       if (filters.bodyTypes && filters.bodyTypes.length > 0) {
-        query = query.contains('tipos_carrocerias', filters.bodyTypes);
+        const bodyClauses = filters.bodyTypes.map(bt => `tipos_carrocerias::text.ilike.%${bt}%`).join(',');
+        query = query.or(bodyClauses);
       }
       
       if (filters.freightType) {
@@ -122,3 +125,4 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}) => {
     refetch: fetchFreights,
   };
 };
+
