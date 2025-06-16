@@ -24,6 +24,7 @@ import CollaboratorRegistration from "./pages/CollaboratorRegistration";
 import ActiveFreights from "./pages/ActiveFreights";
 import PublicFreightRequest from "./pages/PublicFreightRequest";
 import PublicFreightsList from "./pages/PublicFreightsList";
+import FreightDetails from "./pages/FreightDetails";
 import NotFound from "./pages/NotFound";
 import LandingPage from "./pages/LandingPage";
 
