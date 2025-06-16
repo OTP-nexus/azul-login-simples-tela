@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Package, Calendar, DollarSign, Truck, Users, Shield, Radar, UserPlus, Clock, AlertTriangle, FileText, RotateCcw, Combine, Calculator, Route, Settings, User, Phone, Mail } from "lucide-react";
 import FreightTypeBadge from '@/components/FreightTypeBadge';
+import { useAuth } from '@/hooks/useAuth';
 
 const FreightDetails = () => {
   const {
@@ -16,11 +17,13 @@ const FreightDetails = () => {
     freightCode: string;
   }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const {
     data: freight,
     isLoading,
     error
   } = useFreightByCode(freightCode);
+
   if (isLoading) {
     return <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-64">
@@ -40,6 +43,7 @@ const FreightDetails = () => {
         </div>
       </div>;
   }
+
   const getFreightTypeConfig = (tipo: string) => {
     switch (tipo) {
       case 'agregamento':
@@ -321,6 +325,7 @@ const FreightDetails = () => {
         </div>;
     });
   };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-6">
@@ -627,6 +632,68 @@ const FreightDetails = () => {
               <p className="text-gray-700 whitespace-pre-wrap">{freight.observacoes}</p>
             </CardContent>
           </Card>}
+
+        {/* Informações de Contato */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Phone className="w-5 h-5" />
+              <span>Informações de Contato</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!user ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+                <div className="flex flex-col items-center space-y-3">
+                  <User className="w-12 h-12 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-blue-900">FAÇA O LOGIN PARA VISUALIZAR OS DADOS</h3>
+                  <p className="text-blue-700">Você precisa estar logado para ver as informações de contato desta empresa.</p>
+                  <Button 
+                    onClick={() => navigate('/login')} 
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Fazer Login
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <Phone className="w-5 h-5 text-gray-600" />
+                    <div>
+                      <p className="text-sm text-gray-500">Telefone</p>
+                      <p className="font-medium">(11) 99999-9999</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Mail className="w-5 h-5 text-gray-600" />
+                    <div>
+                      <p className="text-sm text-gray-500">E-mail</p>
+                      <p className="font-medium">contato@empresa.com</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <User className="w-5 h-5 text-gray-600" />
+                    <div>
+                      <p className="text-sm text-gray-500">Responsável</p>
+                      <p className="font-medium">João Silva</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Clock className="w-5 h-5 text-gray-600" />
+                    <div>
+                      <p className="text-sm text-gray-500">Horário de Atendimento</p>
+                      <p className="font-medium">08:00 às 18:00</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <div className="mt-8 pt-6 border-t border-gray-200">
