@@ -19,6 +19,7 @@ interface FreightSuccessDialogProps {
   generatedFreights: GeneratedFreight[];
   onNewFreight: () => void;
   onBackToDashboard: () => void;
+  freightType?: 'complete' | 'return';
 }
 
 const FreightSuccessDialog: React.FC<FreightSuccessDialogProps> = ({
@@ -26,7 +27,8 @@ const FreightSuccessDialog: React.FC<FreightSuccessDialogProps> = ({
   onOpenChange,
   generatedFreights,
   onNewFreight,
-  onBackToDashboard
+  onBackToDashboard,
+  freightType = 'complete'
 }) => {
   const { toast } = useToast();
 
@@ -48,6 +50,17 @@ const FreightSuccessDialog: React.FC<FreightSuccessDialogProps> = ({
       title: "Todos os códigos copiados!",
       description: "Todos os códigos foram copiados para sua área de transferência.",
     });
+  };
+
+  const getFreightTypeMessage = () => {
+    if (freightType === 'return') {
+      return generatedFreights.length === 1 
+        ? 'Código de frete de retorno gerado:'
+        : 'Códigos de frete de retorno gerados:';
+    }
+    return generatedFreights.length === 1 
+      ? 'Código de frete completo gerado:'
+      : 'Códigos de frete completo gerados:';
   };
 
   return (
@@ -74,40 +87,80 @@ const FreightSuccessDialog: React.FC<FreightSuccessDialogProps> = ({
           {/* Success message */}
           <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
             <p className="text-green-800 font-medium">
-              {generatedFreights.length === 1 
-                ? 'Código de agregamento gerado:'
-                : 'Códigos de agregamento gerados:'
-              }
+              {getFreightTypeMessage()}
             </p>
           </div>
 
-          {/* Generated freight codes */}
-          <div className="space-y-3">
-            {generatedFreights.map((freight, index) => (
-              <div key={freight.id} className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center space-x-3">
+          {/* Generated freight destinations (without codes if multiple) */}
+          {generatedFreights.length > 1 ? (
+            <div className="space-y-3">
+              {generatedFreights.map((freight, index) => (
+                <div key={freight.id} className="flex items-center justify-center p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="flex items-center space-x-2">
                     <MapPin className="w-4 h-4 text-blue-600" />
                     <span className="font-medium text-blue-800">
                       {freight.destino_cidade}/{freight.destino_estado}
                     </span>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400" />
-                  <Badge variant="secondary" className="font-mono text-lg px-3 py-1">
-                    {freight.codigo_agregamento}
-                  </Badge>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyToClipboard(freight.codigo_agregamento)}
-                  className="text-blue-600 hover:text-blue-700"
-                >
-                  <Copy className="w-4 h-4" />
-                </Button>
+              ))}
+              
+              {/* Show all codes at bottom for multiple freights */}
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-medium text-gray-800 mb-3 text-center">Códigos de agregamento:</h4>
+                <div className="space-y-2">
+                  {generatedFreights.map((freight) => (
+                    <div key={freight.id} className="flex items-center justify-between p-3 bg-white rounded border">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-600">
+                          {freight.destino_cidade}/{freight.destino_estado}:
+                        </span>
+                        <Badge variant="secondary" className="font-mono">
+                          {freight.codigo_agregamento}
+                        </Badge>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(freight.codigo_agregamento)}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            /* Single freight with code displayed prominently */
+            <div className="space-y-3">
+              {generatedFreights.map((freight) => (
+                <div key={freight.id} className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="w-4 h-4 text-blue-600" />
+                      <span className="font-medium text-blue-800">
+                        {freight.destino_cidade}/{freight.destino_estado}
+                      </span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                    <Badge variant="secondary" className="font-mono text-lg px-3 py-1">
+                      {freight.codigo_agregamento}
+                    </Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(freight.codigo_agregamento)}
+                    className="text-blue-600 hover:text-blue-700"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Copy all button for multiple freights */}
           {generatedFreights.length > 1 && (
