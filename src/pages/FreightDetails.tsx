@@ -7,7 +7,7 @@ import { useFreightByCode } from '@/hooks/useFreightByCode';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { MapPin, Package, Calendar, DollarSign, Truck, Users, Shield, Radar, UserPlus, Clock, AlertTriangle, FileText, RotateCcw, Combine, Calculator, Route, Settings, User, Phone, Mail, Weight } from "lucide-react";
+import { MapPin, Package, DollarSign, Truck, Users, Shield, Radar, UserPlus, Clock, FileText, RotateCcw, Combine, Calculator, Route, Settings, User, Phone, Mail, Weight } from "lucide-react";
 import FreightTypeBadge from '@/components/FreightTypeBadge';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -80,12 +80,29 @@ const FreightDetails = () => {
   const typeConfig = getFreightTypeConfig(freight.tipo_frete);
   const TypeIcon = typeConfig.icon;
   
-  const formatValue = (value: number | null) => {
-    if (!value) return 'A combinar';
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
+  const formatValue = (valoresDefinidos: any) => {
+    if (!valoresDefinidos) return 'A combinar';
+    
+    // Se valores_definidos é um objeto que contém informações de valor
+    if (typeof valoresDefinidos === 'object') {
+      const valor = valoresDefinidos.valor || valoresDefinidos.value || valoresDefinidos.price;
+      if (valor) {
+        return new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: 'BRL'
+        }).format(valor);
+      }
+    }
+    
+    // Se valores_definidos é um número direto
+    if (typeof valoresDefinidos === 'number') {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(valoresDefinidos);
+    }
+    
+    return 'A combinar';
   };
 
   const formatWeight = (weight: number | null) => {
@@ -606,7 +623,7 @@ const FreightDetails = () => {
                     <DollarSign className="w-4 h-4 text-gray-500" />
                     <p className="text-sm text-gray-500">Valor da Carga</p>
                   </div>
-                  <p className="font-semibold text-lg text-green-600">{formatValue(freight.valor_carga)}</p>
+                  <p className="font-semibold text-lg text-green-600">{formatValue(freight.valores_definidos)}</p>
                 </div>
               </div>
 
