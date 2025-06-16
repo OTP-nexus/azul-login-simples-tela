@@ -316,10 +316,12 @@ export type Database = {
       }
       fretes: {
         Row: {
+          altura_carga: number | null
           beneficios: Json | null
           codigo_agregamento: string | null
           collaborator_ids: string[] | null
           company_id: string | null
+          comprimento_carga: number | null
           created_at: string
           data_coleta: string | null
           data_entrega: string | null
@@ -336,6 +338,7 @@ export type Database = {
           horario_carregamento: string | null
           id: string
           itens_detalhados: Json | null
+          largura_carga: number | null
           local_possui_restricao: boolean | null
           observacoes: string | null
           origem_cidade: string
@@ -371,10 +374,12 @@ export type Database = {
           valores_definidos: Json | null
         }
         Insert: {
+          altura_carga?: number | null
           beneficios?: Json | null
           codigo_agregamento?: string | null
           collaborator_ids?: string[] | null
           company_id?: string | null
+          comprimento_carga?: number | null
           created_at?: string
           data_coleta?: string | null
           data_entrega?: string | null
@@ -391,6 +396,7 @@ export type Database = {
           horario_carregamento?: string | null
           id?: string
           itens_detalhados?: Json | null
+          largura_carga?: number | null
           local_possui_restricao?: boolean | null
           observacoes?: string | null
           origem_cidade: string
@@ -426,10 +432,12 @@ export type Database = {
           valores_definidos?: Json | null
         }
         Update: {
+          altura_carga?: number | null
           beneficios?: Json | null
           codigo_agregamento?: string | null
           collaborator_ids?: string[] | null
           company_id?: string | null
+          comprimento_carga?: number | null
           created_at?: string
           data_coleta?: string | null
           data_entrega?: string | null
@@ -446,6 +454,7 @@ export type Database = {
           horario_carregamento?: string | null
           id?: string
           itens_detalhados?: Json | null
+          largura_carga?: number | null
           local_possui_restricao?: boolean | null
           observacoes?: string | null
           origem_cidade?: string
