@@ -102,21 +102,52 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
   const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
   const selectedBodies = formData.tipos_carrocerias.filter(b => b.selected);
 
-  // Função para extrair valores de dimensões de forma segura
+  // Função corrigida para extrair valores de dimensões
   const getDimensionValue = (value: any): string => {
-    if (!value) return '';
-    if (typeof value === 'string' && value.trim() !== '' && value !== 'undefined') return value;
-    if (typeof value === 'object' && value.value && value.value !== 'undefined') return String(value.value);
-    if (typeof value === 'number') return String(value);
+    console.log('Checking dimension value:', value);
+    
+    // Se não existe ou é undefined/null
+    if (!value || value === 'undefined' || value === null) return '';
+    
+    // Se é uma string válida
+    if (typeof value === 'string' && value.trim() !== '' && value !== 'undefined') {
+      return value.trim();
+    }
+    
+    // Se é um número
+    if (typeof value === 'number' && !isNaN(value)) {
+      return String(value);
+    }
+    
+    // Se é um objeto com propriedade value
+    if (typeof value === 'object' && value.value !== undefined && value.value !== 'undefined' && value.value !== null) {
+      if (typeof value.value === 'string' && value.value.trim() !== '') {
+        return value.value.trim();
+      }
+      if (typeof value.value === 'number' && !isNaN(value.value)) {
+        return String(value.value);
+      }
+    }
+    
     return '';
   };
 
-  // Extrair dimensões
-  const altura = getDimensionValue(formData.dimensoes?.altura) || getDimensionValue(formData.altura);
-  const largura = getDimensionValue(formData.dimensoes?.largura) || getDimensionValue(formData.largura);
-  const comprimento = getDimensionValue(formData.dimensoes?.comprimento) || getDimensionValue(formData.comprimento);
+  // Extrair dimensões de todas as possíveis fontes
+  const altura = getDimensionValue(formData.dimensoes?.altura) || 
+                 getDimensionValue(formData.altura) || 
+                 getDimensionValue((formData as any).altura_carga);
+                 
+  const largura = getDimensionValue(formData.dimensoes?.largura) || 
+                  getDimensionValue(formData.largura) || 
+                  getDimensionValue((formData as any).largura_carga);
+                  
+  const comprimento = getDimensionValue(formData.dimensoes?.comprimento) || 
+                      getDimensionValue(formData.comprimento) || 
+                      getDimensionValue((formData as any).comprimento_carga);
 
   const hasDimensions = altura || largura || comprimento;
+
+  console.log('Final dimensions:', { altura, largura, comprimento, hasDimensions });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
