@@ -125,9 +125,13 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       }
       
       if (filters.destination) {
-        // Para frete de retorno e frete completo, buscar nas paradas
-        // Para outros tipos, buscar nos destinos normais
-        countQuery = countQuery.or(`paradas::text.ilike.%${filters.destination}%,destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        // Usar múltiplas condições separadas em vez de uma única OR complexa
+        countQuery = countQuery.or(
+          `paradas::text.ilike.%${filters.destination}%` + ',' +
+          `destinos::text.ilike.%${filters.destination}%` + ',' +
+          `destino_cidade.ilike.%${filters.destination}%` + ',' +
+          `destino_estado.ilike.%${filters.destination}%`
+        );
       }
       
       if (filters.freightType) {
@@ -154,9 +158,13 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       }
       
       if (filters.destination) {
-        // Para frete de retorno e frete completo, buscar nas paradas
-        // Para outros tipos, buscar nos destinos normais
-        query = query.or(`paradas::text.ilike.%${filters.destination}%,destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        // Usar múltiplas condições separadas em vez de uma única OR complexa
+        query = query.or(
+          `paradas::text.ilike.%${filters.destination}%` + ',' +
+          `destinos::text.ilike.%${filters.destination}%` + ',' +
+          `destino_cidade.ilike.%${filters.destination}%` + ',' +
+          `destino_estado.ilike.%${filters.destination}%`
+        );
       }
       
       if (filters.freightType) {
