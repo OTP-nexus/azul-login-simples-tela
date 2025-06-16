@@ -113,19 +113,26 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
   console.log('formData.comprimento:', formData.comprimento);
   console.log('typeof formData.dimensoes:', typeof formData.dimensoes);
   
-  // Check dimensions from both possible structures
-  const altura = formData.dimensoes?.altura || formData.altura;
-  const largura = formData.dimensoes?.largura || formData.largura;
-  const comprimento = formData.dimensoes?.comprimento || formData.comprimento;
+  // Safely extract dimensions, handling undefined values
+  const getStringValue = (value: any): string => {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object' && value.value !== undefined) return String(value.value);
+    return String(value);
+  };
+
+  const altura = getStringValue(formData.dimensoes?.altura) || getStringValue(formData.altura);
+  const largura = getStringValue(formData.dimensoes?.largura) || getStringValue(formData.largura);
+  const comprimento = getStringValue(formData.dimensoes?.comprimento) || getStringValue(formData.comprimento);
 
   console.log('=== RESOLVED VALUES ===');
   console.log('Resolved altura:', altura);
   console.log('Resolved largura:', largura);
   console.log('Resolved comprimento:', comprimento);
 
-  const hasDimensions = (altura && altura.trim() !== '') || 
-                       (largura && largura.trim() !== '') || 
-                       (comprimento && comprimento.trim() !== '');
+  const hasDimensions = (altura && altura.trim() !== '' && altura !== 'undefined') || 
+                       (largura && largura.trim() !== '' && largura !== 'undefined') || 
+                       (comprimento && comprimento.trim() !== '' && comprimento !== 'undefined');
 
   console.log('hasDimensions:', hasDimensions);
   console.log('=== END DEBUG ===');
@@ -197,35 +204,35 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
               <div className="p-3 bg-red-50 rounded-lg border border-red-200">
                 <h4 className="font-medium text-red-800 mb-2">DEBUG - Dados de Dimensões</h4>
                 <div className="text-xs space-y-1">
-                  <p>hasDimensions: {hasDimensions.toString()}</p>
+                  <p>hasDimensions: {String(hasDimensions)}</p>
                   <p>altura: '{altura}'</p>
                   <p>largura: '{largura}'</p>
                   <p>comprimento: '{comprimento}'</p>
                   <p>formData.dimensoes: {JSON.stringify(formData.dimensoes)}</p>
-                  <p>formData.altura: '{formData.altura}'</p>
-                  <p>formData.largura: '{formData.largura}'</p>
-                  <p>formData.comprimento: '{formData.comprimento}'</p>
+                  <p>formData.altura: '{getStringValue(formData.altura)}'</p>
+                  <p>formData.largura: '{getStringValue(formData.largura)}'</p>
+                  <p>formData.comprimento: '{getStringValue(formData.comprimento)}'</p>
                 </div>
               </div>
               
-              {/* Dimensões da Carga - com condição mais permissiva para teste */}
-              {(altura || largura || comprimento) && (
+              {/* Dimensões da Carga */}
+              {hasDimensions && (
                 <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
                   <h4 className="font-medium text-purple-800 mb-2">Dimensões da Carga</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                    {altura && (
+                    {altura && altura.trim() !== '' && altura !== 'undefined' && (
                       <div>
                         <span className="text-purple-600 font-medium">Altura:</span>
                         <span className="text-purple-700 ml-1">{altura} m</span>
                       </div>
                     )}
-                    {largura && (
+                    {largura && largura.trim() !== '' && largura !== 'undefined' && (
                       <div>
                         <span className="text-purple-600 font-medium">Largura:</span>
                         <span className="text-purple-700 ml-1">{largura} m</span>
                       </div>
                     )}
-                    {comprimento && (
+                    {comprimento && comprimento.trim() !== '' && comprimento !== 'undefined' && (
                       <div>
                         <span className="text-purple-600 font-medium">Comprimento:</span>
                         <span className="text-purple-700 ml-1">{comprimento} m</span>
