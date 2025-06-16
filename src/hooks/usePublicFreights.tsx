@@ -75,13 +75,20 @@ interface PaginationInfo {
   itemsPerPage: number;
 }
 
-// Helper function to safely convert JSON to array
 const safeJsonToArray = (value: any): any[] => {
   if (Array.isArray(value)) {
     return value;
   }
   if (value === null || value === undefined) {
     return [];
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   }
   return [];
 };
@@ -154,8 +161,8 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page = 1, 
           return;
         }
 
-        // Transform data to match the Freight interface with proper type handling
-        const formattedFreights: Freight[] = (data || []).map((freight) => ({
+        // Transform data to match the Freight interface
+        const formattedFreights: Freight[] = (data || []).map((freight: any) => ({
           id: freight.id,
           codigo_agregamento: freight.codigo_agregamento || '',
           tipo_frete: freight.tipo_frete,
