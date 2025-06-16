@@ -393,7 +393,7 @@ const FreightDetails = () => {
               <span>Informações Gerais</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
+          <CardContent>
             {freight.tipo_frete === 'agregamento' ? (
               // Para agregamento, mostrar apenas o horário de carregamento com fonte maior
               <>
@@ -405,26 +405,22 @@ const FreightDetails = () => {
                 )}
               </>
             ) : freight.tipo_frete === 'comum' ? (
-              // Para frete comum, não mostrar data de entrega
-              <>
+              // Para frete comum, mostrar apenas data de coleta e horário de carregamento, cada um em uma linha
+              <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-gray-500">Data de Coleta</p>
-                  <p className="font-medium">{formatDate(freight.data_coleta)}</p>
+                  <p className="text-sm text-gray-500 mb-1">Data de Coleta</p>
+                  <p className="font-bold text-lg text-blue-600">{formatDate(freight.data_coleta)}</p>
                 </div>
                 {freight.horario_carregamento && (
                   <div>
-                    <p className="text-sm text-gray-500">Horário de Carregamento</p>
-                    <p className="font-medium">{freight.horario_carregamento}</p>
+                    <p className="text-sm text-gray-500 mb-1">Horário de Carregamento</p>
+                    <p className="font-bold text-lg text-blue-600">{freight.horario_carregamento}</p>
                   </div>
                 )}
-                <div>
-                  <p className="text-sm text-gray-500">Status</p>
-                  <p className="font-medium">{freight.status || 'Ativo'}</p>
-                </div>
-              </>
+              </div>
             ) : (
-              // Para outros tipos de frete, mostrar todas as informações
-              <>
+              // Para outros tipos de frete, mostrar todas as informações em grid
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Data de Coleta</p>
                   <p className="font-medium">{formatDate(freight.data_coleta)}</p>
@@ -443,7 +439,7 @@ const FreightDetails = () => {
                   <p className="text-sm text-gray-500">Status</p>
                   <p className="font-medium">{freight.status || 'Ativo'}</p>
                 </div>
-              </>
+              </div>
             )}
           </CardContent>
         </Card>
