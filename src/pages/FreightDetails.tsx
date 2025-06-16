@@ -1,11 +1,35 @@
+
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { useFreightByCode } from '@/hooks/useFreightByCode';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { 
+  MapPin, 
+  Package, 
+  Calendar, 
+  DollarSign, 
+  Truck, 
+  Users, 
+  Shield, 
+  Radar, 
+  UserPlus,
+  Clock,
+  AlertTriangle,
+  FileText,
+  RotateCcw,
+  Combine,
+  Calculator,
+  Route,
+  Settings,
+  User,
+  Phone,
+  Mail
+} from "lucide-react";
+import FreightTypeBadge from '@/components/FreightTypeBadge';
 
 const FreightDetails = () => {
   const { freightCode } = useParams<{ freightCode: string }>();
@@ -37,10 +61,41 @@ const FreightDetails = () => {
     );
   }
 
-  const formatDate = (date: string | null) => {
-    if (!date) return 'Não definida';
-    return new Date(date).toLocaleDateString('pt-BR');
+  const getFreightTypeConfig = (tipo: string) => {
+    switch (tipo) {
+      case 'agregamento':
+        return {
+          icon: Combine,
+          label: 'Agregamento',
+          color: 'text-amber-600',
+          bgColor: 'bg-amber-50'
+        };
+      case 'frete_completo':
+        return {
+          icon: Truck,
+          label: 'Frete Completo',
+          color: 'text-green-600',
+          bgColor: 'bg-green-50'
+        };
+      case 'frete_de_retorno':
+        return {
+          icon: RotateCcw,
+          label: 'Frete de Retorno',
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-50'
+        };
+      default:
+        return {
+          icon: Package,
+          label: tipo,
+          color: 'text-gray-600',
+          bgColor: 'bg-gray-50'
+        };
+    }
   };
+
+  const typeConfig = getFreightTypeConfig(freight.tipo_frete);
+  const TypeIcon = typeConfig.icon;
 
   const formatValue = (value: number | null) => {
     if (!value) return 'Não definido';
@@ -50,220 +105,278 @@ const FreightDetails = () => {
     }).format(value);
   };
 
-  const safeParseJson = (data: any): any[] => {
+  const formatDate = (date: string | null) => {
+    if (!date) return 'Não definida';
+    return new Date(date).toLocaleDateString('pt-BR');
+  };
+
+  const formatDateTime = (date: string | null) => {
+    if (!date) return 'Não definido';
+    return new Date(date).toLocaleString('pt-BR');
+  };
+
+  // Função para "desembrulhar" arrays aninhados
+  const flattenNestedArrays = (data: any): any[] => {
     if (!data) return [];
-    if (typeof data === 'string') {
+    
+    // Se já é um array
+    if (Array.isArray(data)) {
+      // Se tem apenas um elemento e esse elemento é um array, desembrulhar
+      if (data.length === 1 && Array.isArray(data[0])) {
+        return data[0];
+      }
+      // Se tem apenas um elemento e esse elemento é uma string que parece JSON
+      if (data.length === 1 && typeof data[0] === 'string' && data[0].startsWith('[')) {
+        try {
+          return JSON.parse(data[0]);
+        } catch {
+          return data;
+        }
+      }
+      return data;
+    }
+
+    // Se é uma string que parece JSON
+    if (typeof data === 'string' && data.startsWith('[')) {
       try {
         const parsed = JSON.parse(data);
-        return Array.isArray(parsed) ? parsed : [];
+        return Array.isArray(parsed) ? parsed : [parsed];
       } catch {
-        return [];
+        return [data];
       }
     }
-    if (Array.isArray(data)) return data;
-    return [];
+
+    // Se é um objeto único, colocar em array
+    if (typeof data === 'object') {
+      return [data];
+    }
+
+    return [data];
   };
 
-  const formatDestinations = () => {
-    const destinos = safeParseJson(freight.destinos);
-    if (destinos.length > 0) {
-      return destinos.map((destino: any, index: number) => (
-        <span key={index}>
-          {destino.cidade || destino.city}, {destino.estado || destino.state}
-          {index < destinos.length - 1 && ' | '}
-        </span>
-      ));
+  // Função para extrair texto legível de objetos
+  const extractDisplayText = (item: any) => {
+    if (typeof item === 'string') {
+      return item;
     }
-    if (freight.destino_cidade && freight.destino_estado) {
-      return `${freight.destino_cidade}, ${freight.destino_estado}`;
-    }
-    return 'Não definido';
-  };
-
-  const formatStops = () => {
-    const paradas = safeParseJson(freight.paradas);
-    if (paradas.length > 0) {
-      return (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Cidade</TableHead>
-              <TableHead>Estado</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paradas.map((parada: any, index: number) => (
-              <TableRow key={index}>
-                <TableCell>{parada.cidade}</TableCell>
-                <TableCell>{parada.estado}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      );
-    }
-    return <span className="text-gray-500">Nenhuma parada definida</span>;
-  };
-
-  const formatPriceTables = () => {
-    const tabelas = safeParseJson(freight.tabelas_preco);
-    if (tabelas.length > 0) {
-      return (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Tipo de Veículo</TableHead>
-              <TableHead>KM Inicial</TableHead>
-              <TableHead>KM Final</TableHead>
-              <TableHead>Preço</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tabelas.map((tabela: any, index: number) => (
-              <TableRow key={index}>
-                <TableCell>{tabela.vehicleType || 'Não especificado'}</TableCell>
-                <TableCell>{tabela.kmStart || 'Não definido'}</TableCell>
-                <TableCell>{tabela.kmEnd || 'Não definido'}</TableCell>
-                <TableCell>{tabela.price ? formatValue(tabela.price) : 'Não definido'}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      );
-    }
-    return <span className="text-gray-500">Nenhuma tabela de preço definida</span>;
-  };
-
-  const formatDetailedItems = () => {
-    const itens = safeParseJson(freight.itens_detalhados);
-    if (itens.length > 0) {
-      return (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead>Quantidade</TableHead>
-              <TableHead>Peso</TableHead>
-              <TableHead>Dimensões</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {itens.map((item: any, index: number) => (
-              <TableRow key={index}>
-                <TableCell>{item.nome || item.name || 'Não especificado'}</TableCell>
-                <TableCell>{item.quantidade || item.quantity || 'Não definida'}</TableCell>
-                <TableCell>{item.peso || item.weight || 'Não definido'}</TableCell>
-                <TableCell>{item.dimensoes || item.dimensions || 'Não definidas'}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      );
-    }
-    return <span className="text-gray-500">Nenhum item detalhado</span>;
-  };
-
-  const formatBenefits = () => {
-    const beneficios = safeParseJson(freight.beneficios);
-    if (beneficios.length > 0) {
-      return (
-        <ul className="list-disc ml-6">
-          {beneficios.map((beneficio: any, index: number) => (
-            <li key={index}>
-              {typeof beneficio === 'string' ? beneficio : beneficio.label || beneficio.name || JSON.stringify(beneficio)}
-            </li>
-          ))}
-        </ul>
-      );
-    }
-    return <span className="text-gray-500">Nenhum benefício especificado</span>;
-  };
-
-  const formatSchedulingRules = () => {
-    const regras = safeParseJson(freight.regras_agendamento);
-    if (regras.length > 0) {
-      return (
-        <ul className="list-disc ml-6">
-          {regras.map((regra: any, index: number) => (
-            <li key={index}>
-              {typeof regra === 'string' ? regra : regra.label || regra.name || JSON.stringify(regra)}
-            </li>
-          ))}
-        </ul>
-      );
-    }
-    return <span className="text-gray-500">Nenhuma regra de agendamento definida</span>;
-  };
-
-  const formatDefinedValues = () => {
-    if (freight.valores_definidos && typeof freight.valores_definidos === 'object' && freight.valores_definidos !== null) {
-      const valores = freight.valores_definidos as any;
-      return (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Tipo de Valor</TableHead>
-              <TableHead>Valor</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {valores.valorFrete && (
-              <TableRow>
-                <TableCell>Valor do Frete</TableCell>
-                <TableCell>{formatValue(valores.valorFrete)}</TableCell>
-              </TableRow>
-            )}
-            {valores.valorKm && (
-              <TableRow>
-                <TableCell>Valor por KM</TableCell>
-                <TableCell>{formatValue(valores.valorKm)}</TableCell>
-              </TableRow>
-            )}
-            {valores.valorFixo && (
-              <TableRow>
-                <TableCell>Valor Fixo</TableCell>
-                <TableCell>{formatValue(valores.valorFixo)}</TableCell>
-              </TableRow>
-            )}
-            {valores.valorPorcentagem && (
-              <TableRow>
-                <TableCell>Porcentagem</TableCell>
-                <TableCell>{valores.valorPorcentagem}%</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      );
-    }
-    return <span className="text-gray-500">Nenhum valor definido</span>;
-  };
-
-  const formatVehicleTypes = () => {
-    const tipos = safeParseJson(freight.tipos_veiculos);
-    if (tipos.length > 0) {
-      return tipos.map((tipo: any) => {
-        if (typeof tipo === 'string') return tipo;
-        if (typeof tipo === 'object' && tipo !== null) {
-          return tipo.label || tipo.type || tipo.value || tipo.name || JSON.stringify(tipo);
+    
+    if (typeof item === 'object' && item !== null) {
+      // Priorizar campos mais descritivos
+      const textFields = [
+        'nome', 'name', 'tipo', 'type', 'descricao', 'description', 
+        'label', 'title', 'categoria', 'category', 'modelo', 'model',
+        'cidade', 'city', 'estado', 'state'
+      ];
+      
+      for (const field of textFields) {
+        if (item[field] && typeof item[field] === 'string') {
+          return item[field];
         }
-        return String(tipo);
-      }).join(', ');
+      }
+      
+      // Se não encontrou campos conhecidos, pegar a primeira propriedade string
+      const firstStringValue = Object.values(item).find(value => typeof value === 'string');
+      if (firstStringValue) {
+        return firstStringValue;
+      }
     }
-    return 'Não definido';
+    
+    return String(item);
   };
 
-  const formatBodyTypes = () => {
-    const tipos = safeParseJson(freight.tipos_carrocerias);
-    if (tipos.length > 0) {
-      return tipos.map((tipo: any) => {
-        if (typeof tipo === 'string') return tipo;
-        if (typeof tipo === 'object' && tipo !== null) {
-          return tipo.label || tipo.type || tipo.value || tipo.name || JSON.stringify(tipo);
-        }
-        return String(tipo);
-      }).join(', ');
+  // Função melhorada para renderizar destinos
+  const renderDestinations = () => {
+    const flattenedDestinations = flattenNestedArrays(freight.destinos);
+    
+    if (!Array.isArray(flattenedDestinations) || flattenedDestinations.length === 0) {
+      return <p className="text-gray-500 italic">Nenhum destino definido</p>;
     }
-    return 'Não definido';
+
+    return (
+      <div className="space-y-2">
+        {flattenedDestinations.map((destino: any, index: number) => {
+          // Se o destino é uma string simples
+          if (typeof destino === 'string') {
+            return (
+              <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
+                <p className="font-medium text-green-900">{destino}</p>
+              </div>
+            );
+          }
+
+          // Se o destino é um objeto
+          if (typeof destino === 'object' && destino !== null) {
+            const cidade = destino.cidade || destino.city || '';
+            const estado = destino.estado || destino.state || '';
+            const cep = destino.cep || '';
+            const bairro = destino.bairro || destino.neighborhood || '';
+            const endereco = destino.endereco || destino.address || '';
+
+            return (
+              <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
+                <div className="text-sm">
+                  <p className="font-medium text-green-900">
+                    {cidade && estado ? `${cidade}, ${estado}` : extractDisplayText(destino)}
+                  </p>
+                  {cep && <p className="text-green-700 text-xs mt-1">CEP: {cep}</p>}
+                  {bairro && <p className="text-green-700 text-xs">Bairro: {bairro}</p>}
+                  {endereco && <p className="text-green-700 text-xs">Endereço: {endereco}</p>}
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
+              <p className="font-medium text-green-900">{String(destino)}</p>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Função melhorada para renderizar paradas
+  const renderStops = () => {
+    const flattenedStops = flattenNestedArrays(freight.paradas);
+    
+    if (!Array.isArray(flattenedStops) || flattenedStops.length === 0) {
+      return null;
+    }
+
+    return (
+      <div>
+        <p className="text-sm text-gray-500 mb-2">Paradas</p>
+        <div className="space-y-2">
+          {flattenedStops.map((parada: any, index: number) => {
+            if (typeof parada === 'string') {
+              return (
+                <div key={index} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                  <p className="font-medium text-yellow-900">{parada}</p>
+                </div>
+              );
+            }
+
+            if (typeof parada === 'object' && parada !== null) {
+              const cidade = parada.cidade || parada.city || '';
+              const estado = parada.estado || parada.state || '';
+
+              return (
+                <div key={index} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                  <p className="font-medium text-yellow-900">
+                    {cidade && estado ? `${cidade}, ${estado}` : extractDisplayText(parada)}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div key={index} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                <p className="font-medium text-yellow-900">{String(parada)}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // Função melhorada para renderizar itens de array com formatação adequada
+  const renderVehiclesAndBodies = (items: any[], emptyMessage: string = 'Não especificado') => {
+    const flattenedItems = flattenNestedArrays(items);
+    
+    if (!Array.isArray(flattenedItems) || flattenedItems.length === 0) {
+      return <p className="text-gray-500 italic">{emptyMessage}</p>;
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {flattenedItems.map((item: any, index: number) => {
+          const displayText = extractDisplayText(item);
+
+          return (
+            <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="text-sm font-medium text-blue-900">{displayText}</div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Função específica para renderizar badges simples
+  const renderSimpleBadges = (items: any[], emptyMessage: string = 'Não especificado') => {
+    const flattenedItems = flattenNestedArrays(items);
+    
+    if (!Array.isArray(flattenedItems) || flattenedItems.length === 0) {
+      return <p className="text-gray-500 italic">{emptyMessage}</p>;
+    }
+
+    return (
+      <div className="flex flex-wrap gap-2">
+        {flattenedItems.map((item: any, index: number) => {
+          const displayText = extractDisplayText(item);
+
+          return (
+            <Badge key={index} variant="outline" className="mr-1 mb-1">
+              {displayText}
+            </Badge>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Helper function to render pricing tables for agregamento
+  const renderPricingTables = () => {
+    const flattenedTables = flattenNestedArrays(freight.tabelas_preco);
+    
+    if (!Array.isArray(flattenedTables) || flattenedTables.length === 0) {
+      return <p className="text-gray-500 italic">Nenhuma tabela de preços definida</p>;
+    }
+
+    return flattenedTables.map((tabela: any, index: number) => (
+      <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
+        <div className="grid grid-cols-3 gap-2 text-sm">
+          <div>
+            <p className="text-gray-600">Tipo de Veículo</p>
+            <p className="font-medium">{tabela.vehicle_type || tabela.tipo_veiculo || 'Não especificado'}</p>
+          </div>
+          <div>
+            <p className="text-gray-600">Distância (km)</p>
+            <p className="font-medium">{tabela.km_start || tabela.km_inicio || 0} - {tabela.km_end || tabela.km_fim || 0} km</p>
+          </div>
+          <div>
+            <p className="text-gray-600">Valor</p>
+            <p className="font-medium text-green-600">{formatValue(tabela.price || tabela.preco)}</p>
+          </div>
+        </div>
+      </div>
+    ));
+  };
+
+  // Helper function to render benefits for agregamento
+  const renderBenefits = () => {
+    return renderSimpleBadges(freight.beneficios, 'Nenhum benefício definido');
+  };
+
+  // Helper function to render scheduling rules for agregamento
+  const renderSchedulingRules = () => {
+    const flattenedRules = flattenNestedArrays(freight.regras_agendamento);
+    
+    if (!Array.isArray(flattenedRules) || flattenedRules.length === 0) {
+      return <p className="text-gray-500 italic">Nenhuma regra de agendamento definida</p>;
+    }
+
+    return flattenedRules.map((regra: any, index: number) => {
+      const displayText = extractDisplayText(regra);
+
+      return (
+        <div key={index} className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+          <p className="text-sm text-orange-800">{displayText}</p>
+        </div>
+      );
+    });
   };
 
   return (
@@ -274,97 +387,216 @@ const FreightDetails = () => {
           Voltar
         </Button>
         
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
-          {freight.codigo_agregamento}
-        </h1>
-        <p className="text-gray-600">Detalhes do frete</p>
+        <div className="flex items-center space-x-3 mb-4">
+          <div className={`w-12 h-12 ${typeConfig.bgColor} rounded-lg flex items-center justify-center`}>
+            <TypeIcon className={`w-6 h-6 ${typeConfig.color}`} />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">
+              {freight.codigo_agregamento || 'Código não gerado'}
+            </h1>
+            <div className="flex items-center space-x-2 mt-1">
+              <Badge variant="outline">{typeConfig.label}</Badge>
+              <FreightTypeBadge type={freight.tipo_frete} />
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Informações Básicas */}
+      <div className="space-y-6">
+        {/* Informações Gerais */}
         <Card>
           <CardHeader>
-            <CardTitle>Informações Básicas</CardTitle>
+            <CardTitle className="flex items-center space-x-2">
+              <FileText className="w-5 h-5" />
+              <span>Informações Gerais</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Data de Coleta</p>
+              <p className="font-medium">{formatDate(freight.data_coleta)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Data de Entrega</p>
+              <p className="font-medium">{formatDate(freight.data_entrega)}</p>
+            </div>
+            {freight.horario_carregamento && (
+              <div>
+                <p className="text-sm text-gray-500">Horário de Carregamento</p>
+                <p className="font-medium">{freight.horario_carregamento}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-sm text-gray-500">Status</p>
+              <p className="font-medium">{freight.status || 'Ativo'}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Origem e Destinos */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <MapPin className="w-5 h-5" />
+              <span>Origem e Destinos</span>
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-semibold">Tipo de Frete</TableCell>
-                  <TableCell>
-                    {freight.tipo_frete === 'agregamento' && 'Agregamento'}
-                    {freight.tipo_frete === 'frete_completo' && 'Frete Completo'}
-                    {freight.tipo_frete === 'frete_de_retorno' && 'Frete de Retorno'}
-                    {freight.tipo_frete === 'comum' && 'Comum'}
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold">Origem</TableCell>
-                  <TableCell>{freight.origem_cidade}, {freight.origem_estado}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold">Destino</TableCell>
-                  <TableCell>{formatDestinations()}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold">Tipo de Mercadoria</TableCell>
-                  <TableCell>{freight.tipo_mercadoria}</TableCell>
-                </TableRow>
-                {freight.peso_carga && (
-                  <TableRow>
-                    <TableCell className="font-semibold">Peso da Carga</TableCell>
-                    <TableCell>{freight.peso_carga} kg</TableCell>
-                  </TableRow>
-                )}
-                {freight.valor_carga && (
-                  <TableRow>
-                    <TableCell className="font-semibold">Valor da Carga</TableCell>
-                    <TableCell className="text-green-600 font-medium">{formatValue(freight.valor_carga)}</TableCell>
-                  </TableRow>
-                )}
-                <TableRow>
-                  <TableCell className="font-semibold">Data de Coleta</TableCell>
-                  <TableCell>{formatDate(freight.data_coleta)}</TableCell>
-                </TableRow>
-                {freight.data_entrega && (
-                  <TableRow>
-                    <TableCell className="font-semibold">Data de Entrega</TableCell>
-                    <TableCell>{formatDate(freight.data_entrega)}</TableCell>
-                  </TableRow>
-                )}
-                {freight.horario_carregamento && (
-                  <TableRow>
-                    <TableCell className="font-semibold">Horário de Carregamento</TableCell>
-                    <TableCell>{freight.horario_carregamento}</TableCell>
-                  </TableRow>
-                )}
-                <TableRow>
-                  <TableCell className="font-semibold">Status</TableCell>
-                  <TableCell>{freight.status || 'Ativo'}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Origem</p>
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  <p className="font-medium text-blue-900">{freight.origem_cidade}, {freight.origem_estado}</p>
+                </div>
+              </div>
+              
+              <div>
+                <p className="text-sm text-gray-500 mb-2">Destinos</p>
+                {renderDestinations()}
+              </div>
+
+              {renderStops()}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Detalhes da Carga */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Package className="w-5 h-5" />
+              <span>Detalhes da Carga</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Tipo de Mercadoria</p>
+              <p className="font-medium">{freight.tipo_mercadoria || 'Não especificado'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Peso da Carga</p>
+              <p className="font-medium">
+                {freight.peso_carga ? `${freight.peso_carga} kg` : 'Não especificado'}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Valor da Carga</p>
+              <p className="font-medium">{formatValue(freight.valor_carga)}</p>
+            </div>
           </CardContent>
         </Card>
 
         {/* Veículos e Carrocerias */}
         <Card>
           <CardHeader>
-            <CardTitle>Veículos e Carrocerias</CardTitle>
+            <CardTitle className="flex items-center space-x-2">
+              <Truck className="w-5 h-5" />
+              <span>Veículos e Carrocerias</span>
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-semibold">Veículos Compatíveis</TableCell>
-                  <TableCell>{formatVehicleTypes()}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold">Tipos de Carroceria</TableCell>
-                  <TableCell>{formatBodyTypes()}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+            <div className="space-y-6">
+              <div>
+                <p className="text-sm text-gray-500 mb-3">Tipos de Veículos Aceitos</p>
+                {renderVehiclesAndBodies(freight.tipos_veiculos, 'Nenhum tipo de veículo especificado')}
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-3">Tipos de Carrocerias Aceitas</p>
+                {renderVehiclesAndBodies(freight.tipos_carrocerias, 'Nenhum tipo de carroceria especificado')}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Seções específicas para Agregamento */}
+        {freight.tipo_frete === 'agregamento' && (
+          <>
+            {/* Tabelas de Preços */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Calculator className="w-5 h-5" />
+                  <span>Tabelas de Preços</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {renderPricingTables()}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Benefícios */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="w-5 h-5" />
+                  <span>Benefícios Oferecidos</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {renderBenefits()}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Regras de Agendamento */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Route className="w-5 h-5" />
+                  <span>Regras de Agendamento</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {renderSchedulingRules()}
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {/* Configurações e Extras */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Settings className="w-5 h-5" />
+              <span>Configurações e Extras</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <Shield className={freight.precisa_seguro ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
+                <span className={freight.precisa_seguro ? "text-green-600" : "text-gray-400"}>
+                  Seguro {freight.precisa_seguro ? "necessário" : "não necessário"}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Radar className={freight.precisa_rastreador ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
+                <span className={freight.precisa_rastreador ? "text-green-600" : "text-gray-400"}>
+                  Rastreador {freight.precisa_rastreador ? "necessário" : "não necessário"}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <UserPlus className={freight.precisa_ajudante ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
+                <span className={freight.precisa_ajudante ? "text-green-600" : "text-gray-400"}>
+                  Ajudante {freight.precisa_ajudante ? "necessário" : "não necessário"}
+                </span>
+              </div>
+              {freight.pedagio_pago_por && (
+                <div>
+                  <p className="text-sm text-gray-500">Pedágio pago por</p>
+                  <p className="font-medium capitalize">{freight.pedagio_pago_por}</p>
+                  {freight.pedagio_direcao && (
+                    <p className="text-sm text-gray-600">Direção: {freight.pedagio_direcao}</p>
+                  )}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -374,32 +606,28 @@ const FreightDetails = () => {
             <CardTitle>Recursos da Origem</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-semibold">Carga/Descarga</TableCell>
-                  <TableCell>{freight.origem_possui_carga_descarga ? 'Sim' : 'Não'}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold">Escada</TableCell>
-                  <TableCell>{freight.origem_possui_escada ? 'Sim' : 'Não'}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold">Elevador</TableCell>
-                  <TableCell>{freight.origem_possui_elevador ? 'Sim' : 'Não'}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold">Doca</TableCell>
-                  <TableCell>{freight.origem_possui_doca ? 'Sim' : 'Não'}</TableCell>
-                </TableRow>
-                {freight.origem_tipo_endereco && (
-                  <TableRow>
-                    <TableCell className="font-semibold">Tipo de Endereço</TableCell>
-                    <TableCell>{freight.origem_tipo_endereco}</TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <span className={freight.origem_possui_carga_descarga ? "text-green-600" : "text-gray-400"}>
+                  {freight.origem_possui_carga_descarga ? "✓" : "✗"} Carga/Descarga
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className={freight.origem_possui_escada ? "text-green-600" : "text-gray-400"}>
+                  {freight.origem_possui_escada ? "✓" : "✗"} Escada
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className={freight.origem_possui_elevador ? "text-green-600" : "text-gray-400"}>
+                  {freight.origem_possui_elevador ? "✓" : "✗"} Elevador
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className={freight.origem_possui_doca ? "text-green-600" : "text-gray-400"}>
+                  {freight.origem_possui_doca ? "✓" : "✗"} Doca
+                </span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -409,229 +637,46 @@ const FreightDetails = () => {
             <CardTitle>Recursos do Destino</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-semibold">Carga/Descarga</TableCell>
-                  <TableCell>{freight.destino_possui_carga_descarga ? 'Sim' : 'Não'}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold">Escada</TableCell>
-                  <TableCell>{freight.destino_possui_escada ? 'Sim' : 'Não'}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold">Elevador</TableCell>
-                  <TableCell>{freight.destino_possui_elevador ? 'Sim' : 'Não'}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold">Doca</TableCell>
-                  <TableCell>{freight.destino_possui_doca ? 'Sim' : 'Não'}</TableCell>
-                </TableRow>
-                {freight.destino_tipo_endereco && (
-                  <TableRow>
-                    <TableCell className="font-semibold">Tipo de Endereço</TableCell>
-                    <TableCell>{freight.destino_tipo_endereco}</TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <span className={freight.destino_possui_carga_descarga ? "text-green-600" : "text-gray-400"}>
+                  {freight.destino_possui_carga_descarga ? "✓" : "✗"} Carga/Descarga
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className={freight.destino_possui_escada ? "text-green-600" : "text-gray-400"}>
+                  {freight.destino_possui_escada ? "✓" : "✗"} Escada
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className={freight.destino_possui_elevador ? "text-green-600" : "text-gray-400"}>
+                  {freight.destino_possui_elevador ? "✓" : "✗"} Elevador
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className={freight.destino_possui_doca ? "text-green-600" : "text-gray-400"}>
+                  {freight.destino_possui_doca ? "✓" : "✗"} Doca
+                </span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Serviços Necessários */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Serviços Necessários</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-semibold">Seguro</TableCell>
-                  <TableCell>{freight.precisa_seguro ? 'Sim' : 'Não'}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold">Rastreador</TableCell>
-                  <TableCell>{freight.precisa_rastreador ? 'Sim' : 'Não'}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold">Ajudante</TableCell>
-                  <TableCell>{freight.precisa_ajudante ? 'Sim' : 'Não'}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold">Montar/Desmontar</TableCell>
-                  <TableCell>{freight.precisa_montar_desmontar ? 'Sim' : 'Não'}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold">Embalagem</TableCell>
-                  <TableCell>{freight.precisa_embalagem ? 'Sim' : 'Não'}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Informações do Pedágio */}
-        {(freight.pedagio_pago_por || freight.pedagio_direcao) && (
+        {/* Observações */}
+        {freight.observacoes && (
           <Card>
             <CardHeader>
-              <CardTitle>Informações do Pedágio</CardTitle>
+              <CardTitle className="flex items-center space-x-2">
+                <FileText className="w-5 h-5" />
+                <span>Observações</span>
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableBody>
-                  {freight.pedagio_pago_por && (
-                    <TableRow>
-                      <TableCell className="font-semibold">Pedágio Pago Por</TableCell>
-                      <TableCell>{freight.pedagio_pago_por}</TableCell>
-                    </TableRow>
-                  )}
-                  {freight.pedagio_direcao && (
-                    <TableRow>
-                      <TableCell className="font-semibold">Direção do Pedágio</TableCell>
-                      <TableCell>{freight.pedagio_direcao}</TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+              <p className="text-gray-700 whitespace-pre-wrap">{freight.observacoes}</p>
             </CardContent>
           </Card>
         )}
       </div>
-
-      {/* Paradas */}
-      {safeParseJson(freight.paradas).length > 0 && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Paradas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {formatStops()}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Tabelas de Preço para Agregamento */}
-      {freight.tipo_frete === 'agregamento' && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Tabelas de Preço</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {formatPriceTables()}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Valores Definidos */}
-      {freight.valores_definidos && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Valores Definidos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {formatDefinedValues()}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Itens Detalhados */}
-      {safeParseJson(freight.itens_detalhados).length > 0 && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Itens Detalhados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {formatDetailedItems()}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Informações Adicionais */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Informações Adicionais</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableBody>
-              {freight.tipo_listagem_itens && (
-                <TableRow>
-                  <TableCell className="font-semibold">Tipo de Listagem de Itens</TableCell>
-                  <TableCell>{freight.tipo_listagem_itens}</TableCell>
-                </TableRow>
-              )}
-              {freight.descricao_livre_itens && (
-                <TableRow>
-                  <TableCell className="font-semibold">Descrição Livre dos Itens</TableCell>
-                  <TableCell>{freight.descricao_livre_itens}</TableCell>
-                </TableRow>
-              )}
-              {freight.local_possui_restricao && (
-                <TableRow>
-                  <TableCell className="font-semibold">Restrições do Local</TableCell>
-                  <TableCell className="text-red-600">
-                    Sim
-                    {freight.descricao_restricao && (
-                      <div className="mt-1 text-gray-700">
-                        <strong>Descrição:</strong> {freight.descricao_restricao}
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              )}
-              {freight.tipo_solicitacao && (
-                <TableRow>
-                  <TableCell className="font-semibold">Tipo de Solicitação</TableCell>
-                  <TableCell>{freight.tipo_solicitacao}</TableCell>
-                </TableRow>
-              )}
-              {freight.solicitante_nome && (
-                <TableRow>
-                  <TableCell className="font-semibold">Nome do Solicitante</TableCell>
-                  <TableCell>{freight.solicitante_nome}</TableCell>
-                </TableRow>
-              )}
-              {freight.solicitante_telefone && (
-                <TableRow>
-                  <TableCell className="font-semibold">Telefone do Solicitante</TableCell>
-                  <TableCell>{freight.solicitante_telefone}</TableCell>
-                </TableRow>
-              )}
-              {freight.observacoes && (
-                <TableRow>
-                  <TableCell className="font-semibold">Observações</TableCell>
-                  <TableCell>{freight.observacoes}</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Benefícios */}
-      {safeParseJson(freight.beneficios).length > 0 && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Benefícios</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {formatBenefits()}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Regras de Agendamento */}
-      {safeParseJson(freight.regras_agendamento).length > 0 && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Regras de Agendamento</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {formatSchedulingRules()}
-          </CardContent>
-        </Card>
-      )}
 
       <div className="mt-8 pt-6 border-t border-gray-200">
         <Button 
