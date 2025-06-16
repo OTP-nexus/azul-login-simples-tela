@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -270,7 +269,7 @@ const FreightDetails = () => {
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-6">
-        <Button onClick={() => navigate(-1)} variant="outline" className="mb-4">
+        <Button onClick={() => navigate('/lista-fretes')} variant="outline" className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Voltar
         </Button>
