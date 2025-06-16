@@ -11,7 +11,7 @@ export const useFreightByCode = (freightCode: string | undefined) => {
       }
 
       const { data, error } = await supabase
-        .from('freight_requests')
+        .from('fretes')
         .select('*')
         .eq('codigo_agregamento', freightCode)
         .single();

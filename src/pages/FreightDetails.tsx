@@ -1,18 +1,15 @@
 
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, MapPin, Calendar, Truck, Package, DollarSign } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { useFreightByCode } from '@/hooks/useFreightByCode';
-import FreightTypeBadge from '@/components/FreightTypeBadge';
 
 const FreightDetails = () => {
   const { freightCode } = useParams<{ freightCode: string }>();
   const navigate = useNavigate();
-  const { freight, isLoading, error } = useFreightByCode(freightCode);
+  const { data: freight, isLoading, error } = useFreightByCode(freightCode);
 
   if (isLoading) {
     return (
@@ -53,152 +50,129 @@ const FreightDetails = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-6">
         <Button onClick={() => navigate(-1)} variant="outline" className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Voltar
         </Button>
         
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">
-              {freight.codigo_agregamento}
-            </h1>
-            <p className="text-gray-600">Detalhes do frete</p>
-          </div>
-          <FreightTypeBadge type={freight.tipo_frete} />
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">
+          {freight.codigo_agregamento}
+        </h1>
+        <p className="text-gray-600">Detalhes do frete</p>
+      </div>
+
+      <div className="space-y-4 text-lg leading-relaxed">
+        <div>
+          <span className="font-semibold text-gray-700">Tipo de Frete:</span>{' '}
+          <span className="text-gray-900">
+            {freight.tipo_frete === 'agregamento' && 'Agregamento'}
+            {freight.tipo_frete === 'frete_completo' && 'Frete Completo'}
+            {freight.tipo_frete === 'frete_de_retorno' && 'Frete de Retorno'}
+            {freight.tipo_frete === 'comum' && 'Comum'}
+          </span>
         </div>
-      </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Informações Básicas */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Package className="w-5 h-5" />
-              <span>Informações Básicas</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <p className="text-sm text-gray-500">Tipo de Mercadoria</p>
-              <p className="font-medium">{freight.tipo_mercadoria}</p>
-            </div>
-            {freight.peso_carga && (
-              <div>
-                <p className="text-sm text-gray-500">Peso da Carga</p>
-                <p className="font-medium">{freight.peso_carga} kg</p>
-              </div>
-            )}
-            {freight.valor_carga && (
-              <div>
-                <p className="text-sm text-gray-500">Valor da Carga</p>
-                <p className="font-medium text-green-600">{formatValue(freight.valor_carga)}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <div>
+          <span className="font-semibold text-gray-700">Origem:</span>{' '}
+          <span className="text-gray-900">{freight.origem_cidade}, {freight.origem_estado}</span>
+        </div>
 
-        {/* Origem e Destino */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <MapPin className="w-5 h-5" />
-              <span>Origem e Destino</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <p className="text-sm text-gray-500">Origem</p>
-              <p className="font-medium text-blue-700">{freight.origem_cidade}, {freight.origem_estado}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Destino</p>
-              {freight.destinos && freight.destinos.length > 0 ? (
-                <div className="space-y-1">
-                  {freight.destinos.map((destino: any, index: number) => (
-                    <p key={index} className="font-medium text-green-700">
-                      {destino.cidade || destino.city}, {destino.estado || destino.state}
-                    </p>
-                  ))}
-                </div>
-              ) : (
-                <p className="font-medium text-green-700">
-                  {freight.destino_cidade}, {freight.destino_estado}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Datas */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Calendar className="w-5 h-5" />
-              <span>Cronograma</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <p className="text-sm text-gray-500">Data de Coleta</p>
-              <p className="font-medium">{formatDate(freight.data_coleta)}</p>
-            </div>
-            {freight.data_entrega && (
-              <div>
-                <p className="text-sm text-gray-500">Data de Entrega</p>
-                <p className="font-medium">{formatDate(freight.data_entrega)}</p>
-              </div>
+        <div>
+          <span className="font-semibold text-gray-700">Destino:</span>{' '}
+          <span className="text-gray-900">
+            {freight.destinos && freight.destinos.length > 0 ? (
+              freight.destinos.map((destino: any, index: number) => (
+                <span key={index}>
+                  {destino.cidade || destino.city}, {destino.estado || destino.state}
+                  {index < freight.destinos.length - 1 && ' | '}
+                </span>
+              ))
+            ) : (
+              `${freight.destino_cidade}, ${freight.destino_estado}`
             )}
-            {freight.horario_carregamento && (
-              <div>
-                <p className="text-sm text-gray-500">Horário de Carregamento</p>
-                <p className="font-medium">{freight.horario_carregamento}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          </span>
+        </div>
 
-        {/* Veículos */}
+        <div>
+          <span className="font-semibold text-gray-700">Tipo de Mercadoria:</span>{' '}
+          <span className="text-gray-900">{freight.tipo_mercadoria}</span>
+        </div>
+
+        {freight.peso_carga && (
+          <div>
+            <span className="font-semibold text-gray-700">Peso da Carga:</span>{' '}
+            <span className="text-gray-900">{freight.peso_carga} kg</span>
+          </div>
+        )}
+
+        {freight.valor_carga && (
+          <div>
+            <span className="font-semibold text-gray-700">Valor da Carga:</span>{' '}
+            <span className="text-green-600 font-medium">{formatValue(freight.valor_carga)}</span>
+          </div>
+        )}
+
+        <div>
+          <span className="font-semibold text-gray-700">Data de Coleta:</span>{' '}
+          <span className="text-gray-900">{formatDate(freight.data_coleta)}</span>
+        </div>
+
+        {freight.data_entrega && (
+          <div>
+            <span className="font-semibold text-gray-700">Data de Entrega:</span>{' '}
+            <span className="text-gray-900">{formatDate(freight.data_entrega)}</span>
+          </div>
+        )}
+
+        {freight.horario_carregamento && (
+          <div>
+            <span className="font-semibold text-gray-700">Horário de Carregamento:</span>{' '}
+            <span className="text-gray-900">{freight.horario_carregamento}</span>
+          </div>
+        )}
+
         {freight.tipos_veiculos && freight.tipos_veiculos.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Truck className="w-5 h-5" />
-                <span>Veículos Compatíveis</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {freight.tipos_veiculos.map((tipo: any, index: number) => (
-                  <Badge key={index} variant="secondary">
-                    {typeof tipo === 'string' ? tipo : tipo.label || tipo.type || 'Veículo'}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <div>
+            <span className="font-semibold text-gray-700">Veículos Compatíveis:</span>{' '}
+            <span className="text-gray-900">
+              {freight.tipos_veiculos.map((tipo: any, index: number) => (
+                <span key={index}>
+                  {typeof tipo === 'string' ? tipo : tipo.label || tipo.type || 'Veículo'}
+                  {index < freight.tipos_veiculos.length - 1 && ', '}
+                </span>
+              ))}
+            </span>
+          </div>
         )}
 
-        {/* Observações */}
+        {freight.tipos_carrocerias && freight.tipos_carrocerias.length > 0 && (
+          <div>
+            <span className="font-semibold text-gray-700">Tipos de Carroceria:</span>{' '}
+            <span className="text-gray-900">
+              {freight.tipos_carrocerias.map((tipo: any, index: number) => (
+                <span key={index}>
+                  {typeof tipo === 'string' ? tipo : tipo.label || tipo.type || 'Carroceria'}
+                  {index < freight.tipos_carrocerias.length - 1 && ', '}
+                </span>
+              ))}
+            </span>
+          </div>
+        )}
+
         {freight.observacoes && (
-          <Card className="md:col-span-2 lg:col-span-3">
-            <CardHeader>
-              <CardTitle>Observações</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-700">{freight.observacoes}</p>
-            </CardContent>
-          </Card>
+          <div>
+            <span className="font-semibold text-gray-700">Observações:</span>{' '}
+            <span className="text-gray-900">{freight.observacoes}</span>
+          </div>
         )}
       </div>
 
-      {/* Botão de Interesse */}
-      <div className="mt-8 text-center">
+      <div className="mt-8 pt-6 border-t border-gray-200">
         <Button 
           size="lg" 
-          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
           onClick={() => navigate('/login')}
         >
           Tenho Interesse neste Frete
