@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -155,8 +154,8 @@ const PublicFreightCard = ({
     }
     return 'Destino não definido';
   };
-  const handleInterest = () => {
-    navigate('/login');
+  const handleViewDetails = () => {
+    navigate(`/${freight.codigo_agregamento}`);
   };
 
   if (view === 'list') {
@@ -218,9 +217,9 @@ const PublicFreightCard = ({
                )}
             </div>
             <div className="flex-shrink-0">
-              <Button onClick={handleInterest} className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
+              <Button onClick={handleViewDetails} className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
                 <Handshake className="w-4 h-4 mr-2" />
-                Tenho Interesse
+                Ver Detalhes
               </Button>
             </div>
           </div>
@@ -326,12 +325,13 @@ const PublicFreightCard = ({
           </div>}
 
         <div className="flex pt-2 border-t">
-          <Button onClick={handleInterest} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
+          <Button onClick={handleViewDetails} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
             <Handshake className="w-4 h-4 mr-2" />
-            Tenho Interesse
+            Ver Detalhes
           </Button>
         </div>
       </CardContent>
     </Card>;
 };
+
 export default PublicFreightCard;
