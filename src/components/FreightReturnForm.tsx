@@ -7,11 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus, MapPin, Package, Truck, Calendar, DollarSign, FileText } from 'lucide-react';
+import { X, Plus, MapPin, Package, Truck, Calendar, DollarSign, FileText, Settings, Users } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useIBGE } from '@/hooks/useIBGE';
+import { useEstados, useCidades } from '@/hooks/useIBGE';
 import { freightOptions } from '@/lib/freightOptions';
 import FreightConfirmationDialog from './FreightConfirmationDialog';
 import FreightSuccessDialog from './FreightSuccessDialog';
@@ -49,11 +49,13 @@ interface FormData {
 const FreightReturnForm = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { estados, cidades } = useIBGE();
+  const { estados } = useEstados();
+  const { cidades: cidadesOrigem } = useCidades(formData.origem_estado);
+  const { cidades: cidadesDestino } = useCidades(formData.destino_estado);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-	const [createdFreight, setCreatedFreight] = useState(null);
+  const [createdFreight, setCreatedFreight] = useState(null);
 
   const [formData, setFormData] = useState<FormData>({
     origem_cidade: '',
@@ -686,55 +688,19 @@ const FreightReturnForm = () => {
       </form>
 
       <FreightConfirmationDialog
-        isOpen={showConfirmDialog}
-        onClose={() => setShowConfirmDialog(false)}
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
         onConfirm={handleSubmit}
         freightData={formData}
       />
 
-			<FreightSuccessDialog
-				isOpen={showSuccessDialog}
-				onClose={() => {
-					setShowSuccessDialog(false);
-					setFormData({
-						origem_cidade: '',
-						origem_estado: '',
-						destino_cidade: '',
-						destino_estado: '',
-						tipo_mercadoria: '',
-						peso_carga: '',
-						altura_carga: '',
-						largura_carga: '',
-						comprimento_carga: '',
-						valores_definidos: {
-							frete: '',
-							pedagio: '',
-							combustivel: '',
-							seguro: '',
-							outros: '',
-						},
-						data_coleta: '',
-						data_entrega: '',
-						horario_carregamento: '',
-						tipos_veiculos: [],
-						tipos_carrocerias: [],
-						precisa_seguro: false,
-						precisa_rastreador: false,
-						precisa_ajudante: false,
-						pedagio_pago_por: '',
-						observacoes: '',
-						collaborator_ids: [],
-					});
-					setSelectedVehicleTypes([]);
-					setSelectedBodyTypes([]);
-					setSelectedCollaborators([]);
-					setCreatedFreight(null);
-				}}
-				freight={createdFreight}
-			/>
+      <FreightSuccessDialog
+        open={showSuccessDialog}
+        onOpenChange={setShowSuccessDialog}
+        freight={createdFreight}
+      />
     </div>
   );
 };
 
-import { Settings, Users } from 'lucide-react';
 export default FreightReturnForm;

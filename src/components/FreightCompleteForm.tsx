@@ -8,11 +8,11 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus, MapPin, Package, Truck, Calendar, DollarSign, FileText, AlertTriangle } from 'lucide-react';
+import { X, Plus, MapPin, Package, Truck, Calendar, DollarSign, FileText, AlertTriangle, Settings, Users } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useIBGE } from '@/hooks/useIBGE';
+import { useEstados, useCidades } from '@/hooks/useIBGE';
 import { freightOptions } from '@/lib/freightOptions';
 import FreightConfirmationDialog from './FreightConfirmationDialog';
 import FreightSuccessDialog from './FreightSuccessDialog';
@@ -84,8 +84,9 @@ const FreightCompleteForm = () => {
   const [createdFreight, setCreatedFreight] = useState(null);
   const { toast } = useToast();
   const { user } = useAuth();
-  const { estados, cidades } = useIBGE(formData.origem_estado);
-  const { estados: estadosDestino, cidades: cidadesDestino } = useIBGE(formData.destino_estado);
+  const { estados: estadosOrigem } = useEstados();
+  const { cidades: cidadesOrigem } = useCidades(formData.origem_estado);
+  const { cidades: cidadesDestino } = useCidades(formData.destino_estado);
   const [selectedVehicleTypes, setSelectedVehicleTypes] = useState<string[]>([]);
   const [selectedBodyTypes, setSelectedBodyTypes] = useState<string[]>([]);
   const [selectedCollaborators, setSelectedCollaborators] = useState<string[]>([]);
@@ -293,8 +294,8 @@ const FreightCompleteForm = () => {
                   <SelectValue placeholder="Selecione o estado de origem" />
                 </SelectTrigger>
                 <SelectContent>
-                  {freightOptions.estados.map((estado) => (
-                    <SelectItem key={estado.value} value={estado.value}>{estado.label}</SelectItem>
+                  {estadosOrigem.map((estado) => (
+                    <SelectItem key={estado.sigla} value={estado.sigla}>{estado.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -309,7 +310,7 @@ const FreightCompleteForm = () => {
                   <SelectValue placeholder="Selecione a cidade de origem" />
                 </SelectTrigger>
                 <SelectContent>
-                  {cidades.map((cidade) => (
+                  {cidadesOrigem.map((cidade) => (
                     <SelectItem key={cidade.nome} value={cidade.nome}>{cidade.nome}</SelectItem>
                   ))}
                 </SelectContent>
@@ -336,8 +337,8 @@ const FreightCompleteForm = () => {
                   <SelectValue placeholder="Selecione o estado de destino" />
                 </SelectTrigger>
                 <SelectContent>
-                  {freightOptions.estados.map((estado) => (
-                    <SelectItem key={estado.value} value={estado.value}>{estado.label}</SelectItem>
+                  {estadosOrigem.map((estado) => (
+                    <SelectItem key={estado.sigla} value={estado.sigla}>{estado.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -734,51 +735,15 @@ const FreightCompleteForm = () => {
       </form>
 
       <FreightConfirmationDialog
-        isOpen={showConfirmDialog}
-        onClose={() => setShowConfirmDialog(false)}
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
         onConfirm={handleSubmit}
-        freightType="completo"
-        formData={formData}
+        freightData={formData}
       />
 
       <FreightSuccessDialog
-        isOpen={showSuccessDialog}
-        onClose={() => {
-          setShowSuccessDialog(false);
-          setFormData({
-            origem_cidade: '',
-            origem_estado: '',
-            destino_cidade: '',
-            destino_estado: '',
-            tipo_mercadoria: '',
-            peso_carga: '',
-            altura_carga: '',
-            largura_carga: '',
-            comprimento_carga: '',
-            valores_definidos: {
-              frete: '',
-              pedagio: '',
-              combustivel: '',
-              seguro: '',
-              outros: '',
-            },
-            data_coleta: '',
-            data_entrega: '',
-            horario_carregamento: '',
-            tipos_veiculos: [],
-            tipos_carrocerias: [],
-            precisa_seguro: false,
-            precisa_rastreador: false,
-            precisa_ajudante: false,
-            pedagio_pago_por: '',
-            observacoes: '',
-            collaborator_ids: [],
-          });
-          setSelectedVehicleTypes([]);
-          setSelectedBodyTypes([]);
-          setSelectedCollaborators([]);
-          setCreatedFreight(null);
-        }}
+        open={showSuccessDialog}
+        onOpenChange={setShowSuccessDialog}
         freight={createdFreight}
       />
     </div>
