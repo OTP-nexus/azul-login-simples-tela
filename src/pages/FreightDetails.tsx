@@ -282,7 +282,7 @@ const FreightDetails = () => {
   };
 
   // Função melhorada para renderizar itens de array com formatação adequada
-  const renderVehiclesAndBodies = (items: any[], emptyMessage: string = 'Não especificado') => {
+  const renderVehiclesAndBodies = (items: any, emptyMessage: string = 'Não especificado') => {
     const flattenedItems = flattenNestedArrays(items);
     
     if (!Array.isArray(flattenedItems) || flattenedItems.length === 0) {
@@ -305,7 +305,7 @@ const FreightDetails = () => {
   };
 
   // Função específica para renderizar badges simples
-  const renderSimpleBadges = (items: any[], emptyMessage: string = 'Não especificado') => {
+  const renderSimpleBadges = (items: any, emptyMessage: string = 'Não especificado') => {
     const flattenedItems = flattenNestedArrays(items);
     
     if (!Array.isArray(flattenedItems) || flattenedItems.length === 0) {
