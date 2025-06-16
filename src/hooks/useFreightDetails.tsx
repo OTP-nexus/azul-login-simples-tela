@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { Freight } from '@/hooks/usePublicFreights';
+import type { FreightData } from '@/types/freight';
 
 // Helper function to safely convert JSON to array
 const safeJsonToArray = (value: any): any[] => {
@@ -11,11 +11,19 @@ const safeJsonToArray = (value: any): any[] => {
   if (value === null || value === undefined) {
     return [];
   }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
   return [];
 };
 
 export const useFreightDetails = (freightCode: string) => {
-  const [freight, setFreight] = useState<Freight | null>(null);
+  const [freight, setFreight] = useState<FreightData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,8 +52,8 @@ export const useFreightDetails = (freightCode: string) => {
           return;
         }
 
-        // Transform data similar to usePublicFreights with proper type handling
-        const formattedFreight: Freight = {
+        // Transform data with explicit typing to avoid recursion
+        const formattedFreight: FreightData = {
           id: data.id,
           codigo_agregamento: data.codigo_agregamento || '',
           tipo_frete: data.tipo_frete,
