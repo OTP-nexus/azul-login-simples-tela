@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -190,9 +191,9 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
               <AccordionTrigger className="text-lg font-semibold">Localização</AccordionTrigger>
               <AccordionContent className="space-y-4 pt-4">
                 {/* Origem */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <FormLabel className="text-base font-medium">Origem</FormLabel>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-3">
                     <FormField
                       control={form.control}
                       name="originState"
@@ -251,9 +252,9 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
                 </div>
 
                 {/* Destino */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <FormLabel className="text-base font-medium">Destino</FormLabel>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-3">
                     <FormField
                       control={form.control}
                       name="destinationState"
