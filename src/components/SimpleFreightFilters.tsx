@@ -43,7 +43,7 @@ const SimpleFreightFilters = ({ onFilterChange, initialFilters }: SimpleFreightF
     defaultValues: {
       origin: initialFilters.origin || '',
       destination: initialFilters.destination || '',
-      freightType: initialFilters.freightType || '',
+      freightType: initialFilters.freightType || 'all',
       tracker: initialFilters.tracker || 'todos',
     },
   });
@@ -59,6 +59,10 @@ const SimpleFreightFilters = ({ onFilterChange, initialFilters }: SimpleFreightF
         Object.entries(values).filter(([key, v]) => {
           if (key === 'tracker' && v === 'todos') {
             console.log('🧹 [SimpleFreightFilters] Removendo tracker="todos"');
+            return false;
+          }
+          if (key === 'freightType' && v === 'all') {
+            console.log('🧹 [SimpleFreightFilters] Removendo freightType="all"');
             return false;
           }
           const shouldKeep = v != null && v !== '';
@@ -81,7 +85,7 @@ const SimpleFreightFilters = ({ onFilterChange, initialFilters }: SimpleFreightF
     form.reset({
       origin: '',
       destination: '',
-      freightType: '',
+      freightType: 'all',
       tracker: 'todos',
     });
     
@@ -166,7 +170,7 @@ const SimpleFreightFilters = ({ onFilterChange, initialFilters }: SimpleFreightF
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Todos os tipos</SelectItem>
+                      <SelectItem value="all">Todos os tipos</SelectItem>
                       {freightTypes.map((item) => (
                         <SelectItem key={item.value} value={item.value}>
                           {item.label}
