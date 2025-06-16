@@ -50,18 +50,18 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         .in('status', ['ativo', 'pendente'])
         .order('created_at', { ascending: false });
 
-      // Filtro de origem
+      // Filtro de origem (server-side)
       if (filters.origin) {
         const searchValue = filters.origin.toLowerCase();
         query = query.or(`origem_cidade.ilike.%${searchValue}%,origem_estado.ilike.%${searchValue}%`);
       }
 
-      // Filtro de tipo de frete
+      // Filtro de tipo de frete (server-side)
       if (filters.freightType) {
         query = query.eq('tipo_frete', filters.freightType);
       }
 
-      // Filtro de rastreador
+      // Filtro de rastreador (server-side)
       if (filters.tracker && filters.tracker !== 'todos') {
         const needsTracker = filters.tracker === 'sim';
         query = query.eq('precisa_rastreador', needsTracker);
@@ -97,7 +97,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
           }
           
           return filters.vehicleTypes!.some(searchType => {
-            return freight.tipos_veiculos.some((vehicleType: any) => {
+            return (freight.tipos_veiculos as any[]).some((vehicleType: any) => {
               if (typeof vehicleType === 'string') {
                 return vehicleType === searchType;
               }
@@ -119,7 +119,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
           }
           
           return filters.bodyTypes!.some(searchType => {
-            return freight.tipos_carrocerias.some((bodyType: any) => {
+            return (freight.tipos_carrocerias as any[]).some((bodyType: any) => {
               if (typeof bodyType === 'string') {
                 return bodyType === searchType;
               }
@@ -146,7 +146,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
               return false;
             }
             
-            return freight.paradas.some((parada: any) => {
+            return (freight.paradas as any[]).some((parada: any) => {
               if (!parada || typeof parada !== 'object') return false;
               
               const city = parada.city?.toLowerCase() || '';
@@ -166,7 +166,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
           }
           
           if (freight.destinos && Array.isArray(freight.destinos)) {
-            return freight.destinos.some((destino: any) => {
+            return (freight.destinos as any[]).some((destino: any) => {
               if (!destino || typeof destino !== 'object') return false;
               
               const city = destino.city?.toLowerCase() || '';
