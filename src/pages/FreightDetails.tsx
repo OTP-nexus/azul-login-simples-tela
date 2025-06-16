@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -331,28 +330,55 @@ const FreightDetails = () => {
   const renderPricingTables = () => {
     const flattenedTables = flattenNestedArrays(freight.tabelas_preco);
     
+    console.log('Tabelas de preço originais:', freight.tabelas_preco);
+    console.log('Tabelas de preço após flatten:', flattenedTables);
+    
     if (!Array.isArray(flattenedTables) || flattenedTables.length === 0) {
       return <p className="text-gray-500 italic">Nenhuma tabela de preços definida</p>;
     }
 
-    return flattenedTables.map((tabela: any, index: number) => (
-      <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
-        <div className="grid grid-cols-3 gap-2 text-sm">
-          <div>
-            <p className="text-gray-600">Tipo de Veículo</p>
-            <p className="font-medium">{tabela.vehicle_type || tabela.tipo_veiculo || 'Não especificado'}</p>
-          </div>
-          <div>
-            <p className="text-gray-600">Distância (km)</p>
-            <p className="font-medium">{tabela.km_start || tabela.km_inicio || 0} - {tabela.km_end || tabela.km_fim || 0} km</p>
-          </div>
-          <div>
-            <p className="text-gray-600">Valor</p>
-            <p className="font-medium text-green-600">{formatValue(tabela.price || tabela.preco)}</p>
-          </div>
-        </div>
+    return (
+      <div className="space-y-3">
+        {flattenedTables.map((tabela: any, index: number) => {
+          console.log('Processando tabela:', tabela);
+          
+          // Extrair valores da tabela, considerando diferentes formatos possíveis
+          const vehicleType = tabela.vehicle_type || tabela.tipo_veiculo || tabela.vehicleType || 'Não especificado';
+          const kmStart = tabela.km_start || tabela.km_inicio || tabela.kmStart || 0;
+          const kmEnd = tabela.km_end || tabela.km_fim || tabela.kmEnd || 0;
+          const price = tabela.price || tabela.preco || tabela.valor || 0;
+          
+          return (
+            <div key={index} className="bg-green-50 p-4 rounded-lg border border-green-200">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-600 font-medium mb-1">Tipo de Veículo</p>
+                  <p className="font-medium text-green-900">{vehicleType}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 font-medium mb-1">Distância (km)</p>
+                  <p className="font-medium text-green-900">{kmStart} - {kmEnd} km</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 font-medium mb-1">Valor</p>
+                  <p className="font-semibold text-green-600 text-lg">{formatValue(price)}</p>
+                </div>
+              </div>
+              
+              {/* Mostrar dados brutos para debug se necessário */}
+              {process.env.NODE_ENV === 'development' && (
+                <details className="mt-2">
+                  <summary className="text-xs text-gray-500 cursor-pointer">Debug (dados brutos)</summary>
+                  <pre className="text-xs text-gray-600 mt-1 bg-gray-100 p-2 rounded overflow-auto">
+                    {JSON.stringify(tabela, null, 2)}
+                  </pre>
+                </details>
+              )}
+            </div>
+          );
+        })}
       </div>
-    ));
+    );
   };
 
   // Helper function to render benefits for agregamento
