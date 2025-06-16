@@ -99,6 +99,16 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
   const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
   const selectedBodies = formData.tipos_carrocerias.filter(b => b.selected);
 
+  // Check if any dimension value exists and is not empty
+  const hasDimensions = formData.dimensoes && (
+    (formData.dimensoes.altura && formData.dimensoes.altura.trim() !== '') ||
+    (formData.dimensoes.largura && formData.dimensoes.largura.trim() !== '') ||
+    (formData.dimensoes.comprimento && formData.dimensoes.comprimento.trim() !== '')
+  );
+
+  console.log('Form data dimensions:', formData.dimensoes);
+  console.log('Has dimensions:', hasDimensions);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -163,23 +173,23 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
               </div>
               
               {/* Dimensões da Carga */}
-              {formData.dimensoes && (formData.dimensoes.altura || formData.dimensoes.largura || formData.dimensoes.comprimento) && (
+              {hasDimensions && (
                 <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
                   <h4 className="font-medium text-purple-800 mb-2">Dimensões da Carga</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                    {formData.dimensoes.altura && (
+                    {formData.dimensoes?.altura && formData.dimensoes.altura.trim() !== '' && (
                       <div>
                         <span className="text-purple-600 font-medium">Altura:</span>
                         <span className="text-purple-700 ml-1">{formData.dimensoes.altura} m</span>
                       </div>
                     )}
-                    {formData.dimensoes.largura && (
+                    {formData.dimensoes?.largura && formData.dimensoes.largura.trim() !== '' && (
                       <div>
                         <span className="text-purple-600 font-medium">Largura:</span>
                         <span className="text-purple-700 ml-1">{formData.dimensoes.largura} m</span>
                       </div>
                     )}
-                    {formData.dimensoes.comprimento && (
+                    {formData.dimensoes?.comprimento && formData.dimensoes.comprimento.trim() !== '' && (
                       <div>
                         <span className="text-purple-600 font-medium">Comprimento:</span>
                         <span className="text-purple-700 ml-1">{formData.dimensoes.comprimento} m</span>
