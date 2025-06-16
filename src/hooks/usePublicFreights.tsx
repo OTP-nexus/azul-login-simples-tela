@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -37,10 +38,33 @@ export interface Freight {
   solicitante_telefone: string | null;
 }
 
-export const usePublicFreights = (filters = {}) => {
+export interface PublicFreightFilters {
+  origem_estado?: string;
+  origem_cidade?: string;
+  destino_estado?: string;
+  destino_cidade?: string;
+  tipo_frete?: string;
+  tipos_veiculos?: string[];
+  tipos_carrocerias?: string[];
+}
+
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+}
+
+export const usePublicFreights = (filters: PublicFreightFilters = {}, page = 1, itemsPerPage = 20) => {
   const [freights, setFreights] = useState<Freight[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    currentPage: 1,
+    totalPages: 0,
+    totalItems: 0,
+    itemsPerPage: 20
+  });
 
   useEffect(() => {
     const fetchFreights = async () => {
@@ -48,62 +72,105 @@ export const usePublicFreights = (filters = {}) => {
       setError(null);
 
       try {
-        let query = supabase
+        // First, get the total count
+        let countQuery = supabase
           .from('fretes')
-          .select('*')
+          .select('*', { count: 'exact', head: true })
           .in('status', ['ativo', 'pendente']);
 
+        // Apply filters to count query
         Object.entries(filters).forEach(([key, value]) => {
-          if (value) {
-            query = query.eq(key, value);
+          if (value && Array.isArray(value) && value.length > 0) {
+            // Handle array filters
+            countQuery = countQuery.overlaps(key, value);
+          } else if (value && typeof value === 'string') {
+            // Handle string filters
+            countQuery = countQuery.eq(key, value);
           }
         });
 
-        const { data, error } = await query;
+        const { count, error: countError } = await countQuery;
 
-        if (error) {
-          console.error('Erro ao buscar fretes:', error);
-          setError('Erro ao buscar fretes.');
-        } else {
-          // Transform data to match the Freight interface
-          const formattedFreights: Freight[] = data.map((freight: any) => ({
-            id: freight.id,
-            codigo_agregamento: freight.codigo_agregamento || '',
-            tipo_frete: freight.tipo_frete,
-            status: freight.status || 'ativo',
-            origem_cidade: freight.origem_cidade,
-            origem_estado: freight.origem_estado,
-            destinos: Array.isArray(freight.destinos) ? freight.destinos : [],
-            data_coleta: freight.data_coleta,
-            data_entrega: freight.data_entrega,
-            tipo_mercadoria: freight.tipo_mercadoria,
-            peso_carga: freight.peso_carga,
-            valor_carga: freight.valor_carga,
-            valores_definidos: freight.valores_definidos,
-            tipos_veiculos: Array.isArray(freight.tipos_veiculos) ? freight.tipos_veiculos : [],
-            tipos_carrocerias: Array.isArray(freight.tipos_carrocerias) ? freight.tipos_carrocerias : [],
-            collaborator_ids: freight.collaborator_ids,
-            created_at: freight.created_at,
-            updated_at: freight.updated_at,
-            pedagio_pago_por: freight.pedagio_pago_por,
-            pedagio_direcao: freight.pedagio_direcao,
-            precisa_seguro: freight.precisa_seguro || false,
-            precisa_rastreador: freight.precisa_rastreador || false,
-            precisa_ajudante: freight.precisa_ajudante || false,
-            horario_carregamento: freight.horario_carregamento,
-            observacoes: freight.observacoes,
-            paradas: Array.isArray(freight.paradas) ? freight.paradas : [],
-            beneficios: Array.isArray(freight.beneficios) ? freight.beneficios : [],
-            regras_agendamento: Array.isArray(freight.regras_agendamento) ? freight.regras_agendamento : [],
-            tabelas_preco: Array.isArray(freight.tabelas_preco) ? freight.tabelas_preco : [],
-            destino_cidade: freight.destino_cidade,
-            destino_estado: freight.destino_estado,
-            solicitante_nome: freight.solicitante_nome,
-            solicitante_telefone: freight.solicitante_telefone,
-          }));
-
-          setFreights(formattedFreights);
+        if (countError) {
+          console.error('Erro ao contar fretes:', countError);
+          setError('Erro ao carregar fretes.');
+          return;
         }
+
+        const totalItems = count || 0;
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+        // Now get the actual data with pagination
+        let dataQuery = supabase
+          .from('fretes')
+          .select('*')
+          .in('status', ['ativo', 'pendente'])
+          .range((page - 1) * itemsPerPage, page * itemsPerPage - 1)
+          .order('created_at', { ascending: false });
+
+        // Apply filters to data query
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value && Array.isArray(value) && value.length > 0) {
+            // Handle array filters
+            dataQuery = dataQuery.overlaps(key, value);
+          } else if (value && typeof value === 'string') {
+            // Handle string filters
+            dataQuery = dataQuery.eq(key, value);
+          }
+        });
+
+        const { data, error: dataError } = await dataQuery;
+
+        if (dataError) {
+          console.error('Erro ao buscar fretes:', dataError);
+          setError('Erro ao buscar fretes.');
+          return;
+        }
+
+        // Transform data to match the Freight interface
+        const formattedFreights: Freight[] = (data || []).map((freight: any) => ({
+          id: freight.id,
+          codigo_agregamento: freight.codigo_agregamento || '',
+          tipo_frete: freight.tipo_frete,
+          status: freight.status || 'ativo',
+          origem_cidade: freight.origem_cidade,
+          origem_estado: freight.origem_estado,
+          destinos: Array.isArray(freight.destinos) ? freight.destinos : [],
+          data_coleta: freight.data_coleta,
+          data_entrega: freight.data_entrega,
+          tipo_mercadoria: freight.tipo_mercadoria,
+          peso_carga: freight.peso_carga,
+          valor_carga: freight.valor_carga,
+          valores_definidos: freight.valores_definidos,
+          tipos_veiculos: Array.isArray(freight.tipos_veiculos) ? freight.tipos_veiculos : [],
+          tipos_carrocerias: Array.isArray(freight.tipos_carrocerias) ? freight.tipos_carrocerias : [],
+          collaborator_ids: freight.collaborator_ids,
+          created_at: freight.created_at,
+          updated_at: freight.updated_at,
+          pedagio_pago_por: freight.pedagio_pago_por,
+          pedagio_direcao: freight.pedagio_direcao,
+          precisa_seguro: freight.precisa_seguro || false,
+          precisa_rastreador: freight.precisa_rastreador || false,
+          precisa_ajudante: freight.precisa_ajudante || false,
+          horario_carregamento: freight.horario_carregamento,
+          observacoes: freight.observacoes,
+          paradas: Array.isArray(freight.paradas) ? freight.paradas : [],
+          beneficios: Array.isArray(freight.beneficios) ? freight.beneficios : [],
+          regras_agendamento: Array.isArray(freight.regras_agendamento) ? freight.regras_agendamento : [],
+          tabelas_preco: Array.isArray(freight.tabelas_preco) ? freight.tabelas_preco : [],
+          destino_cidade: freight.destino_cidade,
+          destino_estado: freight.destino_estado,
+          solicitante_nome: freight.solicitante_nome,
+          solicitante_telefone: freight.solicitante_telefone,
+        }));
+
+        setFreights(formattedFreights);
+        setPagination({
+          currentPage: page,
+          totalPages,
+          totalItems,
+          itemsPerPage
+        });
       } catch (err) {
         console.error('Erro ao buscar fretes:', err);
         setError('Erro ao buscar fretes.');
@@ -113,11 +180,12 @@ export const usePublicFreights = (filters = {}) => {
     };
 
     fetchFreights();
-  }, [filters]);
+  }, [filters, page, itemsPerPage]);
 
   return {
     freights,
     loading,
-    error
+    error,
+    pagination
   };
 };
