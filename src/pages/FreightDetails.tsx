@@ -338,38 +338,53 @@ const FreightDetails = () => {
     }
 
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         {flattenedTables.map((tabela: any, index: number) => {
           console.log('Processando tabela:', tabela);
           
-          // Extrair valores da tabela, considerando diferentes formatos possíveis
-          const vehicleType = tabela.vehicle_type || tabela.tipo_veiculo || tabela.vehicleType || 'Não especificado';
-          const kmStart = tabela.km_start || tabela.km_inicio || tabela.kmStart || 0;
-          const kmEnd = tabela.km_end || tabela.km_fim || tabela.kmEnd || 0;
-          const price = tabela.price || tabela.preco || tabela.valor || 0;
+          const vehicleType = tabela.vehicleType || tabela.vehicle_type || tabela.tipo_veiculo || 'Não especificado';
+          const ranges = tabela.ranges || [];
+          
+          if (!Array.isArray(ranges) || ranges.length === 0) {
+            return (
+              <div key={index} className="bg-red-50 p-4 rounded-lg border border-red-200">
+                <p className="text-red-800 font-medium">{vehicleType}</p>
+                <p className="text-red-600 text-sm">Nenhuma faixa de preço definida</p>
+              </div>
+            );
+          }
           
           return (
             <div key={index} className="bg-green-50 p-4 rounded-lg border border-green-200">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-600 font-medium mb-1">Tipo de Veículo</p>
-                  <p className="font-medium text-green-900">{vehicleType}</p>
-                </div>
-                <div>
-                  <p className="text-gray-600 font-medium mb-1">Distância (km)</p>
-                  <p className="font-medium text-green-900">{kmStart} - {kmEnd} km</p>
-                </div>
-                <div>
-                  <p className="text-gray-600 font-medium mb-1">Valor</p>
-                  <p className="font-semibold text-green-600 text-lg">{formatValue(price)}</p>
-                </div>
+              <h4 className="font-semibold text-green-900 mb-3 text-lg">{vehicleType}</h4>
+              <div className="space-y-3">
+                {ranges.map((range: any, rangeIndex: number) => {
+                  const kmStart = range.kmStart || range.km_start || range.km_inicio || 0;
+                  const kmEnd = range.kmEnd || range.km_end || range.km_fim || 0;
+                  const price = range.price || range.preco || range.valor || 0;
+                  
+                  return (
+                    <div key={range.id || rangeIndex} className="bg-white p-3 rounded border border-green-300">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-gray-600 text-sm font-medium mb-1">Distância</p>
+                          <p className="font-medium text-gray-900">{kmStart} - {kmEnd} km</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600 text-sm font-medium mb-1">Valor</p>
+                          <p className="font-semibold text-green-600 text-lg">{formatValue(price)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
               
               {/* Mostrar dados brutos para debug se necessário */}
               {process.env.NODE_ENV === 'development' && (
-                <details className="mt-2">
+                <details className="mt-3">
                   <summary className="text-xs text-gray-500 cursor-pointer">Debug (dados brutos)</summary>
-                  <pre className="text-xs text-gray-600 mt-1 bg-gray-100 p-2 rounded overflow-auto">
+                  <pre className="text-xs text-gray-600 mt-1 bg-gray-100 p-2 rounded overflow-auto max-h-32">
                     {JSON.stringify(tabela, null, 2)}
                   </pre>
                 </details>
@@ -547,9 +562,7 @@ const FreightDetails = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {renderPricingTables()}
-                </div>
+                {renderPricingTables()}
               </CardContent>
             </Card>
 
