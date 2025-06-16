@@ -175,7 +175,7 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
   };
 
   return (
-    <aside className="bg-white p-6 rounded-lg shadow-md border lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto">
+    <aside className="bg-white p-6 rounded-lg shadow-md border w-full">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-bold">Filtros</h3>
         <Button type="button" variant="ghost" onClick={handleClear} size="sm">
