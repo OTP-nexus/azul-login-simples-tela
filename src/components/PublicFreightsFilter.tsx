@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -49,7 +48,7 @@ interface PublicFreightsFilterProps {
 }
 
 const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreightsFilterProps) => {
-  const { states, loadingStates } = useIBGE();
+  const { states, cities, loadingStates, loadingCities, loadCities } = useIBGE();
   const [originCities, setOriginCities] = useState<any[]>([]);
   const [destinationCities, setDestinationCities] = useState<any[]>([]);
   const [loadingOriginCities, setLoadingOriginCities] = useState(false);
@@ -65,7 +64,7 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
     },
   });
 
-  const { watch } = form;
+  const { watch, handleSubmit } = form;
   const watchOriginState = watch('originState');
   const watchDestinationState = watch('destinationState');
 
@@ -105,67 +104,57 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
     }
   }, [watchDestinationState, form]);
 
-  // Aplicar filtros quando valores mudarem
   useEffect(() => {
     const subscription = watch((values) => {
-      console.log('🔄 Valores do formulário mudaram:', values);
+      const cleanFilters = Object.fromEntries(
+        Object.entries(values).filter(([key, v]) => {
+          if (key === 'tracker' && v === 'todos') return false;
+          if (Array.isArray(v)) return v.length > 0;
+          return v != null && v !== '';
+        })
+      );
+
+      // Converter os filtros de estado/cidade para o formato esperado pelo hook
+      const convertedFilters: any = {};
       
-      // Construir filtros no formato correto
-      const newFilters: any = {};
-      
-      // Filtro de origem
-      if (values.originState || values.originCity) {
+      if (cleanFilters.originState || cleanFilters.originCity) {
         const originParts = [];
-        if (values.originCity) {
-          const selectedCity = originCities.find(city => city.id.toString() === values.originCity);
+        if (cleanFilters.originCity) {
+          const selectedCity = originCities.find(city => city.id.toString() === cleanFilters.originCity);
           if (selectedCity) originParts.push(selectedCity.nome);
         }
-        if (values.originState) {
-          const selectedState = states.find(state => state.sigla === values.originState);
+        if (cleanFilters.originState) {
+          const selectedState = states.find(state => state.sigla === cleanFilters.originState);
           if (selectedState) originParts.push(selectedState.nome);
         }
         if (originParts.length > 0) {
-          newFilters.origin = originParts.join(' ');
+          convertedFilters.origin = originParts.join(' ');
         }
       }
 
-      // Filtro de destino
-      if (values.destinationState || values.destinationCity) {
+      if (cleanFilters.destinationState || cleanFilters.destinationCity) {
         const destinationParts = [];
-        if (values.destinationCity) {
-          const selectedCity = destinationCities.find(city => city.id.toString() === values.destinationCity);
+        if (cleanFilters.destinationCity) {
+          const selectedCity = destinationCities.find(city => city.id.toString() === cleanFilters.destinationCity);
           if (selectedCity) destinationParts.push(selectedCity.nome);
         }
-        if (values.destinationState) {
-          const selectedState = states.find(state => state.sigla === values.destinationState);
+        if (cleanFilters.destinationState) {
+          const selectedState = states.find(state => state.sigla === cleanFilters.destinationState);
           if (selectedState) destinationParts.push(selectedState.nome);
         }
         if (destinationParts.length > 0) {
-          newFilters.destination = destinationParts.join(' ');
+          convertedFilters.destination = destinationParts.join(' ');
         }
       }
 
-      // Outros filtros
-      if (values.vehicleTypes && values.vehicleTypes.length > 0) {
-        newFilters.vehicleTypes = values.vehicleTypes;
-      }
-      
-      if (values.bodyTypes && values.bodyTypes.length > 0) {
-        newFilters.bodyTypes = values.bodyTypes;
-      }
-      
-      if (values.freightType) {
-        newFilters.freightType = values.freightType;
-      }
-      
-      if (values.tracker && values.tracker !== 'todos') {
-        newFilters.tracker = values.tracker;
-      }
+      // Manter os outros filtros
+      if (cleanFilters.vehicleTypes) convertedFilters.vehicleTypes = cleanFilters.vehicleTypes;
+      if (cleanFilters.bodyTypes) convertedFilters.bodyTypes = cleanFilters.bodyTypes;
+      if (cleanFilters.freightType) convertedFilters.freightType = cleanFilters.freightType;
+      if (cleanFilters.tracker) convertedFilters.tracker = cleanFilters.tracker;
 
-      console.log('📤 Enviando filtros:', newFilters);
-      onFilterChange(newFilters);
+      onFilterChange(convertedFilters);
     });
-    
     return () => subscription.unsubscribe();
   }, [watch, onFilterChange, states, originCities, destinationCities]);
 
@@ -195,7 +184,7 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
         </Button>
       </div>
       <Form {...form}>
-        <form className="space-y-6">
+        <form onSubmit={handleSubmit(() => {})} className="space-y-6">
           <Accordion type="multiple" defaultValue={['location', 'vehicle', 'body']} className="w-full">
             <AccordionItem value="location">
               <AccordionTrigger className="text-lg font-semibold">Localização</AccordionTrigger>
@@ -324,6 +313,7 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
               </AccordionContent>
             </AccordionItem>
 
+            
             <AccordionItem value="vehicle">
               <AccordionTrigger className="text-lg font-semibold">Tipo de Veículo</AccordionTrigger>
               <AccordionContent className="pt-4">
@@ -390,6 +380,7 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
               </AccordionContent>
             </AccordionItem>
 
+            
             <AccordionItem value="freight">
               <AccordionTrigger className="text-lg font-semibold">Tipo de Frete</AccordionTrigger>
               <AccordionContent className="pt-4">
