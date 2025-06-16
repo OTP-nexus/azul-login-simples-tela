@@ -1,12 +1,17 @@
-
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Form,
   FormControl,
@@ -15,6 +20,7 @@ import {
   FormLabel,
 } from '@/components/ui/form';
 import { vehicleTypeGroups, bodyTypeGroups, freightTypes } from '@/lib/freightOptions';
+import { useIBGE } from '@/hooks/useIBGE';
 import { X } from 'lucide-react';
 import {
   Accordion,
@@ -24,8 +30,10 @@ import {
 } from '@/components/ui/accordion';
 
 const filterSchema = z.object({
-  origin: z.string().optional(),
-  destination: z.string().optional(),
+  originState: z.string().optional(),
+  originCity: z.string().optional(),
+  destinationState: z.string().optional(),
+  destinationCity: z.string().optional(),
   vehicleTypes: z.array(z.string()).optional(),
   bodyTypes: z.array(z.string()).optional(),
   freightType: z.string().optional(),
@@ -35,11 +43,17 @@ const filterSchema = z.object({
 type FilterFormValues = z.infer<typeof filterSchema>;
 
 interface PublicFreightsFilterProps {
-  onFilterChange: (filters: Partial<FilterFormValues>) => void;
-  initialFilters: Partial<FilterFormValues>;
+  onFilterChange: (filters: any) => void;
+  initialFilters: any;
 }
 
 const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreightsFilterProps) => {
+  const { states, cities, loadingStates, loadingCities, loadCities } = useIBGE();
+  const [originCities, setOriginCities] = useState<any[]>([]);
+  const [destinationCities, setDestinationCities] = useState<any[]>([]);
+  const [loadingOriginCities, setLoadingOriginCities] = useState(false);
+  const [loadingDestinationCities, setLoadingDestinationCities] = useState(false);
+
   const form = useForm<FilterFormValues>({
     resolver: zodResolver(filterSchema),
     defaultValues: {
@@ -51,6 +65,44 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
   });
 
   const { watch, handleSubmit } = form;
+  const watchOriginState = watch('originState');
+  const watchDestinationState = watch('destinationState');
+
+  // Carregar cidades da origem quando o estado da origem mudar
+  useEffect(() => {
+    if (watchOriginState) {
+      setLoadingOriginCities(true);
+      fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${watchOriginState}/municipios?orderBy=nome`)
+        .then(response => response.json())
+        .then(data => {
+          setOriginCities(data);
+          form.setValue('originCity', ''); // Limpar cidade quando mudar estado
+        })
+        .catch(error => console.error('Erro ao buscar cidades de origem:', error))
+        .finally(() => setLoadingOriginCities(false));
+    } else {
+      setOriginCities([]);
+      form.setValue('originCity', '');
+    }
+  }, [watchOriginState, form]);
+
+  // Carregar cidades do destino quando o estado do destino mudar
+  useEffect(() => {
+    if (watchDestinationState) {
+      setLoadingDestinationCities(true);
+      fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${watchDestinationState}/municipios?orderBy=nome`)
+        .then(response => response.json())
+        .then(data => {
+          setDestinationCities(data);
+          form.setValue('destinationCity', ''); // Limpar cidade quando mudar estado
+        })
+        .catch(error => console.error('Erro ao buscar cidades de destino:', error))
+        .finally(() => setLoadingDestinationCities(false));
+    } else {
+      setDestinationCities([]);
+      form.setValue('destinationCity', '');
+    }
+  }, [watchDestinationState, form]);
 
   useEffect(() => {
     const subscription = watch((values) => {
@@ -61,21 +113,64 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
           return v != null && v !== '';
         })
       );
-      onFilterChange(cleanFilters);
+
+      // Converter os filtros de estado/cidade para o formato esperado pelo hook
+      const convertedFilters: any = {};
+      
+      if (cleanFilters.originState || cleanFilters.originCity) {
+        const originParts = [];
+        if (cleanFilters.originCity) {
+          const selectedCity = originCities.find(city => city.id.toString() === cleanFilters.originCity);
+          if (selectedCity) originParts.push(selectedCity.nome);
+        }
+        if (cleanFilters.originState) {
+          const selectedState = states.find(state => state.sigla === cleanFilters.originState);
+          if (selectedState) originParts.push(selectedState.nome);
+        }
+        if (originParts.length > 0) {
+          convertedFilters.origin = originParts.join(' ');
+        }
+      }
+
+      if (cleanFilters.destinationState || cleanFilters.destinationCity) {
+        const destinationParts = [];
+        if (cleanFilters.destinationCity) {
+          const selectedCity = destinationCities.find(city => city.id.toString() === cleanFilters.destinationCity);
+          if (selectedCity) destinationParts.push(selectedCity.nome);
+        }
+        if (cleanFilters.destinationState) {
+          const selectedState = states.find(state => state.sigla === cleanFilters.destinationState);
+          if (selectedState) destinationParts.push(selectedState.nome);
+        }
+        if (destinationParts.length > 0) {
+          convertedFilters.destination = destinationParts.join(' ');
+        }
+      }
+
+      // Manter os outros filtros
+      if (cleanFilters.vehicleTypes) convertedFilters.vehicleTypes = cleanFilters.vehicleTypes;
+      if (cleanFilters.bodyTypes) convertedFilters.bodyTypes = cleanFilters.bodyTypes;
+      if (cleanFilters.freightType) convertedFilters.freightType = cleanFilters.freightType;
+      if (cleanFilters.tracker) convertedFilters.tracker = cleanFilters.tracker;
+
+      onFilterChange(convertedFilters);
     });
     return () => subscription.unsubscribe();
-  }, [watch, onFilterChange]);
-
+  }, [watch, onFilterChange, states, originCities, destinationCities]);
 
   const handleClear = () => {
     form.reset({
-      origin: '',
-      destination: '',
+      originState: '',
+      originCity: '',
+      destinationState: '',
+      destinationCity: '',
       vehicleTypes: [],
       bodyTypes: [],
       freightType: '',
       tracker: 'todos',
     });
+    setOriginCities([]);
+    setDestinationCities([]);
     onFilterChange({});
   };
 
@@ -94,33 +189,131 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
             <AccordionItem value="location">
               <AccordionTrigger className="text-lg font-semibold">Localização</AccordionTrigger>
               <AccordionContent className="space-y-4 pt-4">
-                <FormField
-                  control={form.control}
-                  name="origin"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Origem</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Cidade ou estado" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="destination"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Destino</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Cidade ou estado" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+                {/* Origem */}
+                <div className="space-y-2">
+                  <FormLabel className="text-base font-medium">Origem</FormLabel>
+                  <div className="grid grid-cols-2 gap-2">
+                    <FormField
+                      control={form.control}
+                      name="originState"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">Estado</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o estado" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {loadingStates ? (
+                                <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                              ) : (
+                                states.map((state) => (
+                                  <SelectItem key={state.id} value={state.sigla}>
+                                    {state.nome}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="originCity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">Cidade</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={!watchOriginState}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder={watchOriginState ? "Selecione a cidade" : "Escolha o estado primeiro"} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {loadingOriginCities ? (
+                                <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                              ) : (
+                                originCities.map((city) => (
+                                  <SelectItem key={city.id} value={city.id.toString()}>
+                                    {city.nome}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {/* Destino */}
+                <div className="space-y-2">
+                  <FormLabel className="text-base font-medium">Destino</FormLabel>
+                  <div className="grid grid-cols-2 gap-2">
+                    <FormField
+                      control={form.control}
+                      name="destinationState"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">Estado</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o estado" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {loadingStates ? (
+                                <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                              ) : (
+                                states.map((state) => (
+                                  <SelectItem key={state.id} value={state.sigla}>
+                                    {state.nome}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="destinationCity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">Cidade</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={!watchDestinationState}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder={watchDestinationState ? "Selecione a cidade" : "Escolha o estado primeiro"} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {loadingDestinationCities ? (
+                                <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                              ) : (
+                                destinationCities.map((city) => (
+                                  <SelectItem key={city.id} value={city.id.toString()}>
+                                    {city.nome}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
               </AccordionContent>
             </AccordionItem>
 
+            
             <AccordionItem value="vehicle">
               <AccordionTrigger className="text-lg font-semibold">Tipo de Veículo</AccordionTrigger>
               <AccordionContent className="pt-4">
@@ -187,6 +380,7 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
               </AccordionContent>
             </AccordionItem>
 
+            
             <AccordionItem value="freight">
               <AccordionTrigger className="text-lg font-semibold">Tipo de Frete</AccordionTrigger>
               <AccordionContent className="pt-4">
