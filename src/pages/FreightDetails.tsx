@@ -545,32 +545,33 @@ const FreightDetails = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Tipo de Mercadoria</p>
-                  <p className="font-medium">{freight.tipo_mercadoria || 'Não especificado'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Peso da Carga</p>
-                  <p className="font-medium">
-                    {freight.peso_carga ? `${freight.peso_carga} kg` : 'Não especificado'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Valor da Carga</p>
-                  <p className="font-medium">{formatValue(freight.valor_carga)}</p>
+            {freight.tipo_frete === 'comum' ? (
+              // Para frete comum, mostrar apenas os itens da carga
+              <div>
+                <p className="text-sm text-gray-500 mb-2">Itens da Carga</p>
+                {renderCadasteredItems()}
+              </div>
+            ) : (
+              // Para outros tipos, mostrar todas as informações da carga
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Tipo de Mercadoria</p>
+                    <p className="font-medium">{freight.tipo_mercadoria || 'Não especificado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Peso da Carga</p>
+                    <p className="font-medium">
+                      {freight.peso_carga ? `${freight.peso_carga} kg` : 'Não especificado'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Valor da Carga</p>
+                    <p className="font-medium">{formatValue(freight.valor_carga)}</p>
+                  </div>
                 </div>
               </div>
-              
-              {/* Lista de itens para frete comum */}
-              {freight.tipo_frete === 'comum' && (
-                <div>
-                  <p className="text-sm text-gray-500 mb-2">Itens da Carga</p>
-                  {renderCadasteredItems()}
-                </div>
-              )}
-            </div>
+            )}
           </CardContent>
         </Card>
 
