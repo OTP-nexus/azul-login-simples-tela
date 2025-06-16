@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Truck, Package, MapPin, Calendar, DollarSign, RotateCcw, Combine, Handshake, ChevronDown } from "lucide-react";
+import { Truck, Package, MapPin, Calendar, DollarSign, RotateCcw, Combine, Handshake, ChevronDown, Eye } from "lucide-react";
 import FreightTypeBadge from './FreightTypeBadge';
 import type { Freight } from '@/hooks/usePublicFreights';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -19,20 +18,15 @@ const allVehicleTypes = vehicleTypeGroups.flatMap(group => group.types);
 const vehicleTypeMap = new Map(allVehicleTypes.map(type => [type.value, type.label]));
 
 const getVehicleLabel = (value: unknown): string => {
-  // Case 1: Value is a string
   if (typeof value === 'string') {
-    // It might be a simple value like 'carreta' or a JSON string.
     try {
       const parsed = JSON.parse(value);
-      // If parsing succeeds, it's a JSON object/array, process it recursively.
       return getVehicleLabel(parsed);
     } catch (e) {
-      // If parsing fails, it's a plain string value e.g., 'caminhao_toco'
       const label = vehicleTypeMap.get(value);
       if (label) {
         return label;
       }
-      // Fallback for values not in the map
       return value
         .split('_')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -40,33 +34,26 @@ const getVehicleLabel = (value: unknown): string => {
     }
   }
 
-  // Case 2: Value is an object (and not null)
   if (typeof value === 'object' && value !== null) {
-    // The freight form sometimes wraps the array in another array
     if (Array.isArray(value) && value.length > 0) {
-      // Handle nested array, e.g. [['carreta']] or [[{type: 'Carreta'}]]
       return getVehicleLabel(value[0]);
     }
 
     const vehicleObject = value as any;
     
-    // Priority 1: 'label' property (most explicit)
     if (typeof vehicleObject.label === 'string' && vehicleObject.label) {
       return vehicleObject.label;
     }
     
-    // Priority 2: 'type' property (found in some Supabase records)
     if (typeof vehicleObject.type === 'string' && vehicleObject.type) {
       return vehicleObject.type;
     }
 
-    // Priority 3: 'value' property (standard from select components)
     if (typeof vehicleObject.value === 'string') {
       const label = vehicleTypeMap.get(vehicleObject.value);
       if (label) {
         return label;
       }
-      // Fallback for value string
       return vehicleObject.value
         .split('_')
         .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -74,7 +61,6 @@ const getVehicleLabel = (value: unknown): string => {
     }
   }
 
-  // If none of the above, it's an invalid format
   return 'Inválido';
 };
 
@@ -159,6 +145,10 @@ const PublicFreightCard = ({
     navigate('/login');
   };
 
+  const handleViewDetails = () => {
+    navigate(`/frete/${freight.codigo_agregamento}`);
+  };
+
   if (view === 'list') {
     return (
       <Card className={`hover:shadow-lg transition-all duration-300 group ${typeConfig.cardBgColor} border-l-4 ${typeConfig.bgColor.replace('bg-', 'border-')}`}>
@@ -217,7 +207,11 @@ const PublicFreightCard = ({
                  </div>
                )}
             </div>
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 flex flex-col gap-2">
+              <Button onClick={handleViewDetails} variant="outline" size="sm" className="w-full sm:w-auto">
+                <Eye className="w-4 h-4 mr-2" />
+                Ver Detalhes
+              </Button>
               <Button onClick={handleInterest} className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
                 <Handshake className="w-4 h-4 mr-2" />
                 Tenho Interesse
@@ -325,7 +319,11 @@ const PublicFreightCard = ({
             </div>
           </div>}
 
-        <div className="flex pt-2 border-t">
+        <div className="flex flex-col gap-2 pt-2 border-t">
+          <Button onClick={handleViewDetails} variant="outline" className="w-full">
+            <Eye className="w-4 h-4 mr-2" />
+            Ver Detalhes
+          </Button>
           <Button onClick={handleInterest} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
             <Handshake className="w-4 h-4 mr-2" />
             Tenho Interesse
