@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -260,6 +261,29 @@ const FreightDetails = () => {
       </div>;
   };
 
+  // Função para renderizar itens cadastrados (para frete comum)
+  const renderCadasteredItems = () => {
+    // Verifica se tem descrição livre
+    if (freight.descricao_livre_itens) {
+      return <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+          <p className="text-gray-800">{freight.descricao_livre_itens}</p>
+        </div>;
+    }
+
+    // Verifica se tem itens detalhados
+    if (freight.itens_detalhados && Array.isArray(freight.itens_detalhados) && freight.itens_detalhados.length > 0) {
+      return <div className="space-y-2">
+          {freight.itens_detalhados.map((item: any, index: number) => (
+            <div key={index} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+              <p className="font-medium text-gray-800">{extractDisplayText(item)}</p>
+            </div>
+          ))}
+        </div>;
+    }
+
+    return <p className="text-gray-500 italic">Nenhum item especificado</p>;
+  };
+
   // Helper function to render pricing tables for agregamento
   const renderPricingTables = () => {
     const flattenedTables = flattenNestedArrays(freight.tabelas_preco);
@@ -298,14 +322,14 @@ const FreightDetails = () => {
                   const kmEnd = range.kmEnd || range.km_end || range.km_fim || 0;
                   const price = range.price || range.preco || range.valor || 0;
                   return <div key={range.id || rangeIndex} className="bg-white p-3 rounded border border-green-300">
-                          <div className="flex justify-between items-center">
-                            <div>
+                          <div className="flex justify-between items-center md:block">
+                            <div className="md:mb-2">
                               <p className="text-gray-600 text-xs font-medium mb-1">Distância</p>
                               <p className="font-medium text-gray-900 text-sm">{kmStart} - {kmEnd} km</p>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right md:text-left">
                               <p className="text-gray-600 text-xs font-medium mb-1">Valor</p>
-                              <p className="font-semibold text-green-600 text-lg">{formatValue(price)}</p>
+                              <p className="font-semibold text-green-600 text-lg md:text-base">{formatValue(price)}</p>
                             </div>
                           </div>
                         </div>;
@@ -381,6 +405,24 @@ const FreightDetails = () => {
                   </div>
                 )}
               </>
+            ) : freight.tipo_frete === 'comum' ? (
+              // Para frete comum, não mostrar data de entrega
+              <>
+                <div>
+                  <p className="text-sm text-gray-500">Data de Coleta</p>
+                  <p className="font-medium">{formatDate(freight.data_coleta)}</p>
+                </div>
+                {freight.horario_carregamento && (
+                  <div>
+                    <p className="text-sm text-gray-500">Horário de Carregamento</p>
+                    <p className="font-medium">{freight.horario_carregamento}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="font-medium">{freight.status || 'Ativo'}</p>
+                </div>
+              </>
             ) : (
               // Para outros tipos de frete, mostrar todas as informações
               <>
@@ -424,10 +466,25 @@ const FreightDetails = () => {
                 </div>
               </div>
               
-              <div>
-                <p className="text-sm text-gray-500 mb-2">Destinos</p>
-                {renderDestinations()}
-              </div>
+              {freight.tipo_frete === 'comum' ? (
+                // Para frete comum, mostrar destino específico
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Destino</p>
+                  <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                    <p className="font-medium text-green-900">
+                      {freight.destino_cidade && freight.destino_estado 
+                        ? `${freight.destino_cidade}, ${freight.destino_estado}` 
+                        : 'Destino não especificado'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                // Para outros tipos, mostrar múltiplos destinos
+                <div>
+                  <p className="text-sm text-gray-500 mb-2">Destinos</p>
+                  {renderDestinations()}
+                </div>
+              )}
 
               {renderStops()}
             </div>
@@ -442,45 +499,59 @@ const FreightDetails = () => {
               <span>Detalhes da Carga</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Tipo de Mercadoria</p>
-              <p className="font-medium">{freight.tipo_mercadoria || 'Não especificado'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Peso da Carga</p>
-              <p className="font-medium">
-                {freight.peso_carga ? `${freight.peso_carga} kg` : 'Não especificado'}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Valor da Carga</p>
-              <p className="font-medium">{formatValue(freight.valor_carga)}</p>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Tipo de Mercadoria</p>
+                  <p className="font-medium">{freight.tipo_mercadoria || 'Não especificado'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Peso da Carga</p>
+                  <p className="font-medium">
+                    {freight.peso_carga ? `${freight.peso_carga} kg` : 'Não especificado'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Valor da Carga</p>
+                  <p className="font-medium">{formatValue(freight.valor_carga)}</p>
+                </div>
+              </div>
+              
+              {/* Lista de itens para frete comum */}
+              {freight.tipo_frete === 'comum' && (
+                <div>
+                  <p className="text-sm text-gray-500 mb-2">Itens da Carga</p>
+                  {renderCadasteredItems()}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Veículos e Carrocerias */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Truck className="w-5 h-5" />
-              <span>Veículos e Carrocerias</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div>
-                <p className="text-sm text-gray-500 mb-3">Tipos de Veículos Aceitos</p>
-                {renderVehiclesAndBodies(freight.tipos_veiculos, 'Nenhum tipo de veículo especificado')}
+        {/* Veículos e Carrocerias - Não mostrar para frete comum */}
+        {freight.tipo_frete !== 'comum' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Truck className="w-5 h-5" />
+                <span>Veículos e Carrocerias</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div>
+                  <p className="text-sm text-gray-500 mb-3">Tipos de Veículos Aceitos</p>
+                  {renderVehiclesAndBodies(freight.tipos_veiculos, 'Nenhum tipo de veículo especificado')}
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-3">Tipos de Carrocerias Aceitas</p>
+                  {renderVehiclesAndBodies(freight.tipos_carrocerias, 'Nenhum tipo de carroceria especificado')}
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-500 mb-3">Tipos de Carrocerias Aceitas</p>
-                {renderVehiclesAndBodies(freight.tipos_carrocerias, 'Nenhum tipo de carroceria especificado')}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Seções específicas para Agregamento */}
         {freight.tipo_frete === 'agregamento' && <>
