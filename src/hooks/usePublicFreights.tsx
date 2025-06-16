@@ -78,12 +78,39 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
 
       console.log('Aplicando filtros:', filters, 'Página:', page);
 
-      // Converter filters para um formato compatível com Json
-      const filtersJson = JSON.parse(JSON.stringify(filters));
+      // Criar um objeto de filtros limpo, removendo valores vazios
+      const cleanFilters: Record<string, any> = {};
+      
+      // Apenas adicionar filtros que têm valores válidos
+      if (filters.origin && filters.origin.trim() !== '') {
+        cleanFilters.origin = filters.origin.trim();
+      }
+      
+      if (filters.destination && filters.destination.trim() !== '') {
+        cleanFilters.destination = filters.destination.trim();
+      }
+      
+      if (filters.freightType && filters.freightType.trim() !== '') {
+        cleanFilters.freightType = filters.freightType.trim();
+      }
+      
+      if (filters.tracker && filters.tracker !== 'todos') {
+        cleanFilters.tracker = filters.tracker;
+      }
+      
+      if (filters.vehicleTypes && filters.vehicleTypes.length > 0) {
+        cleanFilters.vehicleTypes = filters.vehicleTypes;
+      }
+      
+      if (filters.bodyTypes && filters.bodyTypes.length > 0) {
+        cleanFilters.bodyTypes = filters.bodyTypes;
+      }
+
+      console.log('Filtros limpos enviados:', cleanFilters);
 
       // Usar a nova função PostgreSQL que faz toda a filtragem no servidor
       const { data, error: rpcError } = await supabase.rpc('search_public_freights', {
-        p_filters: filtersJson,
+        p_filters: cleanFilters,
         p_page: page,
         p_page_size: itemsPerPage
       });
@@ -94,7 +121,10 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         return;
       }
 
+      console.log('Dados retornados da função:', data);
+
       if (!data || data.length === 0) {
+        console.log('Nenhum dado retornado da função');
         setFreights([]);
         setPagination({
           currentPage: page,
@@ -108,6 +138,8 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       // Extrair dados dos fretes e contagem total
       const freightData = data.filter(item => item.freight_data && Object.keys(item.freight_data as object).length > 0);
       const totalCount = data[0]?.total_count || 0;
+
+      console.log('Dados filtrados de fretes:', freightData.length, 'Total count:', totalCount);
 
       // Transform data - manter a mesma estrutura de dados que o código anterior
       const formattedFreights: Freight[] = freightData.map(item => {
@@ -146,6 +178,8 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
           destino_estado: freight.destino_estado
         };
       });
+
+      console.log('Fretes formatados:', formattedFreights.length);
 
       // Calculate pagination info
       const totalPages = Math.ceil(totalCount / itemsPerPage);
