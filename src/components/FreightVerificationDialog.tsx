@@ -102,40 +102,21 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
   const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
   const selectedBodies = formData.tipos_carrocerias.filter(b => b.selected);
 
-  // Log completo dos dados para debug
-  console.log('=== COMPLETE FORM DATA DEBUG ===');
-  console.log('Full formData object:', JSON.stringify(formData, null, 2));
-  console.log('formData keys:', Object.keys(formData));
-  console.log('=== DIMENSIONS DEBUG ===');
-  console.log('formData.dimensoes:', formData.dimensoes);
-  console.log('formData.altura:', formData.altura);
-  console.log('formData.largura:', formData.largura);
-  console.log('formData.comprimento:', formData.comprimento);
-  console.log('typeof formData.dimensoes:', typeof formData.dimensoes);
-  
-  // Safely extract dimensions, handling undefined values
-  const getStringValue = (value: any): string => {
-    if (value === null || value === undefined) return '';
-    if (typeof value === 'string') return value;
-    if (typeof value === 'object' && value.value !== undefined) return String(value.value);
-    return String(value);
+  // Função para extrair valores de dimensões de forma segura
+  const getDimensionValue = (value: any): string => {
+    if (!value) return '';
+    if (typeof value === 'string' && value.trim() !== '' && value !== 'undefined') return value;
+    if (typeof value === 'object' && value.value && value.value !== 'undefined') return String(value.value);
+    if (typeof value === 'number') return String(value);
+    return '';
   };
 
-  const altura = getStringValue(formData.dimensoes?.altura) || getStringValue(formData.altura);
-  const largura = getStringValue(formData.dimensoes?.largura) || getStringValue(formData.largura);
-  const comprimento = getStringValue(formData.dimensoes?.comprimento) || getStringValue(formData.comprimento);
+  // Extrair dimensões
+  const altura = getDimensionValue(formData.dimensoes?.altura) || getDimensionValue(formData.altura);
+  const largura = getDimensionValue(formData.dimensoes?.largura) || getDimensionValue(formData.largura);
+  const comprimento = getDimensionValue(formData.dimensoes?.comprimento) || getDimensionValue(formData.comprimento);
 
-  console.log('=== RESOLVED VALUES ===');
-  console.log('Resolved altura:', altura);
-  console.log('Resolved largura:', largura);
-  console.log('Resolved comprimento:', comprimento);
-
-  const hasDimensions = (altura && altura.trim() !== '' && altura !== 'undefined') || 
-                       (largura && largura.trim() !== '' && largura !== 'undefined') || 
-                       (comprimento && comprimento.trim() !== '' && comprimento !== 'undefined');
-
-  console.log('hasDimensions:', hasDimensions);
-  console.log('=== END DEBUG ===');
+  const hasDimensions = altura || largura || comprimento;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -200,39 +181,24 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
                 <p><span className="font-medium">Tipo de Mercadoria:</span> {formData.tipo_mercadoria}</p>
               </div>
               
-              {/* Debug: Mostrar sempre a seção de dimensões para testar */}
-              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                <h4 className="font-medium text-red-800 mb-2">DEBUG - Dados de Dimensões</h4>
-                <div className="text-xs space-y-1">
-                  <p>hasDimensions: {String(hasDimensions)}</p>
-                  <p>altura: '{altura}'</p>
-                  <p>largura: '{largura}'</p>
-                  <p>comprimento: '{comprimento}'</p>
-                  <p>formData.dimensoes: {JSON.stringify(formData.dimensoes)}</p>
-                  <p>formData.altura: '{getStringValue(formData.altura)}'</p>
-                  <p>formData.largura: '{getStringValue(formData.largura)}'</p>
-                  <p>formData.comprimento: '{getStringValue(formData.comprimento)}'</p>
-                </div>
-              </div>
-              
               {/* Dimensões da Carga */}
               {hasDimensions && (
                 <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
                   <h4 className="font-medium text-purple-800 mb-2">Dimensões da Carga</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                    {altura && altura.trim() !== '' && altura !== 'undefined' && (
+                    {altura && (
                       <div>
                         <span className="text-purple-600 font-medium">Altura:</span>
                         <span className="text-purple-700 ml-1">{altura} m</span>
                       </div>
                     )}
-                    {largura && largura.trim() !== '' && largura !== 'undefined' && (
+                    {largura && (
                       <div>
                         <span className="text-purple-600 font-medium">Largura:</span>
                         <span className="text-purple-700 ml-1">{largura} m</span>
                       </div>
                     )}
-                    {comprimento && comprimento.trim() !== '' && comprimento !== 'undefined' && (
+                    {comprimento && (
                       <div>
                         <span className="text-purple-600 font-medium">Comprimento:</span>
                         <span className="text-purple-700 ml-1">{comprimento} m</span>
