@@ -125,7 +125,8 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       }
       
       if (filters.destination) {
-        countQuery = countQuery.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        // Corrigir a sintaxe para o filtro de destino
+        countQuery = countQuery.or(`destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
       }
       
       if (filters.freightType) {
@@ -152,7 +153,8 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       }
       
       if (filters.destination) {
-        query = query.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        // Corrigir a sintaxe para o filtro de destino
+        query = query.or(`destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
       }
       
       if (filters.freightType) {
@@ -192,6 +194,21 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
           return filters.bodyTypes!.some(bodyType => 
             hasBodyType(freight.tipos_carrocerias, bodyType)
           );
+        });
+      }
+
+      // Apply additional client-side destination filter for destinos JSON field
+      if (filters.destination) {
+        filteredData = filteredData.filter(freight => {
+          // Check destinos array
+          if (freight.destinos && Array.isArray(freight.destinos)) {
+            return freight.destinos.some((destino: any) => {
+              const cityMatch = destino.city && destino.city.toLowerCase().includes(filters.destination!.toLowerCase());
+              const stateMatch = destino.state && destino.state.toLowerCase().includes(filters.destination!.toLowerCase());
+              return cityMatch || stateMatch;
+            });
+          }
+          return false;
         });
       }
 
