@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { useFreightByCode } from '@/hooks/useFreightByCode';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { MapPin, Package, Calendar, DollarSign, Truck, Users, Shield, Radar, UserPlus, Clock, AlertTriangle, FileText, RotateCcw, Combine, Calculator, Route, Settings, User, Phone, Mail } from "lucide-react";
+import { MapPin, Package, Calendar, DollarSign, Truck, Users, Shield, Radar, UserPlus, Clock, AlertTriangle, FileText, RotateCcw, Combine, Calculator, Route, Settings, User, Phone, Mail, Weight } from "lucide-react";
 import FreightTypeBadge from '@/components/FreightTypeBadge';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -80,13 +79,37 @@ const FreightDetails = () => {
   };
   const typeConfig = getFreightTypeConfig(freight.tipo_frete);
   const TypeIcon = typeConfig.icon;
+  
   const formatValue = (value: number | null) => {
-    if (!value) return 'Não definido';
+    if (!value) return 'A combinar';
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
   };
+
+  const formatWeight = (weight: number | null) => {
+    if (!weight) return 'A combinar';
+    return `${weight.toLocaleString('pt-BR')} kg`;
+  };
+
+  const formatDimensions = (freight: any) => {
+    const altura = freight.altura_carga;
+    const largura = freight.largura_carga;
+    const comprimento = freight.comprimento_carga;
+    
+    if (!altura && !largura && !comprimento) {
+      return 'A combinar';
+    }
+    
+    const dimensions = [];
+    if (comprimento) dimensions.push(`${comprimento}m`);
+    if (largura) dimensions.push(`${largura}m`);
+    if (altura) dimensions.push(`${altura}m`);
+    
+    return dimensions.join(' x ') + ' (C x L x A)';
+  };
+
   const formatDate = (date: string | null) => {
     if (!date) return 'Não definida';
     return new Date(date).toLocaleDateString('pt-BR');
@@ -553,39 +576,48 @@ const FreightDetails = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {freight.tipo_frete === 'comum' ? (
-              // Para frete comum, mostrar itens da carga e tipo de mercadoria
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Tipo de Mercadoria</p>
-                  <p className="font-medium text-lg">{freight.tipo_mercadoria || 'Não especificado'}</p>
+            <div className="space-y-6">
+              {/* Tipo de Mercadoria */}
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Tipo de Mercadoria</p>
+                <p className="font-medium text-lg">{freight.tipo_mercadoria || 'Não especificado'}</p>
+              </div>
+
+              {/* Informações de Peso, Dimensões e Valor */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Weight className="w-4 h-4 text-gray-500" />
+                    <p className="text-sm text-gray-500">Peso da Carga</p>
+                  </div>
+                  <p className="font-semibold text-lg text-blue-600">{formatWeight(freight.peso_carga)}</p>
                 </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Package className="w-4 h-4 text-gray-500" />
+                    <p className="text-sm text-gray-500">Dimensões (C x L x A)</p>
+                  </div>
+                  <p className="font-semibold text-lg text-blue-600">{formatDimensions(freight)}</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <DollarSign className="w-4 h-4 text-gray-500" />
+                    <p className="text-sm text-gray-500">Valor da Carga</p>
+                  </div>
+                  <p className="font-semibold text-lg text-green-600">{formatValue(freight.valor_carga)}</p>
+                </div>
+              </div>
+
+              {/* Itens da Carga - Apenas para frete comum */}
+              {freight.tipo_frete === 'comum' && (
                 <div>
                   <p className="text-sm text-gray-500 mb-2">Itens da Carga</p>
                   {renderCadasteredItems()}
                 </div>
-              </div>
-            ) : (
-              // Para outros tipos, mostrar todas as informações da carga
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Tipo de Mercadoria</p>
-                    <p className="font-medium">{freight.tipo_mercadoria || 'Não especificado'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Peso da Carga</p>
-                    <p className="font-medium">
-                      {freight.peso_carga ? `${freight.peso_carga} kg` : 'Não especificado'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Valor da Carga</p>
-                    <p className="font-medium">{formatValue(freight.valor_carga)}</p>
-                  </div>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </CardContent>
         </Card>
 
