@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, User, Truck, DollarSign, Settings, CheckCircle } from 'lucide-react';
+import { MapPin, User, Truck, DollarSign, Settings, CheckCircle, Package } from 'lucide-react';
 
 interface Collaborator {
   id: string;
@@ -66,6 +66,11 @@ interface FreightFormData {
   observacoes: string;
   valor_definido?: number;
   tipo_valor?: string;
+  dimensoes?: {
+    altura: string;
+    largura: string;
+    comprimento: string;
+  };
 }
 
 interface FreightVerificationDialogProps {
@@ -148,9 +153,41 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
 
           {/* Carga */}
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold">Informações da Carga</h3>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p><span className="font-medium">Tipo de Mercadoria:</span> {formData.tipo_mercadoria}</p>
+            <div className="flex items-center space-x-2">
+              <Package className="w-5 h-5 text-purple-600" />
+              <h3 className="text-lg font-semibold">Informações da Carga</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p><span className="font-medium">Tipo de Mercadoria:</span> {formData.tipo_mercadoria}</p>
+              </div>
+              
+              {/* Dimensões da Carga */}
+              {formData.dimensoes && (formData.dimensoes.altura || formData.dimensoes.largura || formData.dimensoes.comprimento) && (
+                <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                  <h4 className="font-medium text-purple-800 mb-2">Dimensões da Carga</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                    {formData.dimensoes.altura && (
+                      <div>
+                        <span className="text-purple-600 font-medium">Altura:</span>
+                        <span className="text-purple-700 ml-1">{formData.dimensoes.altura} m</span>
+                      </div>
+                    )}
+                    {formData.dimensoes.largura && (
+                      <div>
+                        <span className="text-purple-600 font-medium">Largura:</span>
+                        <span className="text-purple-700 ml-1">{formData.dimensoes.largura} m</span>
+                      </div>
+                    )}
+                    {formData.dimensoes.comprimento && (
+                      <div>
+                        <span className="text-purple-600 font-medium">Comprimento:</span>
+                        <span className="text-purple-700 ml-1">{formData.dimensoes.comprimento} m</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
