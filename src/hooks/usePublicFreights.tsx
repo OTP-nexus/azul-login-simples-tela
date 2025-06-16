@@ -119,13 +119,16 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         .select('*', { count: 'exact', head: true })
         .in('status', ['ativo', 'pendente']);
 
-      // Apply simple filters to count query
+      // Apply filters to count query
       if (filters.origin) {
         countQuery = countQuery.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
       }
       
       if (filters.destination) {
-        countQuery = countQuery.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        // Usar a função SQL search_destinations para filtro eficiente no servidor
+        countQuery = countQuery.filter('search_destinations', 'eq', true, {
+          args: ['destino_cidade', 'destino_estado', 'destinos', filters.destination]
+        });
       }
       
       if (filters.freightType) {
@@ -152,7 +155,10 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       }
       
       if (filters.destination) {
-        query = query.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        // Usar a função SQL search_destinations para filtro eficiente no servidor
+        query = query.filter('search_destinations', 'eq', true, {
+          args: ['destino_cidade', 'destino_estado', 'destinos', filters.destination]
+        });
       }
       
       if (filters.freightType) {
@@ -178,7 +184,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
 
       let filteredData = freightData || [];
 
-      // Apply complex filters on client side
+      // Apply remaining complex filters on client side (only for vehicle and body types)
       if (filters.vehicleTypes && filters.vehicleTypes.length > 0) {
         filteredData = filteredData.filter(freight => {
           return filters.vehicleTypes!.some(vehicleType => 
