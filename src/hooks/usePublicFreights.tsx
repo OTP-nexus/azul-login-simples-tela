@@ -113,13 +113,13 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
 
       console.log('Aplicando filtros:', filters, 'Página:', page);
 
-      // Buscar dados filtrados usando a estratégia de duas consultas
+      // Construir query base
       let baseQuery = supabase
         .from('fretes')
         .select('*')
         .in('status', ['ativo', 'pendente']);
 
-      // Apply filters to base query
+      // Aplicar filtros simples na query base
       if (filters.origin) {
         baseQuery = baseQuery.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
       }
@@ -134,37 +134,22 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         baseQuery = baseQuery.eq('precisa_rastreador', false);
       }
 
-      // Se há filtro de destino, usar função RPC para filtrar
-      let filteredFreights = [];
+      // Buscar todos os fretes que passaram nos filtros básicos
+      const { data: freightData, error: freightError } = await baseQuery;
+      
+      if (freightError) {
+        console.error('Erro ao buscar fretes:', freightError);
+        setError('Erro ao buscar fretes');
+        return;
+      }
+
+      let filteredFreights = freightData || [];
+
+      // Aplicar filtro de destino no lado do cliente
       if (filters.destination) {
-        // Usar RPC para chamar a função SQL search_destinations
-        const { data: destinationFilteredData, error: destinationError } = await supabase
-          .rpc('search_destinations', {
-            destino_cidade_val: '',
-            destino_estado_val: '',
-            destinos_data: {},
-            search_value: filters.destination
-          });
-
-        if (destinationError) {
-          console.error('Erro ao filtrar por destino:', destinationError);
-          setError('Erro ao filtrar por destino');
-          return;
-        }
-
-        // Buscar fretes que passaram no filtro de destino
-        const { data: freightData, error: freightError } = await baseQuery;
+        const searchValue = filters.destination.toLowerCase();
         
-        if (freightError) {
-          console.error('Erro ao buscar fretes:', freightError);
-          setError('Erro ao buscar fretes');
-          return;
-        }
-
-        // Aplicar filtro de destino no lado do cliente como fallback
-        filteredFreights = (freightData || []).filter(freight => {
-          const searchValue = filters.destination!.toLowerCase();
-          
+        filteredFreights = filteredFreights.filter(freight => {
           // Verificar destino_cidade e destino_estado
           if (freight.destino_cidade?.toLowerCase().includes(searchValue) ||
               freight.destino_estado?.toLowerCase().includes(searchValue)) {
@@ -184,17 +169,6 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
           
           return false;
         });
-      } else {
-        // Se não há filtro de destino, buscar normalmente
-        const { data: freightData, error: freightError } = await baseQuery;
-        
-        if (freightError) {
-          console.error('Erro ao buscar fretes:', freightError);
-          setError('Erro ao buscar fretes');
-          return;
-        }
-
-        filteredFreights = freightData || [];
       }
 
       // Apply remaining complex filters on client side (only for vehicle and body types)
