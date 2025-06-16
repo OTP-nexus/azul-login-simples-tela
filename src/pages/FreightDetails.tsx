@@ -530,67 +530,71 @@ const FreightDetails = () => {
           </CardContent>
         </Card>
 
-        {/* Recursos da Origem */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recursos da Origem</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center space-x-2">
-                <span className={freight.origem_possui_carga_descarga ? "text-green-600" : "text-gray-400"}>
-                  {freight.origem_possui_carga_descarga ? "✓" : "✗"} Carga/Descarga
-                </span>
+        {/* Recursos da Origem - Apenas para frete comum */}
+        {freight.tipo_frete === 'comum' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Recursos da Origem</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <span className={freight.origem_possui_carga_descarga ? "text-green-600" : "text-gray-400"}>
+                    {freight.origem_possui_carga_descarga ? "✓" : "✗"} Carga/Descarga
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className={freight.origem_possui_escada ? "text-green-600" : "text-gray-400"}>
+                    {freight.origem_possui_escada ? "✓" : "✗"} Escada
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className={freight.origem_possui_elevador ? "text-green-600" : "text-gray-400"}>
+                    {freight.origem_possui_elevador ? "✓" : "✗"} Elevador
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className={freight.origem_possui_doca ? "text-green-600" : "text-gray-400"}>
+                    {freight.origem_possui_doca ? "✓" : "✗"} Doca
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <span className={freight.origem_possui_escada ? "text-green-600" : "text-gray-400"}>
-                  {freight.origem_possui_escada ? "✓" : "✗"} Escada
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className={freight.origem_possui_elevador ? "text-green-600" : "text-gray-400"}>
-                  {freight.origem_possui_elevador ? "✓" : "✗"} Elevador
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className={freight.origem_possui_doca ? "text-green-600" : "text-gray-400"}>
-                  {freight.origem_possui_doca ? "✓" : "✗"} Doca
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Recursos do Destino */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recursos do Destino</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center space-x-2">
-                <span className={freight.destino_possui_carga_descarga ? "text-green-600" : "text-gray-400"}>
-                  {freight.destino_possui_carga_descarga ? "✓" : "✗"} Carga/Descarga
-                </span>
+        {/* Recursos do Destino - Apenas para frete comum */}
+        {freight.tipo_frete === 'comum' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Recursos do Destino</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <span className={freight.destino_possui_carga_descarga ? "text-green-600" : "text-gray-400"}>
+                    {freight.destino_possui_carga_descarga ? "✓" : "✗"} Carga/Descarga
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className={freight.destino_possui_escada ? "text-green-600" : "text-gray-400"}>
+                    {freight.destino_possui_escada ? "✓" : "✗"} Escada
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className={freight.destino_possui_elevador ? "text-green-600" : "text-gray-400"}>
+                    {freight.destino_possui_elevador ? "✓" : "✗"} Elevador
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className={freight.destino_possui_doca ? "text-green-600" : "text-gray-400"}>
+                    {freight.destino_possui_doca ? "✓" : "✗"} Doca
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <span className={freight.destino_possui_escada ? "text-green-600" : "text-gray-400"}>
-                  {freight.destino_possui_escada ? "✓" : "✗"} Escada
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className={freight.destino_possui_elevador ? "text-green-600" : "text-gray-400"}>
-                  {freight.destino_possui_elevador ? "✓" : "✗"} Elevador
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className={freight.destino_possui_doca ? "text-green-600" : "text-gray-400"}>
-                  {freight.destino_possui_doca ? "✓" : "✗"} Doca
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Observações */}
         {freight.observacoes && <Card>
