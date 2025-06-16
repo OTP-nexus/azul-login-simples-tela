@@ -36,100 +36,12 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
     itemsPerPage
   });
 
-  // Função para verificar se uma string contém o valor de busca
-  const stringContains = (text: string | null | undefined, searchValue: string): boolean => {
-    if (!text || !searchValue) return false;
-    return text.toLowerCase().includes(searchValue.toLowerCase());
-  };
-
-  // Função para verificar destino nas paradas (frete completo e retorno)
-  const checkDestinationInParadas = (paradas: any, searchValue: string): boolean => {
-    console.log('Verificando paradas:', paradas, 'para busca:', searchValue);
-    
-    if (!paradas || !searchValue) return false;
-    
-    try {
-      let paradasArray = paradas;
-      
-      // Se é string, fazer parse
-      if (typeof paradas === 'string') {
-        paradasArray = JSON.parse(paradas);
-      }
-      
-      // Se não é array, retornar false
-      if (!Array.isArray(paradasArray)) return false;
-      
-      // Verificar cada parada
-      return paradasArray.some((parada: any) => {
-        if (typeof parada === 'object' && parada !== null) {
-          const cidade = parada.cidade || parada.city || '';
-          const estado = parada.estado || parada.state || '';
-          const result = stringContains(cidade, searchValue) || stringContains(estado, searchValue);
-          if (result) {
-            console.log('Encontrou match em parada:', parada);
-          }
-          return result;
-        }
-        return false;
-      });
-    } catch (e) {
-      console.error('Erro ao processar paradas:', e);
-      return false;
-    }
-  };
-
-  // Função para verificar destino nos destinos (agregamento e comum)
-  const checkDestinationInDestinos = (freight: any, searchValue: string): boolean => {
-    console.log('Verificando destinos para frete:', freight.id, 'busca:', searchValue);
-    
-    if (!searchValue) return false;
-    
-    // Verificar campos diretos
-    if (stringContains(freight.destino_cidade, searchValue) || 
-        stringContains(freight.destino_estado, searchValue)) {
-      console.log('Match encontrado nos campos diretos');
-      return true;
-    }
-    
-    // Verificar array de destinos
-    if (freight.destinos) {
-      try {
-        let destinosArray = freight.destinos;
-        
-        // Se é string, fazer parse
-        if (typeof freight.destinos === 'string') {
-          destinosArray = JSON.parse(freight.destinos);
-        }
-        
-        // Se é array, verificar cada destino
-        if (Array.isArray(destinosArray)) {
-          const found = destinosArray.some((destino: any) => {
-            if (typeof destino === 'object' && destino !== null) {
-              const cidade = destino.cidade || destino.city || '';
-              const estado = destino.estado || destino.state || '';
-              const result = stringContains(cidade, searchValue) || stringContains(estado, searchValue);
-              if (result) {
-                console.log('Match encontrado em destino:', destino);
-              }
-              return result;
-            }
-            return false;
-          });
-          return found;
-        }
-      } catch (e) {
-        console.error('Erro ao processar destinos:', e);
-      }
-    }
-    
-    return false;
-  };
-
-  // Função para verificar tipos de veículo
+  // Função auxiliar para verificar se um tipo de veículo está nos dados JSONB
   const hasVehicleType = (vehicleData: any, searchValue: string): boolean => {
     if (!vehicleData || vehicleData === null) return false;
     
     try {
+      // Se vehicleData é uma string, parse para JSON
       const data = typeof vehicleData === 'string' ? JSON.parse(vehicleData) : vehicleData;
       
       if (!Array.isArray(data)) return false;
@@ -141,6 +53,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         if (typeof item === 'object' && item !== null) {
           return item.value === searchValue || item.type === searchValue || item.id === searchValue;
         }
+        // Para arrays aninhados
         if (Array.isArray(item)) {
           return item.some((subItem: any) => {
             if (typeof subItem === 'string') return subItem === searchValue;
@@ -158,11 +71,12 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
     }
   };
 
-  // Função para verificar tipos de carroceria
+  // Função auxiliar para verificar se um tipo de carroceria está nos dados JSONB
   const hasBodyType = (bodyData: any, searchValue: string): boolean => {
     if (!bodyData || bodyData === null) return false;
     
     try {
+      // Se bodyData é uma string, parse para JSON
       const data = typeof bodyData === 'string' ? JSON.parse(bodyData) : bodyData;
       
       if (!Array.isArray(data)) return false;
@@ -174,6 +88,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         if (typeof item === 'object' && item !== null) {
           return item.value === searchValue || item.type === searchValue || item.id === searchValue;
         }
+        // Para arrays aninhados
         if (Array.isArray(item)) {
           return item.some((subItem: any) => {
             if (typeof subItem === 'string') return subItem === searchValue;
@@ -196,18 +111,48 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       setLoading(true);
       setError(null);
 
-      console.log('Buscando fretes com filtros:', filters);
+      console.log('Aplicando filtros:', filters, 'Página:', page);
 
-      // Buscar todos os fretes ativos sem filtros server-side
+      // First, get the total count for pagination
+      let countQuery = supabase
+        .from('fretes')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['ativo', 'pendente']);
+
+      // Apply simple filters to count query
+      if (filters.origin) {
+        countQuery = countQuery.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
+      }
+      
+      if (filters.destination) {
+        countQuery = countQuery.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+      }
+      
+      if (filters.freightType) {
+        countQuery = countQuery.eq('tipo_frete', filters.freightType);
+      }
+      
+      if (filters.tracker === 'sim') {
+        countQuery = countQuery.eq('precisa_rastreador', true);
+      } else if (filters.tracker === 'nao') {
+        countQuery = countQuery.eq('precisa_rastreador', false);
+      }
+
+      // Now get the actual data with pagination
       let query = supabase
         .from('fretes')
         .select('*')
         .in('status', ['ativo', 'pendente'])
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range((page - 1) * itemsPerPage, page * itemsPerPage - 1);
 
-      // Aplicar apenas filtros simples no servidor
+      // Apply the same filters to data query
       if (filters.origin) {
         query = query.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
+      }
+      
+      if (filters.destination) {
+        query = query.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
       }
       
       if (filters.freightType) {
@@ -220,7 +165,10 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         query = query.eq('precisa_rastreador', false);
       }
 
-      const { data: freightData, error: freightError } = await query;
+      const [{ count }, { data: freightData, error: freightError }] = await Promise.all([
+        countQuery,
+        query
+      ]);
 
       if (freightError) {
         console.error('Erro ao buscar fretes públicos:', freightError);
@@ -229,34 +177,14 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       }
 
       let filteredData = freightData || [];
-      console.log('Dados brutos do servidor:', filteredData.length, 'fretes');
 
-      // Aplicar filtros complexos no cliente
-      if (filters.destination) {
-        console.log('Aplicando filtro de destino:', filters.destination);
-        
-        filteredData = filteredData.filter(freight => {
-          const isFreteCompletoOuRetorno = freight.tipo_frete === 'frete_completo' || freight.tipo_frete === 'frete_de_retorno';
-          
-          if (isFreteCompletoOuRetorno) {
-            // Para frete completo e retorno, verificar nas paradas
-            return checkDestinationInParadas(freight.paradas, filters.destination!);
-          } else {
-            // Para agregamento e comum, verificar nos destinos
-            return checkDestinationInDestinos(freight, filters.destination!);
-          }
-        });
-        
-        console.log('Após filtro de destino:', filteredData.length, 'fretes');
-      }
-
+      // Apply complex filters on client side
       if (filters.vehicleTypes && filters.vehicleTypes.length > 0) {
         filteredData = filteredData.filter(freight => {
           return filters.vehicleTypes!.some(vehicleType => 
             hasVehicleType(freight.tipos_veiculos, vehicleType)
           );
         });
-        console.log('Após filtro de veículos:', filteredData.length, 'fretes');
       }
 
       if (filters.bodyTypes && filters.bodyTypes.length > 0) {
@@ -265,15 +193,11 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
             hasBodyType(freight.tipos_carrocerias, bodyType)
           );
         });
-        console.log('Após filtro de carrocerias:', filteredData.length, 'fretes');
       }
 
-      // Aplicar paginação no cliente
-      const totalItems = filteredData.length;
+      // Calculate pagination info
+      const totalItems = count || 0;
       const totalPages = Math.ceil(totalItems / itemsPerPage);
-      const startIndex = (page - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage;
-      const paginatedData = filteredData.slice(startIndex, endIndex);
 
       setPagination({
         currentPage: page,
@@ -283,7 +207,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       });
 
       // Transform data
-      const formattedFreights: Freight[] = paginatedData.map(freight => ({
+      const formattedFreights: Freight[] = filteredData.map(freight => ({
         id: freight.id,
         codigo_agregamento: freight.codigo_agregamento || '',
         tipo_frete: freight.tipo_frete,
@@ -317,7 +241,6 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         destino_estado: freight.destino_estado
       }));
 
-      console.log('Fretes finais formatados:', formattedFreights.length);
       setFreights(formattedFreights);
     } catch (err) {
       console.error('Erro ao carregar fretes públicos:', err);
