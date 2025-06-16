@@ -55,7 +55,20 @@ const FreightDetailsSection = ({ freight }: FreightDetailsSectionProps) => {
           if (typeof item === 'string') {
             displayText = item;
           } else if (typeof item === 'object' && item !== null) {
-            displayText = item.label || item.nome || item.type || item.value || JSON.stringify(item);
+            // Handle different object structures
+            if (item.label) {
+              displayText = item.label;
+            } else if (item.nome) {
+              displayText = item.nome;
+            } else if (item.type) {
+              displayText = item.type;
+            } else if (item.value) {
+              displayText = item.value;
+            } else if (item.categoria) {
+              displayText = item.categoria;
+            } else {
+              displayText = JSON.stringify(item);
+            }
           } else {
             displayText = String(item);
           }
@@ -146,6 +159,61 @@ const FreightDetailsSection = ({ freight }: FreightDetailsSectionProps) => {
       );
     }
     return <p className="text-gray-500 italic">Destino não definido</p>;
+  };
+
+  const renderBeneficios = () => {
+    if (!freight.beneficios || freight.beneficios.length === 0) {
+      return <p className="text-gray-500 italic">Nenhum benefício especificado</p>;
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {freight.beneficios.map((beneficio: any, index: number) => {
+          let titulo = '';
+          let descricao = '';
+          
+          if (typeof beneficio === 'string') {
+            titulo = beneficio;
+          } else if (typeof beneficio === 'object' && beneficio !== null) {
+            titulo = beneficio.titulo || beneficio.nome || beneficio.type || 'Benefício';
+            descricao = beneficio.descricao || beneficio.description || '';
+          }
+
+          return (
+            <div key={index} className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+              <p className="font-medium text-blue-900">{titulo}</p>
+              {descricao && <p className="text-sm text-blue-700 mt-1">{descricao}</p>}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderRegrasAgendamento = () => {
+    if (!freight.regras_agendamento || freight.regras_agendamento.length === 0) {
+      return <p className="text-gray-500 italic">Nenhuma regra especificada</p>;
+    }
+
+    return (
+      <div className="space-y-2">
+        {freight.regras_agendamento.map((regra: any, index: number) => {
+          let texto = '';
+          
+          if (typeof regra === 'string') {
+            texto = regra;
+          } else if (typeof regra === 'object' && regra !== null) {
+            texto = regra.descricao || regra.texto || regra.rule || JSON.stringify(regra);
+          }
+
+          return (
+            <div key={index} className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+              <p className="text-purple-900">{texto}</p>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -444,34 +512,30 @@ const FreightDetailsSection = ({ freight }: FreightDetailsSectionProps) => {
           </Card>
 
           {/* Benefícios */}
-          {freight.beneficios && freight.beneficios.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Users className="w-5 h-5 mr-2 text-blue-600" />
-                  Benefícios Oferecidos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {renderArrayData(freight.beneficios, 'Nenhum benefício especificado')}
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Users className="w-5 h-5 mr-2 text-blue-600" />
+                Benefícios Oferecidos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {renderBeneficios()}
+            </CardContent>
+          </Card>
 
           {/* Regras de Agendamento */}
-          {freight.regras_agendamento && freight.regras_agendamento.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Route className="w-5 h-5 mr-2 text-purple-600" />
-                  Regras de Agendamento
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {renderArrayData(freight.regras_agendamento, 'Nenhuma regra especificada')}
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Route className="w-5 h-5 mr-2 text-purple-600" />
+                Regras de Agendamento
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {renderRegrasAgendamento()}
+            </CardContent>
+          </Card>
         </>
       )}
 

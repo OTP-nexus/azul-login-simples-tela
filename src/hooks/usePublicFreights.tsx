@@ -144,7 +144,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page = 1, 
         }
 
         // Transform data to match the Freight interface
-        const formattedFreights: Freight[] = (data || []).map((freight: any) => ({
+        const formattedFreights: Freight[] = (data || []).map((freight) => ({
           id: freight.id,
           codigo_agregamento: freight.codigo_agregamento || '',
           tipo_frete: freight.tipo_frete,
