@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Package, Calendar, DollarSign, Truck, Users, Shield, Radar, UserPlus, Clock, AlertTriangle, FileText, RotateCcw, Combine, Calculator, Route, Settings, User, Phone, Mail } from "lucide-react";
 import FreightTypeBadge from '@/components/FreightTypeBadge';
+
 const FreightDetails = () => {
   const {
     freightCode
@@ -320,7 +321,8 @@ const FreightDetails = () => {
         </div>;
     });
   };
-  return <div className="container mx-auto px-4 py-8 max-w-6xl">
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-6">
         <Button onClick={() => navigate('/lista-fretes')} variant="outline" className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -353,22 +355,39 @@ const FreightDetails = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Data de Coleta</p>
-              <p className="font-medium">{formatDate(freight.data_coleta)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Data de Entrega</p>
-              <p className="font-medium">{formatDate(freight.data_entrega)}</p>
-            </div>
-            {freight.horario_carregamento && <div>
-                <p className="text-sm text-gray-500">Horário de Carregamento</p>
-                <p className="font-medium">{freight.horario_carregamento}</p>
-              </div>}
-            <div>
-              <p className="text-sm text-gray-500">Status</p>
-              <p className="font-medium">{freight.status || 'Ativo'}</p>
-            </div>
+            {freight.tipo_frete === 'agregamento' ? (
+              // Para agregamento, mostrar apenas o horário de carregamento com fonte maior
+              <>
+                {freight.horario_carregamento && (
+                  <div className="col-span-2 text-center">
+                    <p className="text-sm text-gray-500 mb-2">Horário de Carregamento</p>
+                    <p className="font-bold text-2xl text-blue-600">{freight.horario_carregamento}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              // Para outros tipos de frete, mostrar todas as informações
+              <>
+                <div>
+                  <p className="text-sm text-gray-500">Data de Coleta</p>
+                  <p className="font-medium">{formatDate(freight.data_coleta)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Data de Entrega</p>
+                  <p className="font-medium">{formatDate(freight.data_entrega)}</p>
+                </div>
+                {freight.horario_carregamento && (
+                  <div>
+                    <p className="text-sm text-gray-500">Horário de Carregamento</p>
+                    <p className="font-medium">{freight.horario_carregamento}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="font-medium">{freight.status || 'Ativo'}</p>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -615,6 +634,8 @@ const FreightDetails = () => {
           Tenho Interesse neste Frete
         </Button>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default FreightDetails;
