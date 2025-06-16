@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ActiveFreight } from '@/hooks/useActiveFreights';
@@ -124,6 +123,10 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         countQuery = countQuery.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
       }
       
+      if (filters.destination) {
+        countQuery = countQuery.or(`destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+      }
+      
       if (filters.freightType) {
         countQuery = countQuery.eq('tipo_frete', filters.freightType);
       }
@@ -145,6 +148,10 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       // Apply the same filters to data query
       if (filters.origin) {
         query = query.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
+      }
+      
+      if (filters.destination) {
+        query = query.or(`destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
       }
       
       if (filters.freightType) {
@@ -187,12 +194,12 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         });
       }
 
-      // Apply destination filter on client side - using same logic as origin
+      // Apply destination filter on client side - for destinos JSON array only
       if (filters.destination) {
         filteredData = filteredData.filter(freight => {
           const searchTerm = filters.destination!.toLowerCase();
           
-          // Check destino_cidade and destino_estado (same as origin logic)
+          // Check destino_cidade and destino_estado (already filtered on server)
           const destinoCidadeMatch = freight.destino_cidade && 
             freight.destino_cidade.toLowerCase().includes(searchTerm);
           const destinoEstadoMatch = freight.destino_estado && 
@@ -257,6 +264,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       }));
 
       setFreights(formattedFreights);
+
     } catch (err) {
       console.error('Erro ao carregar fretes públicos:', err);
       setError('Erro ao carregar fretes públicos');
