@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -404,8 +405,8 @@ const FreightDetails = () => {
                   </div>
                 )}
               </>
-            ) : freight.tipo_frete === 'comum' ? (
-              // Para frete comum, mostrar apenas data de coleta e horário de carregamento, cada um em uma linha
+            ) : freight.tipo_frete === 'comum' || freight.tipo_frete === 'frete_completo' || freight.tipo_frete === 'frete_de_retorno' ? (
+              // Para frete comum, completo e de retorno, mostrar apenas data de coleta e horário de carregamento, cada um em uma linha
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Data de Coleta</p>
