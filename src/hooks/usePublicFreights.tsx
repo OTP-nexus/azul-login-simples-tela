@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ActiveFreight } from '@/hooks/useActiveFreights';
@@ -248,74 +249,6 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       setLoading(false);
     }
   }, [JSON.stringify(filters), page, itemsPerPage]);
-
-  const hasVehicleType = (vehicleData: any, searchValue: string): boolean => {
-    if (!vehicleData || vehicleData === null) return false;
-    
-    try {
-      // Se vehicleData é uma string, parse para JSON
-      const data = typeof vehicleData === 'string' ? JSON.parse(vehicleData) : vehicleData;
-      
-      if (!Array.isArray(data)) return false;
-      
-      return data.some((item: any) => {
-        if (typeof item === 'string') {
-          return item === searchValue;
-        }
-        if (typeof item === 'object' && item !== null) {
-          return item.value === searchValue || item.type === searchValue || item.id === searchValue;
-        }
-        // Para arrays aninhados
-        if (Array.isArray(item)) {
-          return item.some((subItem: any) => {
-            if (typeof subItem === 'string') return subItem === searchValue;
-            if (typeof subItem === 'object' && subItem !== null) {
-              return subItem.value === searchValue || subItem.type === searchValue || subItem.id === searchValue;
-            }
-            return false;
-          });
-        }
-        return false;
-      });
-    } catch (e) {
-      console.error('Erro ao processar dados de veículo:', e);
-      return false;
-    }
-  };
-
-  const hasBodyType = (bodyData: any, searchValue: string): boolean => {
-    if (!bodyData || bodyData === null) return false;
-    
-    try {
-      // Se bodyData é uma string, parse para JSON
-      const data = typeof bodyData === 'string' ? JSON.parse(bodyData) : bodyData;
-      
-      if (!Array.isArray(data)) return false;
-      
-      return data.some((item: any) => {
-        if (typeof item === 'string') {
-          return item === searchValue;
-        }
-        if (typeof item === 'object' && item !== null) {
-          return item.value === searchValue || item.type === searchValue || item.id === searchValue;
-        }
-        // Para arrays aninhados
-        if (Array.isArray(item)) {
-          return item.some((subItem: any) => {
-            if (typeof subItem === 'string') return subItem === searchValue;
-            if (typeof subItem === 'object' && subItem !== null) {
-              return subItem.value === searchValue || subItem.type === searchValue || subItem.id === searchValue;
-            }
-            return false;
-          });
-        }
-        return false;
-      });
-    } catch (e) {
-      console.error('Erro ao processar dados de carroceria:', e);
-      return false;
-    }
-  };
 
   useEffect(() => {
     fetchFreights();
