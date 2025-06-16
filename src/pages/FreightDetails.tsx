@@ -530,15 +530,16 @@ const FreightDetails = () => {
                     )}
                   </div>
                 </div>
+              ) : freight.tipo_frete === 'frete_completo' || freight.tipo_frete === 'frete_de_retorno' ? (
+                // Para frete completo e de retorno, mostrar apenas paradas
+                renderStops()
               ) : (
-                // Para outros tipos, mostrar múltiplos destinos
+                // Para agregamento, mostrar múltiplos destinos
                 <div>
                   <p className="text-sm text-gray-500 mb-2">Destinos</p>
                   {renderDestinations()}
                 </div>
               )}
-
-              {renderStops()}
             </div>
           </CardContent>
         </Card>
