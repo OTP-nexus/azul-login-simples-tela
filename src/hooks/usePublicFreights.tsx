@@ -25,6 +25,41 @@ export interface PaginationInfo {
   itemsPerPage: number;
 }
 
+// Helper type for the raw freight data from database
+type RawFreightData = {
+  id: string;
+  codigo_agregamento: string | null;
+  tipo_frete: string;
+  status: string | null;
+  origem_cidade: string;
+  origem_estado: string;
+  destinos: any;
+  data_coleta: string | null;
+  data_entrega: string | null;
+  tipo_mercadoria: string;
+  peso_carga: number | null;
+  valor_carga: number | null;
+  valores_definidos: any;
+  tipos_veiculos: any;
+  tipos_carrocerias: any;
+  collaborator_ids: string[] | null;
+  created_at: string;
+  updated_at: string;
+  pedagio_pago_por: string | null;
+  pedagio_direcao: string | null;
+  precisa_seguro: boolean | null;
+  precisa_rastreador: boolean | null;
+  precisa_ajudante: boolean | null;
+  horario_carregamento: string | null;
+  observacoes: string | null;
+  paradas: any;
+  beneficios: any;
+  regras_agendamento: any;
+  tabelas_preco: any;
+  destino_cidade: string | null;
+  destino_estado: string | null;
+};
+
 export const usePublicFreights = (filters: PublicFreightFilters = {}, page: number = 1, itemsPerPage: number = 20) => {
   const [freights, setFreights] = useState<Freight[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,9 +78,12 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
 
       console.log('Aplicando filtros:', filters, 'Página:', page);
 
+      // Converter filters para um formato compatível com Json
+      const filtersJson = JSON.parse(JSON.stringify(filters));
+
       // Usar a nova função PostgreSQL que faz toda a filtragem no servidor
       const { data, error: rpcError } = await supabase.rpc('search_public_freights', {
-        p_filters: filters,
+        p_filters: filtersJson,
         p_page: page,
         p_page_size: itemsPerPage
       });
@@ -68,12 +106,12 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       }
 
       // Extrair dados dos fretes e contagem total
-      const freightData = data.filter(item => item.freight_data && Object.keys(item.freight_data).length > 0);
+      const freightData = data.filter(item => item.freight_data && Object.keys(item.freight_data as object).length > 0);
       const totalCount = data[0]?.total_count || 0;
 
       // Transform data - manter a mesma estrutura de dados que o código anterior
       const formattedFreights: Freight[] = freightData.map(item => {
-        const freight = item.freight_data;
+        const freight = item.freight_data as RawFreightData;
         return {
           id: freight.id,
           codigo_agregamento: freight.codigo_agregamento || '',
