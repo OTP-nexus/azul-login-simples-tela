@@ -286,14 +286,14 @@ const FreightDetails = () => {
               const kmEnd = range.kmEnd || range.km_end || range.km_fim || 0;
               const price = range.price || range.preco || range.valor || 0;
               return <div key={range.id || rangeIndex} className="bg-white p-3 rounded border border-green-300">
-                      <div className="flex flex-col space-y-2 md:grid md:grid-cols-2 md:gap-3 md:space-y-0">
-                        <div>
-                          <p className="text-gray-600 text-sm font-medium mb-1">Distância</p>
-                          <p className="font-medium text-gray-900">{kmStart} - {kmEnd} km</p>
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+                        <div className="flex-1">
+                          <p className="text-gray-600 text-xs font-medium mb-1 sm:mb-0">Distância</p>
+                          <p className="font-medium text-gray-900 text-sm">{kmStart} - {kmEnd} km</p>
                         </div>
-                        <div>
-                          <p className="text-gray-600 text-sm font-medium mb-1">Valor</p>
-                          <p className="font-semibold text-green-600 text-lg">{formatValue(price)}</p>
+                        <div className="flex-1 sm:text-right">
+                          <p className="text-gray-600 text-xs font-medium mb-1 sm:mb-0">Valor</p>
+                          <p className="font-semibold text-green-600 text-base sm:text-lg">{formatValue(price)}</p>
                         </div>
                       </div>
                     </div>;
