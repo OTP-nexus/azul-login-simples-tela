@@ -102,23 +102,33 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
   const selectedVehicles = formData.tipos_veiculos.filter(v => v.selected);
   const selectedBodies = formData.tipos_carrocerias.filter(b => b.selected);
 
+  // Log completo dos dados para debug
+  console.log('=== COMPLETE FORM DATA DEBUG ===');
+  console.log('Full formData object:', JSON.stringify(formData, null, 2));
+  console.log('formData keys:', Object.keys(formData));
+  console.log('=== DIMENSIONS DEBUG ===');
+  console.log('formData.dimensoes:', formData.dimensoes);
+  console.log('formData.altura:', formData.altura);
+  console.log('formData.largura:', formData.largura);
+  console.log('formData.comprimento:', formData.comprimento);
+  console.log('typeof formData.dimensoes:', typeof formData.dimensoes);
+  
   // Check dimensions from both possible structures
   const altura = formData.dimensoes?.altura || formData.altura;
   const largura = formData.dimensoes?.largura || formData.largura;
   const comprimento = formData.dimensoes?.comprimento || formData.comprimento;
 
+  console.log('=== RESOLVED VALUES ===');
+  console.log('Resolved altura:', altura);
+  console.log('Resolved largura:', largura);
+  console.log('Resolved comprimento:', comprimento);
+
   const hasDimensions = (altura && altura.trim() !== '') || 
                        (largura && largura.trim() !== '') || 
                        (comprimento && comprimento.trim() !== '');
 
-  console.log('Form data dimensions:', formData.dimensoes);
-  console.log('Form data altura:', formData.altura);
-  console.log('Form data largura:', formData.largura);
-  console.log('Form data comprimento:', formData.comprimento);
-  console.log('Has dimensions:', hasDimensions);
-  console.log('Resolved altura:', altura);
-  console.log('Resolved largura:', largura);
-  console.log('Resolved comprimento:', comprimento);
+  console.log('hasDimensions:', hasDimensions);
+  console.log('=== END DEBUG ===');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -183,24 +193,39 @@ const FreightVerificationDialog: React.FC<FreightVerificationDialogProps> = ({
                 <p><span className="font-medium">Tipo de Mercadoria:</span> {formData.tipo_mercadoria}</p>
               </div>
               
-              {/* Dimensões da Carga */}
-              {hasDimensions && (
+              {/* Debug: Mostrar sempre a seção de dimensões para testar */}
+              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                <h4 className="font-medium text-red-800 mb-2">DEBUG - Dados de Dimensões</h4>
+                <div className="text-xs space-y-1">
+                  <p>hasDimensions: {hasDimensions.toString()}</p>
+                  <p>altura: '{altura}'</p>
+                  <p>largura: '{largura}'</p>
+                  <p>comprimento: '{comprimento}'</p>
+                  <p>formData.dimensoes: {JSON.stringify(formData.dimensoes)}</p>
+                  <p>formData.altura: '{formData.altura}'</p>
+                  <p>formData.largura: '{formData.largura}'</p>
+                  <p>formData.comprimento: '{formData.comprimento}'</p>
+                </div>
+              </div>
+              
+              {/* Dimensões da Carga - com condição mais permissiva para teste */}
+              {(altura || largura || comprimento) && (
                 <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
                   <h4 className="font-medium text-purple-800 mb-2">Dimensões da Carga</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                    {altura && altura.trim() !== '' && (
+                    {altura && (
                       <div>
                         <span className="text-purple-600 font-medium">Altura:</span>
                         <span className="text-purple-700 ml-1">{altura} m</span>
                       </div>
                     )}
-                    {largura && largura.trim() !== '' && (
+                    {largura && (
                       <div>
                         <span className="text-purple-600 font-medium">Largura:</span>
                         <span className="text-purple-700 ml-1">{largura} m</span>
                       </div>
                     )}
-                    {comprimento && comprimento.trim() !== '' && (
+                    {comprimento && (
                       <div>
                         <span className="text-purple-600 font-medium">Comprimento:</span>
                         <span className="text-purple-700 ml-1">{comprimento} m</span>
