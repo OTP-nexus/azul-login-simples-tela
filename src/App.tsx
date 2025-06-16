@@ -56,6 +56,7 @@ const App = () => (
               {/* Public route with navbar */}
               <Route path="/solicitar-frete" element={<PublicFreightRequest />} />
               <Route path="/lista-fretes" element={<PublicFreightsList />} />
+              <Route path="/:freightCode" element={<FreightDetails />} />
 
               {/* Protected Routes */}
               <Route element={<ProtectedRoute />}>
