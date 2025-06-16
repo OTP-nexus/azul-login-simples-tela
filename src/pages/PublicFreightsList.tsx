@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
-import { useSimplePublicFreights, SimpleFreightFilters } from '@/hooks/useSimplePublicFreights';
+import { usePublicFreights, PublicFreightFilters } from '@/hooks/usePublicFreights';
 import PublicFreightCard from '@/components/PublicFreightCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Filter, LayoutGrid, List } from 'lucide-react';
-import SimpleFreightFiltersComponent from '@/components/SimpleFreightFilters';
+import PublicFreightsFilter from '@/components/PublicFreightsFilter';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -23,33 +24,11 @@ import {
 } from '@/components/ui/pagination';
 
 const PublicFreightsList = () => {
-  const [filters, setFilters] = useState<SimpleFreightFilters>({});
+  const [filters, setFilters] = useState<PublicFreightFilters>({});
   const [currentPage, setCurrentPage] = useState(1);
-  const { freights, loading, error, pagination } = useSimplePublicFreights(filters, currentPage, 20);
+  const { freights, loading, error, pagination } = usePublicFreights(filters, currentPage, 20);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-
-  const handleFilterChange = (newFilters: SimpleFreightFilters) => {
-    console.log('🔍 [PublicFreightsList] Filtros aplicados pelo usuário:', newFilters);
-    console.log('🔍 [PublicFreightsList] Filtros anteriores:', filters);
-    console.log('🔍 [PublicFreightsList] Mudança detectada:', JSON.stringify(newFilters) !== JSON.stringify(filters));
-    
-    setFilters(newFilters);
-    setCurrentPage(1); // Reset to first page when filters change
-    
-    console.log('🔍 [PublicFreightsList] Estado atualizado - Nova página:', 1);
-    console.log('🔍 [PublicFreightsList] Estado atualizado - Novos filtros:', newFilters);
-  };
-
-  const handlePageChange = (page: number) => {
-    console.log('📄 [PublicFreightsList] Mudança de página solicitada:', page);
-    console.log('📄 [PublicFreightsList] Página atual:', currentPage);
-    
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
-    console.log('📄 [PublicFreightsList] Página atualizada para:', page);
-  };
 
   const renderSkeletons = () => {
     return Array.from({ length: 6 }).map((_, index) => (
@@ -61,6 +40,16 @@ const PublicFreightsList = () => {
         </div>
       </div>
     ));
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleFilterChange = (newFilters: PublicFreightFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1); // Reset to first page when filters change
   };
 
   const renderPaginationItems = () => {
@@ -136,16 +125,6 @@ const PublicFreightsList = () => {
     return items;
   };
 
-  // Log current state for debugging
-  console.log('🖥️ [PublicFreightsList] Estado atual do componente:', {
-    filters,
-    currentPage,
-    loading,
-    error,
-    freightsCount: freights.length,
-    pagination
-  });
-
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
@@ -154,7 +133,7 @@ const PublicFreightsList = () => {
           Fretes Disponíveis
         </h1>
         <p className="mt-2 text-lg leading-6 text-gray-600">
-          Encontre o frete ideal para você. Use os filtros simples para refinar sua busca.
+          Encontre o frete ideal para você. Filtre as oportunidades e conecte-se.
         </p>
       </div>
 
@@ -163,7 +142,7 @@ const PublicFreightsList = () => {
         {/* Desktop Sidebar */}
         <div className="hidden lg:block lg:w-80 xl:w-96 lg:flex-shrink-0">
           <div className="sticky top-6">
-            <SimpleFreightFiltersComponent onFilterChange={handleFilterChange} initialFilters={filters} />
+            <PublicFreightsFilter onFilterChange={handleFilterChange} initialFilters={filters} />
           </div>
         </div>
         
@@ -181,7 +160,7 @@ const PublicFreightsList = () => {
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-               <SimpleFreightFiltersComponent onFilterChange={handleFilterChange} initialFilters={filters} />
+               <PublicFreightsFilter onFilterChange={handleFilterChange} initialFilters={filters} />
             </CollapsibleContent>
           </Collapsible>
         </div>
@@ -241,10 +220,10 @@ const PublicFreightsList = () => {
               <div className="flex-1 flex items-center justify-center py-12">
                 <div className="text-center">
                   <h3 className="text-xl font-semibold text-gray-700">
-                    Nenhum frete encontrado
+                    Nenhum frete encontrado com os filtros aplicados
                   </h3>
                   <p className="text-gray-500 mt-2">
-                    Tente alterar os filtros para ver mais oportunidades.
+                    Tente alterar ou limpar os filtros para ver mais oportunidades.
                   </p>
                 </div>
               </div>
