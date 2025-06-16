@@ -458,6 +458,9 @@ const FreightDetails = () => {
                 <p className="text-sm text-gray-500 mb-1">Origem</p>
                 <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                   <p className="font-medium text-blue-900">{freight.origem_cidade}, {freight.origem_estado}</p>
+                  {freight.tipo_frete === 'comum' && freight.origem_tipo_endereco && (
+                    <p className="text-sm text-blue-700 mt-1">Tipo: {freight.origem_tipo_endereco}</p>
+                  )}
                 </div>
                 
                 {/* Recursos da Origem - Apenas para frete comum */}
@@ -497,6 +500,9 @@ const FreightDetails = () => {
                         ? `${freight.destino_cidade}, ${freight.destino_estado}` 
                         : 'Destino não especificado'}
                     </p>
+                    {freight.destino_tipo_endereco && (
+                      <p className="text-sm text-green-700 mt-1">Tipo: {freight.destino_tipo_endereco}</p>
+                    )}
                   </div>
                   
                   {/* Recursos do Destino - Apenas para frete comum */}
@@ -546,10 +552,16 @@ const FreightDetails = () => {
           </CardHeader>
           <CardContent>
             {freight.tipo_frete === 'comum' ? (
-              // Para frete comum, mostrar apenas os itens da carga
-              <div>
-                <p className="text-sm text-gray-500 mb-2">Itens da Carga</p>
-                {renderCadasteredItems()}
+              // Para frete comum, mostrar itens da carga e tipo de mercadoria
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Tipo de Mercadoria</p>
+                  <p className="font-medium text-lg">{freight.tipo_mercadoria || 'Não especificado'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-2">Itens da Carga</p>
+                  {renderCadasteredItems()}
+                </div>
               </div>
             ) : (
               // Para outros tipos, mostrar todas as informações da carga
@@ -654,31 +666,71 @@ const FreightDetails = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center space-x-2">
-                <Shield className={freight.precisa_seguro ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
-                <span className={freight.precisa_seguro ? "text-green-600" : "text-gray-400"}>
-                  Seguro {freight.precisa_seguro ? "necessário" : "não necessário"}
-                </span>
+            {freight.tipo_frete === 'comum' ? (
+              // Para frete comum, mostrar serviços extras específicos
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Package className={freight.precisa_montar_desmontar ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
+                    <span className={freight.precisa_montar_desmontar ? "text-green-600" : "text-gray-400"}>
+                      Montar/Desmontar {freight.precisa_montar_desmontar ? "necessário" : "não necessário"}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Package className={freight.precisa_embalagem ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
+                    <span className={freight.precisa_embalagem ? "text-green-600" : "text-gray-400"}>
+                      Embalagem {freight.precisa_embalagem ? "necessária" : "não necessária"}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Shield className={freight.precisa_seguro ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
+                    <span className={freight.precisa_seguro ? "text-green-600" : "text-gray-400"}>
+                      Seguro {freight.precisa_seguro ? "necessário" : "não necessário"}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <UserPlus className={freight.precisa_ajudante ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
+                    <span className={freight.precisa_ajudante ? "text-green-600" : "text-gray-400"}>
+                      Ajudante {freight.precisa_ajudante ? "necessário" : "não necessário"}
+                    </span>
+                  </div>
+                </div>
+                {freight.pedagio_pago_por && (
+                  <div className="pt-2 border-t border-gray-200">
+                    <p className="text-sm text-gray-500">Pedágio pago por</p>
+                    <p className="font-medium capitalize">{freight.pedagio_pago_por}</p>
+                    {freight.pedagio_direcao && <p className="text-sm text-gray-600">Direção: {freight.pedagio_direcao}</p>}
+                  </div>
+                )}
               </div>
-              <div className="flex items-center space-x-2">
-                <Radar className={freight.precisa_rastreador ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
-                <span className={freight.precisa_rastreador ? "text-green-600" : "text-gray-400"}>
-                  Rastreador {freight.precisa_rastreador ? "necessário" : "não necessário"}
-                </span>
+            ) : (
+              // Para outros tipos, mostrar configurações padrão
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <Shield className={freight.precisa_seguro ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
+                  <span className={freight.precisa_seguro ? "text-green-600" : "text-gray-400"}>
+                    Seguro {freight.precisa_seguro ? "necessário" : "não necessário"}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Radar className={freight.precisa_rastreador ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
+                  <span className={freight.precisa_rastreador ? "text-green-600" : "text-gray-400"}>
+                    Rastreador {freight.precisa_rastreador ? "necessário" : "não necessário"}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <UserPlus className={freight.precisa_ajudante ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
+                  <span className={freight.precisa_ajudante ? "text-green-600" : "text-gray-400"}>
+                    Ajudante {freight.precisa_ajudante ? "necessário" : "não necessário"}
+                  </span>
+                </div>
+                {freight.pedagio_pago_por && <div>
+                    <p className="text-sm text-gray-500">Pedágio pago por</p>
+                    <p className="font-medium capitalize">{freight.pedagio_pago_por}</p>
+                    {freight.pedagio_direcao && <p className="text-sm text-gray-600">Direção: {freight.pedagio_direcao}</p>}
+                  </div>}
               </div>
-              <div className="flex items-center space-x-2">
-                <UserPlus className={freight.precisa_ajudante ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
-                <span className={freight.precisa_ajudante ? "text-green-600" : "text-gray-400"}>
-                  Ajudante {freight.precisa_ajudante ? "necessário" : "não necessário"}
-                </span>
-              </div>
-              {freight.pedagio_pago_por && <div>
-                  <p className="text-sm text-gray-500">Pedágio pago por</p>
-                  <p className="font-medium capitalize">{freight.pedagio_pago_por}</p>
-                  {freight.pedagio_direcao && <p className="text-sm text-gray-600">Direção: {freight.pedagio_direcao}</p>}
-                </div>}
-            </div>
+            )}
           </CardContent>
         </Card>
 
