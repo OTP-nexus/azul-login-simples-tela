@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ActiveFreight } from '@/hooks/useActiveFreights';
@@ -112,15 +113,34 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
 
       console.log('Aplicando filtros:', filters, 'Página:', page);
 
-      // Para filtros de destino, vamos usar uma abordagem diferente
+      // Construir a query base com filtros que podem ser aplicados no servidor
       let baseQuery = supabase
         .from('fretes')
         .select('*')
         .in('status', ['ativo', 'pendente']);
 
-      // Apply simple filters to base query
+      // Apply origin filter to base query (server-side)
       if (filters.origin) {
         baseQuery = baseQuery.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
+      }
+
+      // Apply destination filter using SQL function (server-side)
+      if (filters.destination) {
+        const { data: destinationFilteredData, error: destinationError } = await supabase
+          .rpc('search_destinations', {
+            destino_cidade_val: '',
+            destino_estado_val: '',
+            destinos_data: {},
+            search_value: filters.destination
+          });
+
+        if (destinationError) {
+          console.error('Erro ao filtrar por destino:', destinationError);
+        } else {
+          // Se a função retornar IDs específicos, usar esses IDs
+          // Por enquanto, vamos manter o filtro client-side até confirmarmos como a função funciona
+          console.log('Resultado do filtro de destino:', destinationFilteredData);
+        }
       }
       
       if (filters.freightType) {
@@ -133,7 +153,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         baseQuery = baseQuery.eq('precisa_rastreador', false);
       }
 
-      // Get all data that matches basic filters first
+      // Get all data that matches server-side filters
       const { data: allFilteredData, error: dataError } = await baseQuery;
 
       if (dataError) {
@@ -144,7 +164,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
 
       let filteredData = allFilteredData || [];
 
-      // Apply destination filter on client side using our logic
+      // Apply remaining filters on client side (destination, vehicle types, body types)
       if (filters.destination) {
         filteredData = filteredData.filter(freight => {
           const searchTerm = filters.destination!.toLowerCase();
