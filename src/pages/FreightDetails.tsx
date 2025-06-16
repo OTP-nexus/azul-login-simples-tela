@@ -286,7 +286,7 @@ const FreightDetails = () => {
               const kmEnd = range.kmEnd || range.km_end || range.km_fim || 0;
               const price = range.price || range.preco || range.valor || 0;
               return <div key={range.id || rangeIndex} className="bg-white p-3 rounded border border-green-300">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="flex flex-col space-y-2 md:grid md:grid-cols-2 md:gap-3 md:space-y-0">
                         <div>
                           <p className="text-gray-600 text-sm font-medium mb-1">Distância</p>
                           <p className="font-medium text-gray-900">{kmStart} - {kmEnd} km</p>
