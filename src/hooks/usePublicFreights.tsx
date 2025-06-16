@@ -125,7 +125,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       }
       
       if (filters.destination) {
-        countQuery = countQuery.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        countQuery = countQuery.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%,paradas::text.ilike.%${filters.destination}%`);
       }
       
       if (filters.freightType) {
@@ -152,7 +152,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       }
       
       if (filters.destination) {
-        query = query.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        query = query.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%,paradas::text.ilike.%${filters.destination}%`);
       }
       
       if (filters.freightType) {

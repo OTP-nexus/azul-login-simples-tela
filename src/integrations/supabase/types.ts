@@ -581,6 +581,15 @@ export type Database = {
         Args: { body_data: Json; search_values: string[] }
         Returns: boolean
       }
+      search_destinations: {
+        Args: {
+          destino_cidade_val: string
+          destino_estado_val: string
+          destinos_data: Json
+          search_value: string
+        }
+        Returns: boolean
+      }
       search_vehicle_types: {
         Args: { vehicle_data: Json; search_values: string[] }
         Returns: boolean
