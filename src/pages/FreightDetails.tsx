@@ -296,12 +296,7 @@ const FreightDetails = () => {
               </div>
               
               {/* Mostrar dados brutos para debug se necessário */}
-              {process.env.NODE_ENV === 'development' && <details className="mt-3">
-                  
-                  <pre className="text-xs text-gray-600 mt-1 bg-gray-100 p-2 rounded overflow-auto max-h-32">
-                    {JSON.stringify(tabela, null, 2)}
-                  </pre>
-                </details>}
+              {process.env.NODE_ENV === 'development'}
             </div>;
       })}
       </div>;
