@@ -68,7 +68,19 @@ export const useFreightByCode = (freightCode: string) => {
           return;
         }
 
-        setFreight(data);
+        // Cast the Supabase data to our FreightDetails interface
+        const freightDetails: FreightDetails = {
+          ...data,
+          destinos: Array.isArray(data.destinos) ? data.destinos : [],
+          tipos_veiculos: Array.isArray(data.tipos_veiculos) ? data.tipos_veiculos : [],
+          tipos_carrocerias: Array.isArray(data.tipos_carrocerias) ? data.tipos_carrocerias : [],
+          paradas: Array.isArray(data.paradas) ? data.paradas : [],
+          beneficios: Array.isArray(data.beneficios) ? data.beneficios : [],
+          regras_agendamento: Array.isArray(data.regras_agendamento) ? data.regras_agendamento : [],
+          tabelas_preco: Array.isArray(data.tabelas_preco) ? data.tabelas_preco : [],
+        };
+
+        setFreight(freightDetails);
       } catch (err) {
         console.error('Erro ao carregar frete:', err);
         setError('Erro ao carregar frete');
