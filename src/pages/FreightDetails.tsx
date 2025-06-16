@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -464,6 +463,32 @@ const FreightDetails = () => {
                 <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                   <p className="font-medium text-blue-900">{freight.origem_cidade}, {freight.origem_estado}</p>
                 </div>
+                
+                {/* Recursos da Origem - Apenas para frete comum */}
+                {freight.tipo_frete === 'comum' && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {freight.origem_possui_carga_descarga && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                        ✓ Carga/Descarga
+                      </Badge>
+                    )}
+                    {freight.origem_possui_escada && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                        ✓ Escada
+                      </Badge>
+                    )}
+                    {freight.origem_possui_elevador && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                        ✓ Elevador
+                      </Badge>
+                    )}
+                    {freight.origem_possui_doca && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                        ✓ Doca
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
               
               {freight.tipo_frete === 'comum' ? (
@@ -476,6 +501,30 @@ const FreightDetails = () => {
                         ? `${freight.destino_cidade}, ${freight.destino_estado}` 
                         : 'Destino não especificado'}
                     </p>
+                  </div>
+                  
+                  {/* Recursos do Destino - Apenas para frete comum */}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {freight.destino_possui_carga_descarga && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                        ✓ Carga/Descarga
+                      </Badge>
+                    )}
+                    {freight.destino_possui_escada && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                        ✓ Escada
+                      </Badge>
+                    )}
+                    {freight.destino_possui_elevador && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                        ✓ Elevador
+                      </Badge>
+                    )}
+                    {freight.destino_possui_doca && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                        ✓ Doca
+                      </Badge>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -635,72 +684,6 @@ const FreightDetails = () => {
             </div>
           </CardContent>
         </Card>
-
-        {/* Recursos da Origem - Apenas para frete comum */}
-        {freight.tipo_frete === 'comum' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Recursos da Origem</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2">
-                  <span className={freight.origem_possui_carga_descarga ? "text-green-600" : "text-gray-400"}>
-                    {freight.origem_possui_carga_descarga ? "✓" : "✗"} Carga/Descarga
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className={freight.origem_possui_escada ? "text-green-600" : "text-gray-400"}>
-                    {freight.origem_possui_escada ? "✓" : "✗"} Escada
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className={freight.origem_possui_elevador ? "text-green-600" : "text-gray-400"}>
-                    {freight.origem_possui_elevador ? "✓" : "✗"} Elevador
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className={freight.origem_possui_doca ? "text-green-600" : "text-gray-400"}>
-                    {freight.origem_possui_doca ? "✓" : "✗"} Doca
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Recursos do Destino - Apenas para frete comum */}
-        {freight.tipo_frete === 'comum' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Recursos do Destino</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2">
-                  <span className={freight.destino_possui_carga_descarga ? "text-green-600" : "text-gray-400"}>
-                    {freight.destino_possui_carga_descarga ? "✓" : "✗"} Carga/Descarga
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className={freight.destino_possui_escada ? "text-green-600" : "text-gray-400"}>
-                    {freight.destino_possui_escada ? "✓" : "✗"} Escada
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className={freight.destino_possui_elevador ? "text-green-600" : "text-gray-400"}>
-                    {freight.destino_possui_elevador ? "✓" : "✗"} Elevador
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className={freight.destino_possui_doca ? "text-green-600" : "text-gray-400"}>
-                    {freight.destino_possui_doca ? "✓" : "✗"} Doca
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Observações */}
         {freight.observacoes && <Card>
