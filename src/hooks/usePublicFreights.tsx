@@ -112,78 +112,62 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
 
       console.log('Aplicando filtros:', filters, 'Página:', page);
 
-      // First, get the total count for pagination
-      let countQuery = supabase
-        .from('fretes')
-        .select('*', { count: 'exact', head: true })
-        .in('status', ['ativo', 'pendente']);
-
-      // Apply simple filters to count query
-      if (filters.origin) {
-        countQuery = countQuery.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
-      }
-      
-      if (filters.destination) {
-        countQuery = countQuery.filter('destinos', 'not.is', null)
-          .filter('id', 'in', 
-            `(SELECT id FROM fretes WHERE search_destinations(destino_cidade, destino_estado, destinos, '${filters.destination}'))`
-          );
-      }
-      
-      if (filters.freightType) {
-        countQuery = countQuery.eq('tipo_frete', filters.freightType);
-      }
-      
-      if (filters.tracker === 'sim') {
-        countQuery = countQuery.eq('precisa_rastreador', true);
-      } else if (filters.tracker === 'nao') {
-        countQuery = countQuery.eq('precisa_rastreador', false);
-      }
-
-      // Now get the actual data with pagination
-      let query = supabase
+      // Para filtros de destino, vamos usar uma abordagem diferente
+      let baseQuery = supabase
         .from('fretes')
         .select('*')
-        .in('status', ['ativo', 'pendente'])
-        .order('created_at', { ascending: false })
-        .range((page - 1) * itemsPerPage, page * itemsPerPage - 1);
+        .in('status', ['ativo', 'pendente']);
 
-      // Apply the same filters to data query
+      // Apply simple filters to base query
       if (filters.origin) {
-        query = query.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
-      }
-      
-      if (filters.destination) {
-        query = query.filter('destinos', 'not.is', null)
-          .filter('id', 'in', 
-            `(SELECT id FROM fretes WHERE search_destinations(destino_cidade, destino_estado, destinos, '${filters.destination}'))`
-          );
+        baseQuery = baseQuery.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
       }
       
       if (filters.freightType) {
-        query = query.eq('tipo_frete', filters.freightType);
+        baseQuery = baseQuery.eq('tipo_frete', filters.freightType);
       }
       
       if (filters.tracker === 'sim') {
-        query = query.eq('precisa_rastreador', true);
+        baseQuery = baseQuery.eq('precisa_rastreador', true);
       } else if (filters.tracker === 'nao') {
-        query = query.eq('precisa_rastreador', false);
+        baseQuery = baseQuery.eq('precisa_rastreador', false);
       }
 
-      const [{ count }, { data: freightData, error: freightError }] = await Promise.all([
-        countQuery,
-        query
-      ]);
+      // Get all data that matches basic filters first
+      const { data: allFilteredData, error: dataError } = await baseQuery;
 
-      if (freightError) {
-        console.error('Erro ao buscar fretes públicos:', freightError);
+      if (dataError) {
+        console.error('Erro ao buscar fretes públicos:', dataError);
         setError('Erro ao buscar fretes públicos');
         return;
       }
 
-      let filteredData = freightData || [];
+      let filteredData = allFilteredData || [];
 
-      // Apply complex filters on client side (only vehicle and body types now)
+      // Apply destination filter on client side using our logic
+      if (filters.destination) {
+        filteredData = filteredData.filter(freight => {
+          const searchTerm = filters.destination!.toLowerCase();
+          
+          // Check destino_cidade and destino_estado
+          const destinoCidadeMatch = freight.destino_cidade && 
+            freight.destino_cidade.toLowerCase().includes(searchTerm);
+          const destinoEstadoMatch = freight.destino_estado && 
+            freight.destino_estado.toLowerCase().includes(searchTerm);
+          
+          // Check destinos array
+          const destinosArrayMatch = freight.destinos && Array.isArray(freight.destinos) &&
+            freight.destinos.some((destino: any) => {
+              const cityMatch = destino.city && destino.city.toLowerCase().includes(searchTerm);
+              const stateMatch = destino.state && destino.state.toLowerCase().includes(searchTerm);
+              return cityMatch || stateMatch;
+            });
+          
+          return destinoCidadeMatch || destinoEstadoMatch || destinosArrayMatch;
+        });
+      }
+
+      // Apply vehicle and body type filters on client side
       if (filters.vehicleTypes && filters.vehicleTypes.length > 0) {
         filteredData = filteredData.filter(freight => {
           return filters.vehicleTypes!.some(vehicleType => 
@@ -200,9 +184,17 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         });
       }
 
-      // Calculate pagination info
-      const totalItems = count || 0;
+      // Sort by created_at descending
+      filteredData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      // Calculate pagination based on filtered results
+      const totalItems = filteredData.length;
       const totalPages = Math.ceil(totalItems / itemsPerPage);
+      const startIndex = (page - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      
+      // Get paginated results
+      const paginatedData = filteredData.slice(startIndex, endIndex);
 
       setPagination({
         currentPage: page,
@@ -212,7 +204,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       });
 
       // Transform data
-      const formattedFreights: Freight[] = filteredData.map(freight => ({
+      const formattedFreights: Freight[] = paginatedData.map(freight => ({
         id: freight.id,
         codigo_agregamento: freight.codigo_agregamento || '',
         tipo_frete: freight.tipo_frete,
