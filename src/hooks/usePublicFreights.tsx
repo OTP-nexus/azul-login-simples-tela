@@ -1,179 +1,264 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { FreightData, PublicFreightFilters, PaginationInfo } from '@/types/freight';
+import type { ActiveFreight } from '@/hooks/useActiveFreights';
 
-// Export the FreightData type as Freight for backward compatibility
-export type Freight = FreightData;
-export type { PublicFreightFilters, PaginationInfo };
-
-const safeJsonToArray = (value: any): any[] => {
-  if (Array.isArray(value)) {
-    return value;
-  }
-  if (value === null || value === undefined) {
-    return [];
-  }
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
+// Re-exporting the type for convenience, now extended
+export type Freight = ActiveFreight & {
+  destino_cidade?: string | null;
+  destino_estado?: string | null;
 };
 
-export const usePublicFreights = (filters: PublicFreightFilters = {}, page = 1, itemsPerPage = 20) => {
-  const [freights, setFreights] = useState<FreightData[]>([]);
+export interface PublicFreightFilters {
+  origin?: string;
+  destination?: string;
+  vehicleTypes?: string[];
+  bodyTypes?: string[];
+  freightType?: string;
+  tracker?: string;
+}
+
+export interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+}
+
+export const usePublicFreights = (filters: PublicFreightFilters = {}, page: number = 1, itemsPerPage: number = 20) => {
+  const [freights, setFreights] = useState<Freight[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationInfo>({
     currentPage: 1,
-    totalPages: 0,
+    totalPages: 1,
     totalItems: 0,
-    itemsPerPage: 20
+    itemsPerPage
   });
 
-  useEffect(() => {
-    const fetchFreights = async () => {
+  // Função auxiliar para verificar se um tipo de veículo está nos dados JSONB
+  const hasVehicleType = (vehicleData: any, searchValue: string): boolean => {
+    if (!vehicleData || vehicleData === null) return false;
+    
+    try {
+      // Se vehicleData é uma string, parse para JSON
+      const data = typeof vehicleData === 'string' ? JSON.parse(vehicleData) : vehicleData;
+      
+      if (!Array.isArray(data)) return false;
+      
+      return data.some((item: any) => {
+        if (typeof item === 'string') {
+          return item === searchValue;
+        }
+        if (typeof item === 'object' && item !== null) {
+          return item.value === searchValue || item.type === searchValue || item.id === searchValue;
+        }
+        // Para arrays aninhados
+        if (Array.isArray(item)) {
+          return item.some((subItem: any) => {
+            if (typeof subItem === 'string') return subItem === searchValue;
+            if (typeof subItem === 'object' && subItem !== null) {
+              return subItem.value === searchValue || subItem.type === searchValue || subItem.id === searchValue;
+            }
+            return false;
+          });
+        }
+        return false;
+      });
+    } catch (e) {
+      console.error('Erro ao processar dados de veículo:', e);
+      return false;
+    }
+  };
+
+  // Função auxiliar para verificar se um tipo de carroceria está nos dados JSONB
+  const hasBodyType = (bodyData: any, searchValue: string): boolean => {
+    if (!bodyData || bodyData === null) return false;
+    
+    try {
+      // Se bodyData é uma string, parse para JSON
+      const data = typeof bodyData === 'string' ? JSON.parse(bodyData) : bodyData;
+      
+      if (!Array.isArray(data)) return false;
+      
+      return data.some((item: any) => {
+        if (typeof item === 'string') {
+          return item === searchValue;
+        }
+        if (typeof item === 'object' && item !== null) {
+          return item.value === searchValue || item.type === searchValue || item.id === searchValue;
+        }
+        // Para arrays aninhados
+        if (Array.isArray(item)) {
+          return item.some((subItem: any) => {
+            if (typeof subItem === 'string') return subItem === searchValue;
+            if (typeof subItem === 'object' && subItem !== null) {
+              return subItem.value === searchValue || subItem.type === searchValue || subItem.id === searchValue;
+            }
+            return false;
+          });
+        }
+        return false;
+      });
+    } catch (e) {
+      console.error('Erro ao processar dados de carroceria:', e);
+      return false;
+    }
+  };
+
+  const fetchFreights = useCallback(async () => {
+    try {
       setLoading(true);
       setError(null);
 
-      try {
-        // First, get the total count
-        let countQuery = supabase
-          .from('fretes')
-          .select('*', { count: 'exact', head: true })
-          .in('status', ['ativo', 'pendente']);
+      console.log('Aplicando filtros:', filters, 'Página:', page);
 
-        // Apply filters to count query
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value && Array.isArray(value) && value.length > 0) {
-            countQuery = countQuery.overlaps(key, value);
-          } else if (value && typeof value === 'string') {
-            countQuery = countQuery.eq(key, value);
-          }
-        });
+      // First, get the total count for pagination
+      let countQuery = supabase
+        .from('fretes')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['ativo', 'pendente']);
 
-        const { count, error: countError } = await countQuery;
-
-        if (countError) {
-          console.error('Erro ao contar fretes:', countError);
-          setError('Erro ao carregar fretes.');
-          return;
-        }
-
-        const totalItems = count || 0;
-        const totalPages = Math.ceil(totalItems / itemsPerPage);
-
-        // Now get the actual data with pagination
-        let dataQuery = supabase
-          .from('fretes')
-          .select('*')
-          .in('status', ['ativo', 'pendente'])
-          .range((page - 1) * itemsPerPage, page * itemsPerPage - 1)
-          .order('created_at', { ascending: false });
-
-        // Apply filters to data query
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value && Array.isArray(value) && value.length > 0) {
-            dataQuery = dataQuery.overlaps(key, value);
-          } else if (value && typeof value === 'string') {
-            dataQuery = dataQuery.eq(key, value);
-          }
-        });
-
-        const { data, error: dataError } = await dataQuery;
-
-        if (dataError) {
-          console.error('Erro ao buscar fretes:', dataError);
-          setError('Erro ao buscar fretes.');
-          return;
-        }
-
-        // Transform data with explicit typing to avoid recursion
-        const formattedFreights = (data || []).map((freight): FreightData => {
-          return {
-            id: freight.id,
-            codigo_agregamento: freight.codigo_agregamento || '',
-            tipo_frete: freight.tipo_frete,
-            status: freight.status || 'ativo',
-            origem_cidade: freight.origem_cidade,
-            origem_estado: freight.origem_estado,
-            origem_tipo_endereco: freight.origem_tipo_endereco,
-            origem_possui_carga_descarga: freight.origem_possui_carga_descarga || false,
-            origem_possui_escada: freight.origem_possui_escada || false,
-            origem_possui_elevador: freight.origem_possui_elevador || false,
-            origem_possui_doca: freight.origem_possui_doca || false,
-            destinos: safeJsonToArray(freight.destinos),
-            destino_cidade: freight.destino_cidade,
-            destino_estado: freight.destino_estado,
-            destino_tipo_endereco: freight.destino_tipo_endereco,
-            destino_possui_carga_descarga: freight.destino_possui_carga_descarga || false,
-            destino_possui_escada: freight.destino_possui_escada || false,
-            destino_possui_elevador: freight.destino_possui_elevador || false,
-            destino_possui_doca: freight.destino_possui_doca || false,
-            paradas: safeJsonToArray(freight.paradas),
-            data_coleta: freight.data_coleta,
-            data_entrega: freight.data_entrega,
-            horario_carregamento: freight.horario_carregamento,
-            tipo_mercadoria: freight.tipo_mercadoria,
-            peso_carga: freight.peso_carga,
-            valor_carga: freight.valor_carga,
-            valores_definidos: freight.valores_definidos,
-            tipos_veiculos: safeJsonToArray(freight.tipos_veiculos),
-            tipos_carrocerias: safeJsonToArray(freight.tipos_carrocerias),
-            itens_detalhados: safeJsonToArray(freight.itens_detalhados),
-            tipo_listagem_itens: freight.tipo_listagem_itens,
-            descricao_livre_itens: freight.descricao_livre_itens,
-            precisa_montar_desmontar: freight.precisa_montar_desmontar || false,
-            precisa_embalagem: freight.precisa_embalagem || false,
-            precisa_seguro: freight.precisa_seguro || false,
-            precisa_rastreador: freight.precisa_rastreador || false,
-            precisa_ajudante: freight.precisa_ajudante || false,
-            pedagio_pago_por: freight.pedagio_pago_por,
-            pedagio_direcao: freight.pedagio_direcao,
-            local_possui_restricao: freight.local_possui_restricao || false,
-            descricao_restricao: freight.descricao_restricao,
-            observacoes: freight.observacoes,
-            beneficios: safeJsonToArray(freight.beneficios),
-            regras_agendamento: safeJsonToArray(freight.regras_agendamento),
-            tabelas_preco: safeJsonToArray(freight.tabelas_preco),
-            tipo_solicitacao: freight.tipo_solicitacao,
-            solicitante_nome: freight.solicitante_nome,
-            solicitante_telefone: freight.solicitante_telefone,
-            solicitante_confirmar_telefone: freight.solicitante_confirmar_telefone,
-            collaborator_ids: freight.collaborator_ids,
-            company_id: freight.company_id,
-            created_at: freight.created_at,
-            updated_at: freight.updated_at,
-          };
-        });
-
-        setFreights(formattedFreights);
-        setPagination({
-          currentPage: page,
-          totalPages,
-          totalItems,
-          itemsPerPage
-        });
-      } catch (err) {
-        console.error('Erro ao buscar fretes:', err);
-        setError('Erro ao buscar fretes.');
-      } finally {
-        setLoading(false);
+      // Apply simple filters to count query
+      if (filters.origin) {
+        countQuery = countQuery.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
       }
-    };
+      
+      if (filters.destination) {
+        countQuery = countQuery.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+      }
+      
+      if (filters.freightType) {
+        countQuery = countQuery.eq('tipo_frete', filters.freightType);
+      }
+      
+      if (filters.tracker === 'sim') {
+        countQuery = countQuery.eq('precisa_rastreador', true);
+      } else if (filters.tracker === 'nao') {
+        countQuery = countQuery.eq('precisa_rastreador', false);
+      }
 
+      // Now get the actual data with pagination
+      let query = supabase
+        .from('fretes')
+        .select('*')
+        .in('status', ['ativo', 'pendente'])
+        .order('created_at', { ascending: false })
+        .range((page - 1) * itemsPerPage, page * itemsPerPage - 1);
+
+      // Apply the same filters to data query
+      if (filters.origin) {
+        query = query.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
+      }
+      
+      if (filters.destination) {
+        query = query.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+      }
+      
+      if (filters.freightType) {
+        query = query.eq('tipo_frete', filters.freightType);
+      }
+      
+      if (filters.tracker === 'sim') {
+        query = query.eq('precisa_rastreador', true);
+      } else if (filters.tracker === 'nao') {
+        query = query.eq('precisa_rastreador', false);
+      }
+
+      const [{ count }, { data: freightData, error: freightError }] = await Promise.all([
+        countQuery,
+        query
+      ]);
+
+      if (freightError) {
+        console.error('Erro ao buscar fretes públicos:', freightError);
+        setError('Erro ao buscar fretes públicos');
+        return;
+      }
+
+      let filteredData = freightData || [];
+
+      // Apply complex filters on client side
+      if (filters.vehicleTypes && filters.vehicleTypes.length > 0) {
+        filteredData = filteredData.filter(freight => {
+          return filters.vehicleTypes!.some(vehicleType => 
+            hasVehicleType(freight.tipos_veiculos, vehicleType)
+          );
+        });
+      }
+
+      if (filters.bodyTypes && filters.bodyTypes.length > 0) {
+        filteredData = filteredData.filter(freight => {
+          return filters.bodyTypes!.some(bodyType => 
+            hasBodyType(freight.tipos_carrocerias, bodyType)
+          );
+        });
+      }
+
+      // Calculate pagination info
+      const totalItems = count || 0;
+      const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+      setPagination({
+        currentPage: page,
+        totalPages,
+        totalItems,
+        itemsPerPage
+      });
+
+      // Transform data
+      const formattedFreights: Freight[] = filteredData.map(freight => ({
+        id: freight.id,
+        codigo_agregamento: freight.codigo_agregamento || '',
+        tipo_frete: freight.tipo_frete,
+        status: freight.status || 'ativo',
+        origem_cidade: freight.origem_cidade,
+        origem_estado: freight.origem_estado,
+        destinos: Array.isArray(freight.destinos) ? freight.destinos : [],
+        data_coleta: freight.data_coleta,
+        data_entrega: freight.data_entrega,
+        tipo_mercadoria: freight.tipo_mercadoria,
+        peso_carga: freight.peso_carga,
+        valor_carga: freight.valor_carga,
+        valores_definidos: freight.valores_definidos,
+        tipos_veiculos: Array.isArray(freight.tipos_veiculos) ? freight.tipos_veiculos : [],
+        tipos_carrocerias: Array.isArray(freight.tipos_carrocerias) ? freight.tipos_carrocerias : [],
+        collaborator_ids: freight.collaborator_ids,
+        created_at: freight.created_at,
+        updated_at: freight.updated_at,
+        pedagio_pago_por: freight.pedagio_pago_por,
+        pedagio_direcao: freight.pedagio_direcao,
+        precisa_seguro: freight.precisa_seguro || false,
+        precisa_rastreador: freight.precisa_rastreador || false,
+        precisa_ajudante: freight.precisa_ajudante || false,
+        horario_carregamento: freight.horario_carregamento,
+        observacoes: freight.observacoes,
+        paradas: Array.isArray(freight.paradas) ? freight.paradas : [],
+        beneficios: Array.isArray(freight.beneficios) ? freight.beneficios : [],
+        regras_agendamento: Array.isArray(freight.regras_agendamento) ? freight.regras_agendamento : [],
+        tabelas_preco: Array.isArray(freight.tabelas_preco) ? freight.tabelas_preco : [],
+        destino_cidade: freight.destino_cidade,
+        destino_estado: freight.destino_estado
+      }));
+
+      setFreights(formattedFreights);
+    } catch (err) {
+      console.error('Erro ao carregar fretes públicos:', err);
+      setError('Erro ao carregar fretes públicos');
+    } finally {
+      setLoading(false);
+    }
+  }, [JSON.stringify(filters), page, itemsPerPage]);
+
+  useEffect(() => {
     fetchFreights();
-  }, [filters, page, itemsPerPage]);
+  }, [fetchFreights]);
 
   return {
     freights,
     loading,
     error,
-    pagination
+    pagination,
+    refetch: fetchFreights,
   };
 };
