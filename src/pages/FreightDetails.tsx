@@ -268,56 +268,54 @@ const FreightDetails = () => {
     if (!Array.isArray(flattenedTables) || flattenedTables.length === 0) {
       return <p className="text-gray-500 italic">Nenhuma tabela de preços definida</p>;
     }
-    return <Accordion type="single" collapsible className="w-full">
-        <AccordionItem value="pricing-tables">
-          <AccordionTrigger className="text-left">
-            <div className="flex items-center space-x-2">
-              <Calculator className="w-4 h-4" />
-              <span>Ver Tabelas de Preços ({flattenedTables.length} {flattenedTables.length === 1 ? 'tabela' : 'tabelas'})</span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="space-y-4">
-              {flattenedTables.map((tabela: any, index: number) => {
-              console.log('Processando tabela:', tabela);
-              const vehicleType = tabela.vehicleType || tabela.vehicle_type || tabela.tipo_veiculo || 'Não especificado';
-              const ranges = tabela.ranges || [];
-              if (!Array.isArray(ranges) || ranges.length === 0) {
-                return <div key={index} className="bg-red-50 p-4 rounded-lg border border-red-200">
-                      <p className="text-red-800 font-medium">{vehicleType}</p>
-                      <p className="text-red-600 text-sm">Nenhuma faixa de preço definida</p>
-                    </div>;
-              }
-              return <div key={index} className="bg-green-50 p-4 rounded-lg border border-green-200">
-                    <h4 className="font-semibold text-green-900 mb-3 text-lg">{vehicleType}</h4>
-                    <div className="space-y-3">
-                      {ranges.map((range: any, rangeIndex: number) => {
-                    const kmStart = range.kmStart || range.km_start || range.km_inicio || 0;
-                    const kmEnd = range.kmEnd || range.km_end || range.km_fim || 0;
-                    const price = range.price || range.preco || range.valor || 0;
-                    return <div key={range.id || rangeIndex} className="bg-white p-3 rounded border border-green-300">
-                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-                              <div className="flex-1">
-                                <p className="text-gray-600 text-xs font-medium mb-1 sm:mb-0">Distância</p>
-                                <p className="font-medium text-gray-900 text-sm">{kmStart} - {kmEnd} km</p>
-                              </div>
-                              <div className="flex-1 sm:text-right">
-                                <p className="text-gray-600 text-xs font-medium mb-1 sm:mb-0">Valor</p>
-                                <p className="font-semibold text-green-600 text-base sm:text-lg">{formatValue(price)}</p>
-                              </div>
+    
+    return <div className="space-y-3">
+        {flattenedTables.map((tabela: any, index: number) => {
+        console.log('Processando tabela:', tabela);
+        const vehicleType = tabela.vehicleType || tabela.vehicle_type || tabela.tipo_veiculo || 'Não especificado';
+        const ranges = tabela.ranges || [];
+        
+        if (!Array.isArray(ranges) || ranges.length === 0) {
+          return <div key={index} className="bg-red-50 p-4 rounded-lg border border-red-200">
+                <p className="text-red-800 font-medium">{vehicleType}</p>
+                <p className="text-red-600 text-sm">Nenhuma faixa de preço definida</p>
+              </div>;
+        }
+        
+        return <Accordion key={index} type="single" collapsible className="w-full">
+              <AccordionItem value={`vehicle-${index}`} className="border border-green-200 rounded-lg bg-green-50">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                  <div className="flex items-center space-x-2">
+                    <Calculator className="w-4 h-4 text-green-600" />
+                    <span className="font-semibold text-green-900">{vehicleType}</span>
+                    <span className="text-sm text-green-600">({ranges.length} {ranges.length === 1 ? 'faixa' : 'faixas'})</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="px-4 pb-4 space-y-3">
+                    {ranges.map((range: any, rangeIndex: number) => {
+                  const kmStart = range.kmStart || range.km_start || range.km_inicio || 0;
+                  const kmEnd = range.kmEnd || range.km_end || range.km_fim || 0;
+                  const price = range.price || range.preco || range.valor || 0;
+                  return <div key={range.id || rangeIndex} className="bg-white p-3 rounded border border-green-300">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="text-gray-600 text-xs font-medium mb-1">Distância</p>
+                              <p className="font-medium text-gray-900 text-sm">{kmStart} - {kmEnd} km</p>
                             </div>
-                          </div>;
-                  })}
-                    </div>
-                    
-                    {/* Mostrar dados brutos para debug se necessário */}
-                    {process.env.NODE_ENV === 'development'}
-                  </div>;
-            })}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>;
+                            <div className="text-right">
+                              <p className="text-gray-600 text-xs font-medium mb-1">Valor</p>
+                              <p className="font-semibold text-green-600 text-lg">{formatValue(price)}</p>
+                            </div>
+                          </div>
+                        </div>;
+                })}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>;
+      })}
+      </div>;
   };
 
   // Helper function to render benefits for agregamento
