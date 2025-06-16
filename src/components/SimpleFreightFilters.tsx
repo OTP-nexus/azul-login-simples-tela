@@ -52,24 +52,40 @@ const SimpleFreightFilters = ({ onFilterChange, initialFilters }: SimpleFreightF
 
   React.useEffect(() => {
     const subscription = watch((values) => {
+      console.log('🔄 [SimpleFreightFilters] Valores do formulário alterados:', values);
+      console.log('🔄 [SimpleFreightFilters] Valores antes da limpeza:', values);
+      
       const cleanFilters = Object.fromEntries(
         Object.entries(values).filter(([key, v]) => {
-          if (key === 'tracker' && v === 'todos') return false;
-          return v != null && v !== '';
+          if (key === 'tracker' && v === 'todos') {
+            console.log('🧹 [SimpleFreightFilters] Removendo tracker="todos"');
+            return false;
+          }
+          const shouldKeep = v != null && v !== '';
+          console.log(`🧹 [SimpleFreightFilters] Campo ${key}="${v}" será ${shouldKeep ? 'mantido' : 'removido'}`);
+          return shouldKeep;
         })
       );
+      
+      console.log('✅ [SimpleFreightFilters] Filtros limpos:', cleanFilters);
+      console.log('📤 [SimpleFreightFilters] Enviando filtros para o componente pai...');
+      
       onFilterChange(cleanFilters);
     });
     return () => subscription.unsubscribe();
   }, [watch, onFilterChange]);
 
   const handleClear = () => {
+    console.log('🧽 [SimpleFreightFilters] Limpando todos os filtros...');
+    
     form.reset({
       origin: '',
       destination: '',
       freightType: '',
       tracker: 'todos',
     });
+    
+    console.log('🧽 [SimpleFreightFilters] Formulário resetado, enviando filtros vazios...');
     onFilterChange({});
   };
 
@@ -100,6 +116,10 @@ const SimpleFreightFilters = ({ onFilterChange, initialFilters }: SimpleFreightF
                       placeholder="Digite a cidade ou estado de origem"
                       {...field}
                       className="w-full"
+                      onChange={(e) => {
+                        console.log('⌨️ [SimpleFreightFilters] Origem alterada:', e.target.value);
+                        field.onChange(e);
+                      }}
                     />
                   </FormControl>
                 </FormItem>
@@ -117,6 +137,10 @@ const SimpleFreightFilters = ({ onFilterChange, initialFilters }: SimpleFreightF
                       placeholder="Digite a cidade ou estado de destino"
                       {...field}
                       className="w-full"
+                      onChange={(e) => {
+                        console.log('⌨️ [SimpleFreightFilters] Destino alterado:', e.target.value);
+                        field.onChange(e);
+                      }}
                     />
                   </FormControl>
                 </FormItem>
@@ -132,7 +156,10 @@ const SimpleFreightFilters = ({ onFilterChange, initialFilters }: SimpleFreightF
               name="freightType"
               render={({ field }) => (
                 <FormItem>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={(value) => {
+                    console.log('📦 [SimpleFreightFilters] Tipo de frete alterado:', value);
+                    field.onChange(value);
+                  }} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o tipo de frete" />
@@ -161,7 +188,10 @@ const SimpleFreightFilters = ({ onFilterChange, initialFilters }: SimpleFreightF
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
-                    <RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-3 gap-2">
+                    <RadioGroup onValueChange={(value) => {
+                      console.log('📡 [SimpleFreightFilters] Rastreador alterado:', value);
+                      field.onChange(value);
+                    }} value={field.value} className="grid grid-cols-3 gap-2">
                       <FormItem className="flex items-center space-x-2 space-y-0">
                         <FormControl><RadioGroupItem value="sim" /></FormControl>
                         <FormLabel className="font-normal text-sm">Sim</FormLabel>

@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { useSimplePublicFreights, SimpleFreightFilters } from '@/hooks/useSimplePublicFreights';
 import PublicFreightCard from '@/components/PublicFreightCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Filter, LayoutGrid, List } from 'lucide-react';
-import SimpleFreightFilters from '@/components/SimpleFreightFilters';
+import SimpleFreightFiltersComponent from '@/components/SimpleFreightFilters';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -30,6 +29,28 @@ const PublicFreightsList = () => {
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
+  const handleFilterChange = (newFilters: SimpleFreightFilters) => {
+    console.log('🔍 [PublicFreightsList] Filtros aplicados pelo usuário:', newFilters);
+    console.log('🔍 [PublicFreightsList] Filtros anteriores:', filters);
+    console.log('🔍 [PublicFreightsList] Mudança detectada:', JSON.stringify(newFilters) !== JSON.stringify(filters));
+    
+    setFilters(newFilters);
+    setCurrentPage(1); // Reset to first page when filters change
+    
+    console.log('🔍 [PublicFreightsList] Estado atualizado - Nova página:', 1);
+    console.log('🔍 [PublicFreightsList] Estado atualizado - Novos filtros:', newFilters);
+  };
+
+  const handlePageChange = (page: number) => {
+    console.log('📄 [PublicFreightsList] Mudança de página solicitada:', page);
+    console.log('📄 [PublicFreightsList] Página atual:', currentPage);
+    
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    console.log('📄 [PublicFreightsList] Página atualizada para:', page);
+  };
+
   const renderSkeletons = () => {
     return Array.from({ length: 6 }).map((_, index) => (
       <div key={index} className="flex flex-col space-y-3">
@@ -40,16 +61,6 @@ const PublicFreightsList = () => {
         </div>
       </div>
     ));
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleFilterChange = (newFilters: SimpleFreightFilters) => {
-    setFilters(newFilters);
-    setCurrentPage(1); // Reset to first page when filters change
   };
 
   const renderPaginationItems = () => {
@@ -125,6 +136,16 @@ const PublicFreightsList = () => {
     return items;
   };
 
+  // Log current state for debugging
+  console.log('🖥️ [PublicFreightsList] Estado atual do componente:', {
+    filters,
+    currentPage,
+    loading,
+    error,
+    freightsCount: freights.length,
+    pagination
+  });
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
@@ -142,7 +163,7 @@ const PublicFreightsList = () => {
         {/* Desktop Sidebar */}
         <div className="hidden lg:block lg:w-80 xl:w-96 lg:flex-shrink-0">
           <div className="sticky top-6">
-            <SimpleFreightFilters onFilterChange={handleFilterChange} initialFilters={filters} />
+            <SimpleFreightFiltersComponent onFilterChange={handleFilterChange} initialFilters={filters} />
           </div>
         </div>
         
@@ -160,7 +181,7 @@ const PublicFreightsList = () => {
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-               <SimpleFreightFilters onFilterChange={handleFilterChange} initialFilters={filters} />
+               <SimpleFreightFiltersComponent onFilterChange={handleFilterChange} initialFilters={filters} />
             </CollapsibleContent>
           </Collapsible>
         </div>

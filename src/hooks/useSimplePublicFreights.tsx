@@ -38,7 +38,12 @@ export const useSimplePublicFreights = (filters: SimpleFreightFilters = {}, page
       setLoading(true);
       setError(null);
 
-      console.log('Aplicando filtros simples:', filters, 'Página:', page);
+      console.log('🔄 [useSimplePublicFreights] Iniciando busca com parâmetros:', {
+        filters,
+        page,
+        itemsPerPage,
+        filtersStringified: JSON.stringify(filters)
+      });
 
       // Construir query base
       let countQuery = supabase
@@ -53,31 +58,44 @@ export const useSimplePublicFreights = (filters: SimpleFreightFilters = {}, page
         .order('created_at', { ascending: false })
         .range((page - 1) * itemsPerPage, page * itemsPerPage - 1);
 
+      console.log('🔧 [useSimplePublicFreights] Queries base criadas');
+      console.log('🔧 [useSimplePublicFreights] Range de paginação:', {
+        start: (page - 1) * itemsPerPage,
+        end: page * itemsPerPage - 1
+      });
+
       // Aplicar filtros simples no backend
       if (filters.origin && filters.origin.trim() !== '') {
         const originFilter = `origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`;
+        console.log('🔍 [useSimplePublicFreights] Aplicando filtro de origem:', originFilter);
         countQuery = countQuery.or(originFilter);
         dataQuery = dataQuery.or(originFilter);
       }
       
       if (filters.destination && filters.destination.trim() !== '') {
         const destinationFilter = `destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%,paradas::text.ilike.%${filters.destination}%`;
+        console.log('🔍 [useSimplePublicFreights] Aplicando filtro de destino:', destinationFilter);
         countQuery = countQuery.or(destinationFilter);
         dataQuery = dataQuery.or(destinationFilter);
       }
       
       if (filters.freightType && filters.freightType.trim() !== '') {
+        console.log('🔍 [useSimplePublicFreights] Aplicando filtro de tipo de frete:', filters.freightType);
         countQuery = countQuery.eq('tipo_frete', filters.freightType);
         dataQuery = dataQuery.eq('tipo_frete', filters.freightType);
       }
       
       if (filters.tracker === 'sim') {
+        console.log('🔍 [useSimplePublicFreights] Aplicando filtro de rastreador: SIM');
         countQuery = countQuery.eq('precisa_rastreador', true);
         dataQuery = dataQuery.eq('precisa_rastreador', true);
       } else if (filters.tracker === 'nao') {
+        console.log('🔍 [useSimplePublicFreights] Aplicando filtro de rastreador: NÃO');
         countQuery = countQuery.eq('precisa_rastreador', false);
         dataQuery = dataQuery.eq('precisa_rastreador', false);
       }
+
+      console.log('🚀 [useSimplePublicFreights] Executando queries no Supabase...');
 
       // Executar queries
       const [{ count }, { data: freightData, error: freightError }] = await Promise.all([
@@ -85,8 +103,15 @@ export const useSimplePublicFreights = (filters: SimpleFreightFilters = {}, page
         dataQuery
       ]);
 
+      console.log('📊 [useSimplePublicFreights] Resultado das queries:', {
+        count,
+        freightDataLength: freightData?.length || 0,
+        freightError,
+        hasError: !!freightError
+      });
+
       if (freightError) {
-        console.error('Erro ao buscar fretes públicos:', freightError);
+        console.error('❌ [useSimplePublicFreights] Erro ao buscar fretes:', freightError);
         setError('Erro ao buscar fretes públicos');
         return;
       }
@@ -94,6 +119,13 @@ export const useSimplePublicFreights = (filters: SimpleFreightFilters = {}, page
       // Calcular paginação
       const totalItems = count || 0;
       const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+      console.log('📄 [useSimplePublicFreights] Informações de paginação calculadas:', {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        itemsPerPage
+      });
 
       setPagination({
         currentPage: page,
@@ -137,16 +169,28 @@ export const useSimplePublicFreights = (filters: SimpleFreightFilters = {}, page
         destino_estado: freight.destino_estado
       }));
 
+      console.log('✅ [useSimplePublicFreights] Dados transformados com sucesso:', {
+        formattedFreightsLength: formattedFreights.length,
+        firstFreight: formattedFreights[0] ? {
+          id: formattedFreights[0].id,
+          codigo: formattedFreights[0].codigo_agregamento,
+          origem: `${formattedFreights[0].origem_cidade}, ${formattedFreights[0].origem_estado}`,
+          tipo: formattedFreights[0].tipo_frete
+        } : null
+      });
+
       setFreights(formattedFreights);
     } catch (err) {
-      console.error('Erro ao carregar fretes públicos:', err);
+      console.error('💥 [useSimplePublicFreights] Erro inesperado:', err);
       setError('Erro ao carregar fretes públicos');
     } finally {
       setLoading(false);
+      console.log('🏁 [useSimplePublicFreights] Busca finalizada');
     }
   }, [JSON.stringify(filters), page, itemsPerPage]);
 
   useEffect(() => {
+    console.log('🔄 [useSimplePublicFreights] useEffect disparado, executando fetchFreights...');
     fetchFreights();
   }, [fetchFreights]);
 
