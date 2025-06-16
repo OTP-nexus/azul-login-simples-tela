@@ -10,6 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { MapPin, Package, DollarSign, Truck, Users, Shield, Radar, UserPlus, Clock, FileText, RotateCcw, Combine, Calculator, Route, Settings, User, Phone, Mail, Weight } from "lucide-react";
 import FreightTypeBadge from '@/components/FreightTypeBadge';
 import { useAuth } from '@/hooks/useAuth';
+
 const FreightDetails = () => {
   const {
     freightCode
@@ -17,14 +18,13 @@ const FreightDetails = () => {
     freightCode: string;
   }>();
   const navigate = useNavigate();
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const {
     data: freight,
     isLoading,
     error
   } = useFreightByCode(freightCode);
+
   if (isLoading) {
     return <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-64">
@@ -44,6 +44,7 @@ const FreightDetails = () => {
         </div>
       </div>;
   }
+
   const getFreightTypeConfig = (tipo: string) => {
     switch (tipo) {
       case 'agregamento':
@@ -78,9 +79,10 @@ const FreightDetails = () => {
   };
   const typeConfig = getFreightTypeConfig(freight.tipo_frete);
   const TypeIcon = typeConfig.icon;
+  
   const formatValue = (valoresDefinidos: any) => {
     if (!valoresDefinidos) return 'A combinar';
-
+    
     // Se valores_definidos é um objeto que contém informações de valor
     if (typeof valoresDefinidos === 'object') {
       const valor = valoresDefinidos.valor || valoresDefinidos.value || valoresDefinidos.price;
@@ -91,7 +93,7 @@ const FreightDetails = () => {
         }).format(valor);
       }
     }
-
+    
     // Se valores_definidos é um número direto
     if (typeof valoresDefinidos === 'number') {
       return new Intl.NumberFormat('pt-BR', {
@@ -99,25 +101,32 @@ const FreightDetails = () => {
         currency: 'BRL'
       }).format(valoresDefinidos);
     }
+    
     return 'A combinar';
   };
+
   const formatWeight = (weight: number | null) => {
     if (!weight) return 'A combinar';
     return `${weight.toLocaleString('pt-BR')} kg`;
   };
+
   const formatDimensions = (freight: any) => {
     const altura = freight.altura_carga;
     const largura = freight.largura_carga;
     const comprimento = freight.comprimento_carga;
+    
     if (!altura && !largura && !comprimento) {
       return 'A combinar';
     }
+    
     const dimensions = [];
     if (comprimento) dimensions.push(`${comprimento}m`);
     if (largura) dimensions.push(`${largura}m`);
     if (altura) dimensions.push(`${altura}m`);
+    
     return dimensions.join(' x ') + ' (C x L x A)';
   };
+
   const formatDate = (date: string | null) => {
     if (!date) return 'Não definida';
     return new Date(date).toLocaleDateString('pt-BR');
@@ -304,11 +313,14 @@ const FreightDetails = () => {
     // Verifica se tem itens detalhados
     if (freight.itens_detalhados && Array.isArray(freight.itens_detalhados) && freight.itens_detalhados.length > 0) {
       return <div className="space-y-2">
-          {freight.itens_detalhados.map((item: any, index: number) => <div key={index} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+          {freight.itens_detalhados.map((item: any, index: number) => (
+            <div key={index} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
               <p className="font-medium text-gray-800">{extractDisplayText(item)}</p>
-            </div>)}
+            </div>
+          ))}
         </div>;
     }
+
     return <p className="text-gray-500 italic">Nenhum item especificado</p>;
   };
 
@@ -320,17 +332,20 @@ const FreightDetails = () => {
     if (!Array.isArray(flattenedTables) || flattenedTables.length === 0) {
       return <p className="text-gray-500 italic">Nenhuma tabela de preços definida</p>;
     }
+    
     return <div className="space-y-3">
         {flattenedTables.map((tabela: any, index: number) => {
         console.log('Processando tabela:', tabela);
         const vehicleType = tabela.vehicleType || tabela.vehicle_type || tabela.tipo_veiculo || 'Não especificado';
         const ranges = tabela.ranges || [];
+        
         if (!Array.isArray(ranges) || ranges.length === 0) {
           return <div key={index} className="bg-red-50 p-4 rounded-lg border border-red-200">
                 <p className="text-red-800 font-medium">{vehicleType}</p>
                 <p className="text-red-600 text-sm">Nenhuma faixa de preço definida</p>
               </div>;
         }
+        
         return <Accordion key={index} type="single" collapsible className="w-full">
               <AccordionItem value={`vehicle-${index}`} className="border border-green-200 rounded-lg bg-green-50">
                 <AccordionTrigger className="px-4 py-3 hover:no-underline">
@@ -385,7 +400,9 @@ const FreightDetails = () => {
         </div>;
     });
   };
-  return <div className="container mx-auto px-4 py-8 max-w-6xl">
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-6">
         <Button onClick={() => navigate('/lista-fretes')} variant="outline" className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -418,27 +435,33 @@ const FreightDetails = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {freight.tipo_frete === 'agregamento' ?
-          // Para agregamento, mostrar apenas o horário de carregamento com fonte maior
-          <>
-                {freight.horario_carregamento && <div className="col-span-2 text-center">
+            {freight.tipo_frete === 'agregamento' ? (
+              // Para agregamento, mostrar apenas o horário de carregamento com fonte maior
+              <>
+                {freight.horario_carregamento && (
+                  <div className="col-span-2 text-center">
                     <p className="text-sm text-gray-500 mb-2">Horário de Carregamento</p>
                     <p className="font-bold text-2xl text-blue-600">{freight.horario_carregamento}</p>
-                  </div>}
-              </> : freight.tipo_frete === 'comum' || freight.tipo_frete === 'frete_completo' || freight.tipo_frete === 'frete_de_retorno' ?
-          // Para frete comum, completo e de retorno, mostrar apenas data de coleta e horário de carregamento, cada um em uma linha
-          <div className="space-y-4">
+                  </div>
+                )}
+              </>
+            ) : freight.tipo_frete === 'comum' || freight.tipo_frete === 'frete_completo' || freight.tipo_frete === 'frete_de_retorno' ? (
+              // Para frete comum, completo e de retorno, mostrar apenas data de coleta e horário de carregamento, cada um em uma linha
+              <div className="space-y-4">
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Data de Coleta</p>
                   <p className="font-bold text-lg text-blue-600">{formatDate(freight.data_coleta)}</p>
                 </div>
-                {freight.horario_carregamento && <div>
+                {freight.horario_carregamento && (
+                  <div>
                     <p className="text-sm text-gray-500 mb-1">Horário de Carregamento</p>
                     <p className="font-bold text-lg text-blue-600">{freight.horario_carregamento}</p>
-                  </div>}
-              </div> :
-          // Para outros tipos de frete, mostrar todas as informações em grid
-          <div className="grid grid-cols-2 gap-4">
+                  </div>
+                )}
+              </div>
+            ) : (
+              // Para outros tipos de frete, mostrar todas as informações em grid
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Data de Coleta</p>
                   <p className="font-medium">{formatDate(freight.data_coleta)}</p>
@@ -447,15 +470,18 @@ const FreightDetails = () => {
                   <p className="text-sm text-gray-500">Data de Entrega</p>
                   <p className="font-medium">{formatDate(freight.data_entrega)}</p>
                 </div>
-                {freight.horario_carregamento && <div>
+                {freight.horario_carregamento && (
+                  <div>
                     <p className="text-sm text-gray-500">Horário de Carregamento</p>
                     <p className="font-medium">{freight.horario_carregamento}</p>
-                  </div>}
+                  </div>
+                )}
                 <div>
                   <p className="text-sm text-gray-500">Status</p>
                   <p className="font-medium">{freight.status || 'Ativo'}</p>
                 </div>
-              </div>}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -473,60 +499,87 @@ const FreightDetails = () => {
                 <p className="text-sm text-gray-500 mb-1">Origem</p>
                 <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                   <p className="font-medium text-blue-900">{freight.origem_cidade}, {freight.origem_estado}</p>
-                  {freight.tipo_frete === 'comum' && freight.origem_tipo_endereco && <p className="text-sm text-blue-700 mt-1">Tipo: {freight.origem_tipo_endereco}</p>}
+                  {freight.tipo_frete === 'comum' && freight.origem_tipo_endereco && (
+                    <p className="text-sm text-blue-700 mt-1">Tipo: {freight.origem_tipo_endereco}</p>
+                  )}
                 </div>
                 
                 {/* Recursos da Origem - Apenas para frete comum */}
-                {freight.tipo_frete === 'comum' && <div className="mt-2 flex flex-wrap gap-2">
-                    {freight.origem_possui_carga_descarga && <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                {freight.tipo_frete === 'comum' && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {freight.origem_possui_carga_descarga && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
                         ✓ Carga/Descarga
-                      </Badge>}
-                    {freight.origem_possui_escada && <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                      </Badge>
+                    )}
+                    {freight.origem_possui_escada && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
                         ✓ Escada
-                      </Badge>}
-                    {freight.origem_possui_elevador && <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                      </Badge>
+                    )}
+                    {freight.origem_possui_elevador && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
                         ✓ Elevador
-                      </Badge>}
-                    {freight.origem_possui_doca && <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                      </Badge>
+                    )}
+                    {freight.origem_possui_doca && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
                         ✓ Doca
-                      </Badge>}
-                  </div>}
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
               
-              {freight.tipo_frete === 'comum' ?
-            // Para frete comum, mostrar destino específico
-            <div>
+              {freight.tipo_frete === 'comum' ? (
+                // Para frete comum, mostrar destino específico
+                <div>
                   <p className="text-sm text-gray-500 mb-1">Destino</p>
                   <div className="bg-green-50 p-3 rounded-lg border border-green-200">
                     <p className="font-medium text-green-900">
-                      {freight.destino_cidade && freight.destino_estado ? `${freight.destino_cidade}, ${freight.destino_estado}` : 'Destino não especificado'}
+                      {freight.destino_cidade && freight.destino_estado 
+                        ? `${freight.destino_cidade}, ${freight.destino_estado}` 
+                        : 'Destino não especificado'}
                     </p>
-                    {freight.destino_tipo_endereco && <p className="text-sm text-green-700 mt-1">Tipo: {freight.destino_tipo_endereco}</p>}
+                    {freight.destino_tipo_endereco && (
+                      <p className="text-sm text-green-700 mt-1">Tipo: {freight.destino_tipo_endereco}</p>
+                    )}
                   </div>
                   
                   {/* Recursos do Destino - Apenas para frete comum */}
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {freight.destino_possui_carga_descarga && <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                    {freight.destino_possui_carga_descarga && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
                         ✓ Carga/Descarga
-                      </Badge>}
-                    {freight.destino_possui_escada && <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                      </Badge>
+                    )}
+                    {freight.destino_possui_escada && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
                         ✓ Escada
-                      </Badge>}
-                    {freight.destino_possui_elevador && <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                      </Badge>
+                    )}
+                    {freight.destino_possui_elevador && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
                         ✓ Elevador
-                      </Badge>}
-                    {freight.destino_possui_doca && <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
+                      </Badge>
+                    )}
+                    {freight.destino_possui_doca && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">
                         ✓ Doca
-                      </Badge>}
+                      </Badge>
+                    )}
                   </div>
-                </div> : freight.tipo_frete === 'frete_completo' || freight.tipo_frete === 'frete_de_retorno' ?
-            // Para frete completo e de retorno, mostrar apenas paradas
-            renderStops() :
-            // Para agregamento, mostrar múltiplos destinos
-            <div>
+                </div>
+              ) : freight.tipo_frete === 'frete_completo' || freight.tipo_frete === 'frete_de_retorno' ? (
+                // Para frete completo e de retorno, mostrar apenas paradas
+                renderStops()
+              ) : (
+                // Para agregamento, mostrar múltiplos destinos
+                <div>
                   <p className="text-sm text-gray-500 mb-2">Destinos</p>
                   {renderDestinations()}
-                </div>}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -568,23 +621,26 @@ const FreightDetails = () => {
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2 mb-1">
                     <DollarSign className="w-4 h-4 text-gray-500" />
-                    <p className="text-sm text-gray-500">Valor</p>
+                    <p className="text-sm text-gray-500">Valor da Carga</p>
                   </div>
                   <p className="font-semibold text-lg text-green-600">{formatValue(freight.valores_definidos)}</p>
                 </div>
               </div>
 
               {/* Itens da Carga - Apenas para frete comum */}
-              {freight.tipo_frete === 'comum' && <div>
+              {freight.tipo_frete === 'comum' && (
+                <div>
                   <p className="text-sm text-gray-500 mb-2">Itens da Carga</p>
                   {renderCadasteredItems()}
-                </div>}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
         {/* Veículos e Carrocerias - Não mostrar para frete comum */}
-        {freight.tipo_frete !== 'comum' && <Card>
+        {freight.tipo_frete !== 'comum' && (
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Truck className="w-5 h-5" />
@@ -603,7 +659,8 @@ const FreightDetails = () => {
                 </div>
               </div>
             </CardContent>
-          </Card>}
+          </Card>
+        )}
 
         {/* Seções específicas para Agregamento */}
         {freight.tipo_frete === 'agregamento' && <>
@@ -660,9 +717,9 @@ const FreightDetails = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {freight.tipo_frete === 'comum' ?
-          // Para frete comum, mostrar serviços extras específicos
-          <div className="space-y-4">
+            {freight.tipo_frete === 'comum' ? (
+              // Para frete comum, mostrar serviços extras específicos
+              <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center space-x-2">
                     <Package className={freight.precisa_montar_desmontar ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
@@ -689,14 +746,17 @@ const FreightDetails = () => {
                     </span>
                   </div>
                 </div>
-                {freight.pedagio_pago_por && <div className="pt-2 border-t border-gray-200">
+                {freight.pedagio_pago_por && (
+                  <div className="pt-2 border-t border-gray-200">
                     <p className="text-sm text-gray-500">Pedágio pago por</p>
                     <p className="font-medium capitalize">{freight.pedagio_pago_por}</p>
                     {freight.pedagio_direcao && <p className="text-sm text-gray-600">Direção: {freight.pedagio_direcao}</p>}
-                  </div>}
-              </div> :
-          // Para outros tipos, mostrar configurações padrão
-          <div className="grid grid-cols-2 gap-4">
+                  </div>
+                )}
+              </div>
+            ) : (
+              // Para outros tipos, mostrar configurações padrão
+              <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center space-x-2">
                   <Shield className={freight.precisa_seguro ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
                   <span className={freight.precisa_seguro ? "text-green-600" : "text-gray-400"}>
@@ -720,7 +780,8 @@ const FreightDetails = () => {
                     <p className="font-medium capitalize">{freight.pedagio_pago_por}</p>
                     {freight.pedagio_direcao && <p className="text-sm text-gray-600">Direção: {freight.pedagio_direcao}</p>}
                   </div>}
-              </div>}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -746,16 +807,22 @@ const FreightDetails = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {!user ? <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+            {!user ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
                 <div className="flex flex-col items-center space-y-3">
                   <User className="w-12 h-12 text-blue-600" />
                   <h3 className="text-lg font-semibold text-blue-900">FAÇA O LOGIN PARA VISUALIZAR OS DADOS</h3>
                   <p className="text-blue-700">Você precisa estar logado para ver as informações de contato desta empresa.</p>
-                  <Button onClick={() => navigate('/login')} className="bg-blue-600 hover:bg-blue-700">
+                  <Button 
+                    onClick={() => navigate('/login')} 
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
                     Fazer Login
                   </Button>
                 </div>
-              </div> : <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-3">
                     <Phone className="w-5 h-5 text-gray-600" />
@@ -788,7 +855,8 @@ const FreightDetails = () => {
                     </div>
                   </div>
                 </div>
-              </div>}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -798,6 +866,8 @@ const FreightDetails = () => {
           Tenho Interesse neste Frete
         </Button>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default FreightDetails;
