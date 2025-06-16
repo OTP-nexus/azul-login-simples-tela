@@ -6,48 +6,29 @@ import { useNavigate } from 'react-router-dom';
 import { useFreightByCode } from '@/hooks/useFreightByCode';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  MapPin, 
-  Package, 
-  Calendar, 
-  DollarSign, 
-  Truck, 
-  Users, 
-  Shield, 
-  Radar, 
-  UserPlus,
-  Clock,
-  AlertTriangle,
-  FileText,
-  RotateCcw,
-  Combine,
-  Calculator,
-  Route,
-  Settings,
-  User,
-  Phone,
-  Mail
-} from "lucide-react";
+import { MapPin, Package, Calendar, DollarSign, Truck, Users, Shield, Radar, UserPlus, Clock, AlertTriangle, FileText, RotateCcw, Combine, Calculator, Route, Settings, User, Phone, Mail } from "lucide-react";
 import FreightTypeBadge from '@/components/FreightTypeBadge';
-
 const FreightDetails = () => {
-  const { freightCode } = useParams<{ freightCode: string }>();
+  const {
+    freightCode
+  } = useParams<{
+    freightCode: string;
+  }>();
   const navigate = useNavigate();
-  const { data: freight, isLoading, error } = useFreightByCode(freightCode);
-
+  const {
+    data: freight,
+    isLoading,
+    error
+  } = useFreightByCode(freightCode);
   if (isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
+    return <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
-      </div>
-    );
+      </div>;
   }
-
   if (error || !freight) {
-    return (
-      <div className="container mx-auto px-4 py-8">
+    return <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-800 mb-4">Frete não encontrado</h1>
           <p className="text-gray-600 mb-6">O código do frete informado não foi encontrado.</p>
@@ -56,10 +37,8 @@ const FreightDetails = () => {
             Voltar para lista
           </Button>
         </div>
-      </div>
-    );
+      </div>;
   }
-
   const getFreightTypeConfig = (tipo: string) => {
     switch (tipo) {
       case 'agregamento':
@@ -92,10 +71,8 @@ const FreightDetails = () => {
         };
     }
   };
-
   const typeConfig = getFreightTypeConfig(freight.tipo_frete);
   const TypeIcon = typeConfig.icon;
-
   const formatValue = (value: number | null) => {
     if (!value) return 'Não definido';
     return new Intl.NumberFormat('pt-BR', {
@@ -103,12 +80,10 @@ const FreightDetails = () => {
       currency: 'BRL'
     }).format(value);
   };
-
   const formatDate = (date: string | null) => {
     if (!date) return 'Não definida';
     return new Date(date).toLocaleDateString('pt-BR');
   };
-
   const formatDateTime = (date: string | null) => {
     if (!date) return 'Não definido';
     return new Date(date).toLocaleString('pt-BR');
@@ -117,7 +92,7 @@ const FreightDetails = () => {
   // Função para "desembrulhar" arrays aninhados
   const flattenNestedArrays = (data: any): any[] => {
     if (!data) return [];
-    
+
     // Se já é um array
     if (Array.isArray(data)) {
       // Se tem apenas um elemento e esse elemento é um array, desembrulhar
@@ -149,7 +124,6 @@ const FreightDetails = () => {
     if (typeof data === 'object') {
       return [data];
     }
-
     return [data];
   };
 
@@ -158,61 +132,47 @@ const FreightDetails = () => {
     if (typeof item === 'string') {
       return item;
     }
-    
     if (typeof item === 'object' && item !== null) {
       // Priorizar campos mais descritivos
-      const textFields = [
-        'nome', 'name', 'tipo', 'type', 'descricao', 'description', 
-        'label', 'title', 'categoria', 'category', 'modelo', 'model',
-        'cidade', 'city', 'estado', 'state'
-      ];
-      
+      const textFields = ['nome', 'name', 'tipo', 'type', 'descricao', 'description', 'label', 'title', 'categoria', 'category', 'modelo', 'model', 'cidade', 'city', 'estado', 'state'];
       for (const field of textFields) {
         if (item[field] && typeof item[field] === 'string') {
           return item[field];
         }
       }
-      
+
       // Se não encontrou campos conhecidos, pegar a primeira propriedade string
       const firstStringValue = Object.values(item).find(value => typeof value === 'string');
       if (firstStringValue) {
         return firstStringValue;
       }
     }
-    
     return String(item);
   };
 
   // Função melhorada para renderizar destinos
   const renderDestinations = () => {
     const flattenedDestinations = flattenNestedArrays(freight.destinos);
-    
     if (!Array.isArray(flattenedDestinations) || flattenedDestinations.length === 0) {
       return <p className="text-gray-500 italic">Nenhum destino definido</p>;
     }
-
-    return (
-      <div className="space-y-2">
+    return <div className="space-y-2">
         {flattenedDestinations.map((destino: any, index: number) => {
-          // Se o destino é uma string simples
-          if (typeof destino === 'string') {
-            return (
-              <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
+        // Se o destino é uma string simples
+        if (typeof destino === 'string') {
+          return <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
                 <p className="font-medium text-green-900">{destino}</p>
-              </div>
-            );
-          }
+              </div>;
+        }
 
-          // Se o destino é um objeto
-          if (typeof destino === 'object' && destino !== null) {
-            const cidade = destino.cidade || destino.city || '';
-            const estado = destino.estado || destino.state || '';
-            const cep = destino.cep || '';
-            const bairro = destino.bairro || destino.neighborhood || '';
-            const endereco = destino.endereco || destino.address || '';
-
-            return (
-              <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
+        // Se o destino é um objeto
+        if (typeof destino === 'object' && destino !== null) {
+          const cidade = destino.cidade || destino.city || '';
+          const estado = destino.estado || destino.state || '';
+          const cep = destino.cep || '';
+          const bairro = destino.bairro || destino.neighborhood || '';
+          const endereco = destino.endereco || destino.address || '';
+          return <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
                 <div className="text-sm">
                   <p className="font-medium text-green-900">
                     {cidade && estado ? `${cidade}, ${estado}` : extractDisplayText(destino)}
@@ -221,150 +181,106 @@ const FreightDetails = () => {
                   {bairro && <p className="text-green-700 text-xs">Bairro: {bairro}</p>}
                   {endereco && <p className="text-green-700 text-xs">Endereço: {endereco}</p>}
                 </div>
-              </div>
-            );
-          }
-
-          return (
-            <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
+              </div>;
+        }
+        return <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
               <p className="font-medium text-green-900">{String(destino)}</p>
-            </div>
-          );
-        })}
-      </div>
-    );
+            </div>;
+      })}
+      </div>;
   };
 
   // Função melhorada para renderizar paradas
   const renderStops = () => {
     const flattenedStops = flattenNestedArrays(freight.paradas);
-    
     if (!Array.isArray(flattenedStops) || flattenedStops.length === 0) {
       return null;
     }
-
-    return (
-      <div>
+    return <div>
         <p className="text-sm text-gray-500 mb-2">Paradas</p>
         <div className="space-y-2">
           {flattenedStops.map((parada: any, index: number) => {
-            if (typeof parada === 'string') {
-              return (
-                <div key={index} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+          if (typeof parada === 'string') {
+            return <div key={index} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
                   <p className="font-medium text-yellow-900">{parada}</p>
-                </div>
-              );
-            }
-
-            if (typeof parada === 'object' && parada !== null) {
-              const cidade = parada.cidade || parada.city || '';
-              const estado = parada.estado || parada.state || '';
-
-              return (
-                <div key={index} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                </div>;
+          }
+          if (typeof parada === 'object' && parada !== null) {
+            const cidade = parada.cidade || parada.city || '';
+            const estado = parada.estado || parada.state || '';
+            return <div key={index} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
                   <p className="font-medium text-yellow-900">
                     {cidade && estado ? `${cidade}, ${estado}` : extractDisplayText(parada)}
                   </p>
-                </div>
-              );
-            }
-
-            return (
-              <div key={index} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                </div>;
+          }
+          return <div key={index} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
                 <p className="font-medium text-yellow-900">{String(parada)}</p>
-              </div>
-            );
-          })}
+              </div>;
+        })}
         </div>
-      </div>
-    );
+      </div>;
   };
 
   // Função melhorada para renderizar itens de array com formatação adequada
   const renderVehiclesAndBodies = (items: any, emptyMessage: string = 'Não especificado') => {
     const flattenedItems = flattenNestedArrays(items);
-    
     if (!Array.isArray(flattenedItems) || flattenedItems.length === 0) {
       return <p className="text-gray-500 italic">{emptyMessage}</p>;
     }
-
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+    return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {flattenedItems.map((item: any, index: number) => {
-          const displayText = extractDisplayText(item);
-
-          return (
-            <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        const displayText = extractDisplayText(item);
+        return <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <div className="text-sm font-medium text-blue-900">{displayText}</div>
-            </div>
-          );
-        })}
-      </div>
-    );
+            </div>;
+      })}
+      </div>;
   };
 
   // Função específica para renderizar badges simples
   const renderSimpleBadges = (items: any, emptyMessage: string = 'Não especificado') => {
     const flattenedItems = flattenNestedArrays(items);
-    
     if (!Array.isArray(flattenedItems) || flattenedItems.length === 0) {
       return <p className="text-gray-500 italic">{emptyMessage}</p>;
     }
-
-    return (
-      <div className="flex flex-wrap gap-2">
+    return <div className="flex flex-wrap gap-2">
         {flattenedItems.map((item: any, index: number) => {
-          const displayText = extractDisplayText(item);
-
-          return (
-            <Badge key={index} variant="outline" className="mr-1 mb-1">
+        const displayText = extractDisplayText(item);
+        return <Badge key={index} variant="outline" className="mr-1 mb-1">
               {displayText}
-            </Badge>
-          );
-        })}
-      </div>
-    );
+            </Badge>;
+      })}
+      </div>;
   };
 
   // Helper function to render pricing tables for agregamento
   const renderPricingTables = () => {
     const flattenedTables = flattenNestedArrays(freight.tabelas_preco);
-    
     console.log('Tabelas de preço originais:', freight.tabelas_preco);
     console.log('Tabelas de preço após flatten:', flattenedTables);
-    
     if (!Array.isArray(flattenedTables) || flattenedTables.length === 0) {
       return <p className="text-gray-500 italic">Nenhuma tabela de preços definida</p>;
     }
-
-    return (
-      <div className="space-y-4">
+    return <div className="space-y-4">
         {flattenedTables.map((tabela: any, index: number) => {
-          console.log('Processando tabela:', tabela);
-          
-          const vehicleType = tabela.vehicleType || tabela.vehicle_type || tabela.tipo_veiculo || 'Não especificado';
-          const ranges = tabela.ranges || [];
-          
-          if (!Array.isArray(ranges) || ranges.length === 0) {
-            return (
-              <div key={index} className="bg-red-50 p-4 rounded-lg border border-red-200">
+        console.log('Processando tabela:', tabela);
+        const vehicleType = tabela.vehicleType || tabela.vehicle_type || tabela.tipo_veiculo || 'Não especificado';
+        const ranges = tabela.ranges || [];
+        if (!Array.isArray(ranges) || ranges.length === 0) {
+          return <div key={index} className="bg-red-50 p-4 rounded-lg border border-red-200">
                 <p className="text-red-800 font-medium">{vehicleType}</p>
                 <p className="text-red-600 text-sm">Nenhuma faixa de preço definida</p>
-              </div>
-            );
-          }
-          
-          return (
-            <div key={index} className="bg-green-50 p-4 rounded-lg border border-green-200">
+              </div>;
+        }
+        return <div key={index} className="bg-green-50 p-4 rounded-lg border border-green-200">
               <h4 className="font-semibold text-green-900 mb-3 text-lg">{vehicleType}</h4>
               <div className="space-y-3">
                 {ranges.map((range: any, rangeIndex: number) => {
-                  const kmStart = range.kmStart || range.km_start || range.km_inicio || 0;
-                  const kmEnd = range.kmEnd || range.km_end || range.km_fim || 0;
-                  const price = range.price || range.preco || range.valor || 0;
-                  
-                  return (
-                    <div key={range.id || rangeIndex} className="bg-white p-3 rounded border border-green-300">
+              const kmStart = range.kmStart || range.km_start || range.km_inicio || 0;
+              const kmEnd = range.kmEnd || range.km_end || range.km_fim || 0;
+              const price = range.price || range.preco || range.valor || 0;
+              return <div key={range.id || rangeIndex} className="bg-white p-3 rounded border border-green-300">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                           <p className="text-gray-600 text-sm font-medium mb-1">Distância</p>
@@ -375,25 +291,20 @@ const FreightDetails = () => {
                           <p className="font-semibold text-green-600 text-lg">{formatValue(price)}</p>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    </div>;
+            })}
               </div>
               
               {/* Mostrar dados brutos para debug se necessário */}
-              {process.env.NODE_ENV === 'development' && (
-                <details className="mt-3">
-                  <summary className="text-xs text-gray-500 cursor-pointer">Debug (dados brutos)</summary>
+              {process.env.NODE_ENV === 'development' && <details className="mt-3">
+                  
                   <pre className="text-xs text-gray-600 mt-1 bg-gray-100 p-2 rounded overflow-auto max-h-32">
                     {JSON.stringify(tabela, null, 2)}
                   </pre>
-                </details>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
+                </details>}
+            </div>;
+      })}
+      </div>;
   };
 
   // Helper function to render benefits for agregamento
@@ -404,24 +315,17 @@ const FreightDetails = () => {
   // Helper function to render scheduling rules for agregamento
   const renderSchedulingRules = () => {
     const flattenedRules = flattenNestedArrays(freight.regras_agendamento);
-    
     if (!Array.isArray(flattenedRules) || flattenedRules.length === 0) {
       return <p className="text-gray-500 italic">Nenhuma regra de agendamento definida</p>;
     }
-
     return flattenedRules.map((regra: any, index: number) => {
       const displayText = extractDisplayText(regra);
-
-      return (
-        <div key={index} className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+      return <div key={index} className="bg-orange-50 p-3 rounded-lg border border-orange-200">
           <p className="text-sm text-orange-800">{displayText}</p>
-        </div>
-      );
+        </div>;
     });
   };
-
-  return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+  return <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-6">
         <Button onClick={() => navigate('/lista-fretes')} variant="outline" className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -462,12 +366,10 @@ const FreightDetails = () => {
               <p className="text-sm text-gray-500">Data de Entrega</p>
               <p className="font-medium">{formatDate(freight.data_entrega)}</p>
             </div>
-            {freight.horario_carregamento && (
-              <div>
+            {freight.horario_carregamento && <div>
                 <p className="text-sm text-gray-500">Horário de Carregamento</p>
                 <p className="font-medium">{freight.horario_carregamento}</p>
-              </div>
-            )}
+              </div>}
             <div>
               <p className="text-sm text-gray-500">Status</p>
               <p className="font-medium">{freight.status || 'Ativo'}</p>
@@ -551,8 +453,7 @@ const FreightDetails = () => {
         </Card>
 
         {/* Seções específicas para Agregamento */}
-        {freight.tipo_frete === 'agregamento' && (
-          <>
+        {freight.tipo_frete === 'agregamento' && <>
             {/* Tabelas de Preços */}
             <Card>
               <CardHeader>
@@ -595,8 +496,7 @@ const FreightDetails = () => {
                 </div>
               </CardContent>
             </Card>
-          </>
-        )}
+          </>}
 
         {/* Configurações e Extras */}
         <Card>
@@ -626,15 +526,11 @@ const FreightDetails = () => {
                   Ajudante {freight.precisa_ajudante ? "necessário" : "não necessário"}
                 </span>
               </div>
-              {freight.pedagio_pago_por && (
-                <div>
+              {freight.pedagio_pago_por && <div>
                   <p className="text-sm text-gray-500">Pedágio pago por</p>
                   <p className="font-medium capitalize">{freight.pedagio_pago_por}</p>
-                  {freight.pedagio_direcao && (
-                    <p className="text-sm text-gray-600">Direção: {freight.pedagio_direcao}</p>
-                  )}
-                </div>
-              )}
+                  {freight.pedagio_direcao && <p className="text-sm text-gray-600">Direção: {freight.pedagio_direcao}</p>}
+                </div>}
             </div>
           </CardContent>
         </Card>
@@ -702,8 +598,7 @@ const FreightDetails = () => {
         </Card>
 
         {/* Observações */}
-        {freight.observacoes && (
-          <Card>
+        {freight.observacoes && <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <FileText className="w-5 h-5" />
@@ -713,21 +608,14 @@ const FreightDetails = () => {
             <CardContent>
               <p className="text-gray-700 whitespace-pre-wrap">{freight.observacoes}</p>
             </CardContent>
-          </Card>
-        )}
+          </Card>}
       </div>
 
       <div className="mt-8 pt-6 border-t border-gray-200">
-        <Button 
-          size="lg" 
-          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-          onClick={() => navigate('/login')}
-        >
+        <Button size="lg" className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800" onClick={() => navigate('/login')}>
           Tenho Interesse neste Frete
         </Button>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default FreightDetails;
