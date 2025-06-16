@@ -106,6 +106,30 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
     }
   };
 
+  // Função auxiliar para verificar paradas (para frete completo e retorno)
+  const hasDestinationInParadas = (paradasData: any, searchValue: string): boolean => {
+    if (!paradasData || paradasData === null) return false;
+    
+    try {
+      const data = typeof paradasData === 'string' ? JSON.parse(paradasData) : paradasData;
+      
+      if (!Array.isArray(data)) return false;
+      
+      return data.some((parada: any) => {
+        if (typeof parada === 'object' && parada !== null) {
+          const cidade = parada.cidade || parada.city || '';
+          const estado = parada.estado || parada.state || '';
+          return cidade.toLowerCase().includes(searchValue.toLowerCase()) || 
+                 estado.toLowerCase().includes(searchValue.toLowerCase());
+        }
+        return false;
+      });
+    } catch (e) {
+      console.error('Erro ao processar dados de paradas:', e);
+      return false;
+    }
+  };
+
   const fetchFreights = useCallback(async () => {
     try {
       setLoading(true);
@@ -125,7 +149,14 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       }
       
       if (filters.destination) {
-        countQuery = countQuery.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        // Aplicar filtro diferenciado baseado no tipo de frete
+        if (filters.freightType === 'frete_completo' || filters.freightType === 'frete_de_retorno') {
+          // Para frete completo e retorno, buscar nas paradas
+          countQuery = countQuery.or(`paradas::text.ilike.%${filters.destination}%`);
+        } else {
+          // Para agregamento e comum, buscar nos destinos tradicionais
+          countQuery = countQuery.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        }
       }
       
       if (filters.freightType) {
@@ -152,7 +183,14 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       }
       
       if (filters.destination) {
-        query = query.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        // Aplicar filtro diferenciado baseado no tipo de frete
+        if (filters.freightType === 'frete_completo' || filters.freightType === 'frete_de_retorno') {
+          // Para frete completo e retorno, buscar nas paradas
+          query = query.or(`paradas::text.ilike.%${filters.destination}%`);
+        } else {
+          // Para agregamento e comum, buscar nos destinos tradicionais
+          query = query.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        }
       }
       
       if (filters.freightType) {
@@ -192,6 +230,38 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
           return filters.bodyTypes!.some(bodyType => 
             hasBodyType(freight.tipos_carrocerias, bodyType)
           );
+        });
+      }
+
+      // Additional client-side destination filter for better accuracy
+      if (filters.destination) {
+        filteredData = filteredData.filter(freight => {
+          const searchValue = filters.destination!.toLowerCase();
+          
+          if (freight.tipo_frete === 'frete_completo' || freight.tipo_frete === 'frete_de_retorno') {
+            // Para frete completo e retorno, verificar paradas
+            return hasDestinationInParadas(freight.paradas, searchValue);
+          } else {
+            // Para agregamento e comum, verificar destinos tradicionais
+            const destinoCidade = (freight.destino_cidade || '').toLowerCase();
+            const destinoEstado = (freight.destino_estado || '').toLowerCase();
+            
+            let foundInDestinos = false;
+            if (freight.destinos && Array.isArray(freight.destinos)) {
+              foundInDestinos = freight.destinos.some((destino: any) => {
+                if (typeof destino === 'object' && destino !== null) {
+                  const cidade = (destino.city || destino.cidade || '').toLowerCase();
+                  const estado = (destino.state || destino.estado || '').toLowerCase();
+                  return cidade.includes(searchValue) || estado.includes(searchValue);
+                }
+                return false;
+              });
+            }
+            
+            return destinoCidade.includes(searchValue) || 
+                   destinoEstado.includes(searchValue) || 
+                   foundInDestinos;
+          }
         });
       }
 
