@@ -124,11 +124,6 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         countQuery = countQuery.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
       }
       
-      if (filters.destination) {
-        // Corrigir a sintaxe para o filtro de destino
-        countQuery = countQuery.or(`destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
-      }
-      
       if (filters.freightType) {
         countQuery = countQuery.eq('tipo_frete', filters.freightType);
       }
@@ -150,11 +145,6 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       // Apply the same filters to data query
       if (filters.origin) {
         query = query.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
-      }
-      
-      if (filters.destination) {
-        // Corrigir a sintaxe para o filtro de destino
-        query = query.or(`destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
       }
       
       if (filters.freightType) {
@@ -197,18 +187,26 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         });
       }
 
-      // Apply additional client-side destination filter for destinos JSON field
+      // Apply destination filter on client side - using same logic as origin
       if (filters.destination) {
         filteredData = filteredData.filter(freight => {
+          const searchTerm = filters.destination!.toLowerCase();
+          
+          // Check destino_cidade and destino_estado (same as origin logic)
+          const destinoCidadeMatch = freight.destino_cidade && 
+            freight.destino_cidade.toLowerCase().includes(searchTerm);
+          const destinoEstadoMatch = freight.destino_estado && 
+            freight.destino_estado.toLowerCase().includes(searchTerm);
+          
           // Check destinos array
-          if (freight.destinos && Array.isArray(freight.destinos)) {
-            return freight.destinos.some((destino: any) => {
-              const cityMatch = destino.city && destino.city.toLowerCase().includes(filters.destination!.toLowerCase());
-              const stateMatch = destino.state && destino.state.toLowerCase().includes(filters.destination!.toLowerCase());
+          const destinosArrayMatch = freight.destinos && Array.isArray(freight.destinos) &&
+            freight.destinos.some((destino: any) => {
+              const cityMatch = destino.city && destino.city.toLowerCase().includes(searchTerm);
+              const stateMatch = destino.state && destino.state.toLowerCase().includes(searchTerm);
               return cityMatch || stateMatch;
             });
-          }
-          return false;
+          
+          return destinoCidadeMatch || destinoEstadoMatch || destinosArrayMatch;
         });
       }
 
