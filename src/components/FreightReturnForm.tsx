@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ArrowLeft, ArrowRight, MapPin, Calendar, Package, DollarSign, Truck, Settings } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Users, MapPin, Truck, Settings, Calendar, Package, DollarSign, Plus, X, GripVertical, AlertCircle, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,8 +16,9 @@ import FreightLoadingAnimation from './FreightLoadingAnimation';
 import FreightVerificationDialog from './FreightVerificationDialog';
 import FreightSuccessDialog from './FreightSuccessDialog';
 import { useEstados, useCidades } from '@/hooks/useIBGE';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { useFreightFormValidation, FreightFormData } from '@/hooks/useFreightFormValidation';
-import { formatCurrency, formatNumericInput, formatWeight, parseCurrencyValue, validateNumericInput, limitTextInput } from '@/utils/freightFormatters';
+import { formatCurrency, formatNumericInput, formatWeight, parseCurrencyValue, limitTextInput } from '@/utils/freightFormatters';
 import { ErrorMessage } from '@/components/ui/error-message';
 
 const vehicleTypes = {
@@ -81,13 +82,14 @@ const FreightReturnForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [generatedFreight, setGeneratedFreight] = useState(null);
+  const [generatedFreights, setGeneratedFreights] = useState([]);
 
   const {
     errors,
-    validateStep1: validateReturnStep1,
-    validateStep2: validateReturnStep2,
-    validateStep3: validateReturnStep3,
+    validateStep1,
+    validateStep2,
+    validateStep3,
+    validateStep4,
     clearErrors
   } = useFreightFormValidation();
 
@@ -97,10 +99,7 @@ const FreightReturnForm = () => {
       estado: '',
       cidade: ''
     },
-    destino: {
-      estado: '',
-      cidade: ''
-    },
+    paradas: [] as Array<{ id: string; estado: string; cidade: string }>,
     dataColeta: '',
     horarioColeta: '',
     dimensoes: {
@@ -123,7 +122,43 @@ const FreightReturnForm = () => {
 
   const { estados } = useEstados();
   const { cidades: cidadesOrigem } = useCidades(formData.origem.estado);
-  const { cidades: cidadesDestino } = useCidades(formData.destino.estado);
+
+  const useMultipleCidades = (estados: string[]) => {
+    return useQuery({
+      queryKey: ['multiple-cidades', estados],
+      queryFn: async () => {
+        if (!estados.length) return {};
+        
+        const cidadesByState: Record<string, any[]> = {};
+        
+        for (const estado of estados) {
+          if (estado) {
+            try {
+              const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${estado}/municipios?orderBy=nome`);
+              if (response.ok) {
+                const data = await response.json();
+                cidadesByState[estado] = data;
+              } else {
+                cidadesByState[estado] = [];
+              }
+            } catch (error) {
+              console.error(`Erro ao buscar cidades para ${estado}:`, error);
+              cidadesByState[estado] = [];
+            }
+          }
+        }
+        
+        return cidadesByState;
+      },
+      enabled: estados.length > 0,
+    });
+  };
+
+  const paradaStates = useMemo(() => {
+    return [...new Set(formData.paradas.map(p => p.estado).filter(Boolean))];
+  }, [formData.paradas]);
+
+  const { data: cidadesByState = {} } = useMultipleCidades(paradaStates);
 
   const { data: collaborators = [] } = useQuery({
     queryKey: ['collaborators'],
@@ -149,110 +184,49 @@ const FreightReturnForm = () => {
     },
   });
 
-  const handleSubmit = async () => {
-    if (!validateReturnStep3(formData)) {
+  const addParada = () => {
+    const newParada = {
+      id: Date.now().toString(),
+      estado: '',
+      cidade: ''
+    };
+    setFormData({
+      ...formData,
+      paradas: [...formData.paradas, newParada]
+    });
+  };
+
+  const removeParada = (id: string) => {
+    setFormData({
+      ...formData,
+      paradas: formData.paradas.filter(parada => parada.id !== id)
+    });
+  };
+
+  const updateParada = (id: string, field: 'estado' | 'cidade', value: string) => {
+    setFormData({
+      ...formData,
+      paradas: formData.paradas.map(parada =>
+        parada.id === id
+          ? { ...parada, [field]: value, ...(field === 'estado' ? { cidade: '' } : {}) }
+          : parada
+      )
+    });
+  };
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) {
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuário não autenticado');
+    const items = Array.from(formData.paradas);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
 
-      const { data: company } = await supabase
-        .from('companies')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!company) throw new Error('Empresa não encontrada');
-
-      const destinos = [{
-        id: '1',
-        state: formData.destino.estado,
-        city: formData.destino.cidade
-      }];
-
-      const valoresDefinidos = formData.tipoValor === 'valor' ? {
-        tipo: 'valor_fixo',
-        valor: formData.valorOfertado ? parseFloat(formData.valorOfertado) : 0
-      } : {
-        tipo: 'a_combinar'
-      };
-
-      const freightData = {
-        company_id: company.id,
-        tipo_frete: 'frete_de_retorno',
-        origem_estado: formData.origem.estado,
-        origem_cidade: formData.origem.cidade,
-        destino_estado: formData.destino.estado,
-        destino_cidade: formData.destino.cidade,
-        destinos: destinos,
-        tipo_mercadoria: 'Geral',
-        data_coleta: formData.dataColeta || null,
-        horario_carregamento: formData.horarioColeta || null,
-        peso_carga: formData.peso ? parseFloat(formData.peso.replace(/\./g, '')) : null,
-        altura_carga: formData.dimensoes.altura ? parseFloat(formData.dimensoes.altura) : null,
-        largura_carga: formData.dimensoes.largura ? parseFloat(formData.dimensoes.largura) : null,
-        comprimento_carga: formData.dimensoes.comprimento ? parseFloat(formData.dimensoes.comprimento) : null,
-        tipos_veiculos: formData.tiposVeiculos,
-        tipos_carrocerias: formData.tiposCarrocerias,
-        valores_definidos: valoresDefinidos,
-        precisa_ajudante: formData.precisaAjudante,
-        precisa_rastreador: formData.precisaRastreador,
-        precisa_seguro: formData.precisaSeguro,
-        pedagio_pago_por: formData.pedagioPagoPor,
-        pedagio_direcao: formData.pedagioPagoPor === 'motorista' ? null : formData.pedagioDirecao || null,
-        observacoes: formData.observacoes,
-        collaborator_ids: formData.selectedCollaborators,
-        status: 'pendente'
-      };
-
-      console.log('Dados do frete de retorno a serem salvos:', freightData);
-
-      const { data, error } = await supabase
-        .from('fretes')
-        .insert([freightData])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Erro ao salvar frete de retorno:', error);
-        throw error;
-      }
-
-      console.log('Frete de retorno salvo com sucesso:', data);
-
-      setGeneratedFreight({
-        id: data.id,
-        codigo_agregamento: data.codigo_agregamento,
-        destino_cidade: formData.destino.cidade,
-        destino_estado: formData.destino.estado
-      });
-
-      setIsSubmitting(false);
-      setShowVerificationDialog(false);
-      setShowSuccessDialog(true);
-
-      toast({
-        title: "Sucesso!",
-        description: "Frete de retorno criado com sucesso.",
-      });
-    } catch (error) {
-      console.error('Erro ao criar frete de retorno:', error);
-      setIsSubmitting(false);
-      setShowVerificationDialog(false);
-      toast({
-        title: "Erro",
-        description: `Erro ao criar frete de retorno: ${error.message}`,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleBack = () => {
-    navigate('/freight-request');
+    setFormData({
+      ...formData,
+      paradas: items
+    });
   };
 
   const toggleVehicleType = (vehicleId: string, type: string, category: 'heavy' | 'medium' | 'light') => {
@@ -293,6 +267,14 @@ const FreightReturnForm = () => {
     });
   };
 
+  const handleNumericChange = (value: string, field: string, maxDecimals: number = 2) => {
+    const formatted = formatNumericInput(value, maxDecimals);
+    setFormData({
+      ...formData,
+      [field]: formatted
+    });
+  };
+
   const handleWeightChange = (value: string) => {
     const formatted = formatWeight(value);
     setFormData({
@@ -309,10 +291,127 @@ const FreightReturnForm = () => {
     });
   };
 
+  const checkForDuplicateParada = (estado: string, cidade: string, currentId: string): boolean => {
+    return formData.paradas.some(parada => 
+      parada.id !== currentId && 
+      parada.estado === estado && 
+      parada.cidade === cidade
+    );
+  };
+
+  const handleSubmit = async () => {
+    if (!validateStep4(formData)) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      const { data: company } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!company) throw new Error('Empresa não encontrada');
+
+      const destinos = formData.paradas.map((parada, index) => ({
+        id: parada.id || index.toString(),
+        state: parada.estado,
+        city: parada.cidade
+      }));
+
+      const valoresDefinidos = formData.tipoValor === 'valor' ? {
+        tipo: 'valor_fixo',
+        valor: formData.valorOfertado ? parseFloat(formData.valorOfertado) : 0
+      } : {
+        tipo: 'a_combinar'
+      };
+
+      const freightData = {
+        company_id: company.id,
+        tipo_frete: 'frete_de_retorno', // Única diferença do frete completo
+        origem_estado: formData.origem.estado,
+        origem_cidade: formData.origem.cidade,
+        destinos: destinos,
+        tipo_mercadoria: 'Geral',
+        paradas: formData.paradas.map(parada => ({
+          estado: parada.estado,
+          cidade: parada.cidade,
+          ordem: formData.paradas.indexOf(parada) + 1
+        })),
+        data_coleta: formData.dataColeta || null,
+        horario_carregamento: formData.horarioColeta || null,
+        peso_carga: formData.peso ? parseFloat(formData.peso.replace(/\./g, '')) : null,
+        tipos_veiculos: formData.tiposVeiculos,
+        tipos_carrocerias: formData.tiposCarrocerias,
+        valores_definidos: valoresDefinidos,
+        precisa_ajudante: formData.precisaAjudante,
+        precisa_rastreador: formData.precisaRastreador,
+        precisa_seguro: formData.precisaSeguro,
+        pedagio_pago_por: formData.pedagioPagoPor,
+        pedagio_direcao: formData.pedagioPagoPor === 'motorista' ? null : (formData.pedagioDirecao || null),
+        observacoes: formData.observacoes,
+        collaborator_ids: formData.selectedCollaborators,
+        status: 'pendente'
+      };
+
+      console.log('Dados do frete de retorno a serem salvos:', freightData);
+
+      const { data, error } = await supabase
+        .from('fretes')
+        .insert([freightData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erro ao salvar frete de retorno:', error);
+        throw error;
+      }
+
+      console.log('Frete de retorno salvo com sucesso:', data);
+
+      // Criar um frete para cada parada
+      const generatedFreightsList = formData.paradas.map((parada, index) => ({
+        id: data.id,
+        codigo_agregamento: data.codigo_agregamento || `FRR-${Date.now()}-${index}`,
+        destino_cidade: parada.cidade,
+        destino_estado: parada.estado
+      }));
+
+      setGeneratedFreights(generatedFreightsList);
+      setIsSubmitting(false);
+      setShowVerificationDialog(false);
+      setShowSuccessDialog(true);
+
+      toast({
+        title: "Sucesso!",
+        description: "Frete de retorno criado com sucesso.",
+      });
+    } catch (error) {
+      console.error('Erro ao criar frete de retorno:', error);
+      setIsSubmitting(false);
+      setShowVerificationDialog(false);
+      toast({
+        title: "Erro",
+        description: `Erro ao criar frete de retorno: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBack = () => {
+    navigate('/freight-request');
+  };
+
   const steps = [
-    { number: 1, title: 'Colaboradores', icon: Truck, description: 'Selecione os responsáveis' },
-    { number: 2, title: 'Detalhes do Frete', icon: MapPin, description: 'Origem, destino e informações' },
-    { number: 3, title: 'Configurações', icon: Settings, description: 'Detalhes finais' }
+    { number: 1, title: 'Colaboradores', icon: Users, description: 'Selecione os responsáveis' },
+    { number: 2, title: 'Origem e Paradas', icon: MapPin, description: 'Locais de coleta e paradas' },
+    { number: 3, title: 'Carga e Veículos', icon: Truck, description: 'Especificações da carga' },
+    { number: 4, title: 'Configurações', icon: Settings, description: 'Detalhes finais' }
   ];
 
   const handleNext = () => {
@@ -322,13 +421,16 @@ const FreightReturnForm = () => {
     
     switch (currentStep) {
       case 1:
-        isValid = validateReturnStep1(formData);
+        isValid = validateStep1(formData);
         break;
       case 2:
-        isValid = validateReturnStep2(formData);
+        isValid = validateStep2(formData);
         break;
       case 3:
-        isValid = validateReturnStep3(formData);
+        isValid = validateStep3(formData);
+        break;
+      case 4:
+        isValid = validateStep4(formData);
         if (isValid) {
           setShowVerificationDialog(true);
           return;
@@ -336,7 +438,7 @@ const FreightReturnForm = () => {
         break;
     }
     
-    if (isValid && currentStep < 3) {
+    if (isValid && currentStep < 4) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -348,12 +450,38 @@ const FreightReturnForm = () => {
     }
   };
 
+  const convertedFormData = {
+    collaborator_ids: formData.selectedCollaborators,
+    origem_cidade: formData.origem.cidade,
+    origem_estado: formData.origem.estado,
+    destinos: formData.paradas.map((parada, index) => ({ 
+      id: parada.id || index.toString(), 
+      state: parada.estado, 
+      city: parada.cidade 
+    })),
+    tipo_mercadoria: 'Geral',
+    tipos_veiculos: formData.tiposVeiculos,
+    tipos_carrocerias: formData.tiposCarrocerias,
+    vehicle_price_tables: [],
+    regras_agendamento: [],
+    beneficios: [],
+    horario_carregamento: formData.horarioColeta,
+    precisa_ajudante: formData.precisaAjudante,
+    precisa_rastreador: formData.precisaRastreador,
+    precisa_seguro: formData.precisaSeguro,
+    pedagio_pago_por: formData.pedagioPagoPor,
+    pedagio_direcao: formData.pedagioDirecao,
+    observacoes: formData.observacoes,
+    tipo_valor: formData.tipoValor,
+    valor_definido: formData.valorOfertado ? parseFloat(formData.valorOfertado) : undefined
+  };
+
   if (isSubmitting) {
     return <FreightLoadingAnimation open={true} />;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-amber-100">
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -368,8 +496,11 @@ const FreightReturnForm = () => {
                 <span>Voltar</span>
               </Button>
               <div>
-                <h1 className="text-xl font-bold text-gray-800">Frete de Retorno</h1>
-                <p className="text-sm text-gray-600">Etapa {currentStep} de 3</p>
+                <h1 className="text-xl font-bold text-gray-800 flex items-center space-x-2">
+                  <RotateCcw className="w-5 h-5 text-amber-600" />
+                  <span>Frete de Retorno</span>
+                </h1>
+                <p className="text-sm text-gray-600">Etapa {currentStep} de 4</p>
               </div>
             </div>
           </div>
@@ -382,10 +513,10 @@ const FreightReturnForm = () => {
             {steps.map((step, index) => (
               <div key={step.number} className="flex items-center">
                 <div className={`flex items-center space-x-2 ${
-                  currentStep >= step.number ? 'text-blue-600' : 'text-gray-400'
+                  currentStep >= step.number ? 'text-amber-600' : 'text-gray-400'
                 }`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    currentStep >= step.number ? 'bg-blue-600 text-white' : 'bg-gray-200'
+                    currentStep >= step.number ? 'bg-amber-600 text-white' : 'bg-gray-200'
                   }`}>
                     <step.icon className="w-4 h-4" />
                   </div>
@@ -396,7 +527,7 @@ const FreightReturnForm = () => {
                 </div>
                 {index < steps.length - 1 && (
                   <div className={`w-8 sm:w-16 h-0.5 mx-2 sm:mx-4 ${
-                    currentStep > step.number ? 'bg-blue-600' : 'bg-gray-200'
+                    currentStep > step.number ? 'bg-amber-600' : 'bg-gray-200'
                   }`} />
                 )}
               </div>
@@ -410,7 +541,7 @@ const FreightReturnForm = () => {
           <Card className={errors.collaborators ? 'border-red-300' : ''}>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <Truck className="w-5 h-5" />
+                <Users className="w-5 h-5" />
                 <span>Selecionar Colaboradores Responsáveis *</span>
               </CardTitle>
               <CardDescription>
@@ -437,7 +568,7 @@ const FreightReturnForm = () => {
                       key={collaborator.id}
                       className={`border rounded-lg p-4 cursor-pointer transition-all ${
                         formData.selectedCollaborators.includes(collaborator.id)
-                          ? 'border-blue-500 bg-blue-50'
+                          ? 'border-amber-500 bg-amber-50'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                       onClick={() => {
@@ -471,7 +602,7 @@ const FreightReturnForm = () => {
             <Card className={errors.origem ? 'border-red-300' : ''}>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <MapPin className="w-5 h-5 text-green-600" />
+                  <MapPin className="w-5 h-5 text-amber-600" />
                   <span>Origem *</span>
                 </CardTitle>
                 <CardDescription>
@@ -526,61 +657,134 @@ const FreightReturnForm = () => {
               </CardContent>
             </Card>
 
-            <Card className={errors.destino ? 'border-red-300' : ''}>
+            <Card className={errors.paradas ? 'border-red-300' : ''}>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <MapPin className="w-5 h-5 text-red-600" />
-                  <span>Destino *</span>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-5 h-5 text-red-600" />
+                    <span>Paradas *</span>
+                  </div>
+                  <Button
+                    onClick={addParada}
+                    size="sm"
+                    className="flex items-center space-x-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Adicionar Parada</span>
+                  </Button>
                 </CardTitle>
                 <CardDescription>
-                  Local de entrega da carga
+                  Locais onde o veículo deve parar durante o trajeto. Arraste os cards para reordenar.
                 </CardDescription>
-                <ErrorMessage error={errors.destino} />
+                <ErrorMessage error={errors.paradas} />
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="destino-estado">Estado *</Label>
-                  <Select 
-                    value={formData.destino.estado} 
-                    onValueChange={(value) => setFormData({
-                      ...formData,
-                      destino: { estado: value, cidade: '' }
-                    })}
-                  >
-                    <SelectTrigger className={errors.destino ? 'border-red-300' : ''}>
-                      <SelectValue placeholder="Selecione o estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {estados.map((estado) => (
-                        <SelectItem key={estado.sigla} value={estado.sigla}>
-                          {estado.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="destino-cidade">Cidade *</Label>
-                  <Select 
-                    value={formData.destino.cidade} 
-                    onValueChange={(value) => setFormData({
-                      ...formData,
-                      destino: { ...formData.destino, cidade: value }
-                    })}
-                    disabled={!formData.destino.estado}
-                  >
-                    <SelectTrigger className={errors.destino ? 'border-red-300' : ''}>
-                      <SelectValue placeholder="Selecione a cidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cidadesDestino.map((cidade) => (
-                        <SelectItem key={cidade.id} value={cidade.nome}>
-                          {cidade.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {formData.paradas.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <MapPin className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                    <p className="font-medium">Nenhuma parada adicionada</p>
+                    <p className="text-sm mt-1">Clique em "Adicionar Parada" para incluir paradas no trajeto</p>
+                  </div>
+                ) : (
+                  <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable droppableId="paradas">
+                      {(provided) => (
+                        <div
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
+                          className="space-y-4 max-h-96 overflow-y-auto"
+                        >
+                          {formData.paradas.map((parada, index) => {
+                            const cidadesParada = cidadesByState[parada.estado] || [];
+                            const isDuplicate = checkForDuplicateParada(parada.estado, parada.cidade, parada.id);
+                            
+                            return (
+                              <Draggable key={parada.id} draggableId={parada.id} index={index}>
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    className={`border rounded-lg p-4 transition-all ${
+                                      snapshot.isDragging ? 'shadow-lg scale-105 bg-white border-amber-300 rotate-2' : 'hover:shadow-md'
+                                    } ${
+                                      isDuplicate ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'
+                                    }`}
+                                    style={provided.draggableProps.style}
+                                  >
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center space-x-2">
+                                        <div
+                                          {...provided.dragHandleProps}
+                                          className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-1"
+                                        >
+                                          <GripVertical className="w-4 h-4" />
+                                        </div>
+                                        <h4 className="font-medium text-sm text-gray-700">Parada {index + 1}</h4>
+                                      </div>
+                                      <Button
+                                        onClick={() => removeParada(parada.id)}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                    {isDuplicate && (
+                                      <div className="mb-2">
+                                        <ErrorMessage error="Parada duplicada detectada" />
+                                      </div>
+                                    )}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                      <div>
+                                        <Label className="text-xs font-medium text-gray-600">Estado *</Label>
+                                        <Select 
+                                          value={parada.estado} 
+                                          onValueChange={(value) => updateParada(parada.id, 'estado', value)}
+                                        >
+                                          <SelectTrigger className="h-9">
+                                            <SelectValue placeholder="Estado" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {estados.map((estado) => (
+                                              <SelectItem key={estado.sigla} value={estado.sigla}>
+                                                {estado.nome}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs font-medium text-gray-600">Cidade *</Label>
+                                        <Select 
+                                          value={parada.cidade} 
+                                          onValueChange={(value) => updateParada(parada.id, 'cidade', value)}
+                                          disabled={!parada.estado}
+                                        >
+                                          <SelectTrigger className="h-9">
+                                            <SelectValue placeholder="Cidade" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {cidadesParada.map((cidade) => (
+                                              <SelectItem key={cidade.id} value={cidade.nome}>
+                                                {cidade.nome}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            );
+                          })}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -724,7 +928,7 @@ const FreightReturnForm = () => {
                           key={vehicle.id}
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
                             formData.tiposVeiculos.some(v => v.id === vehicle.id)
-                              ? 'border-blue-500 bg-blue-50'
+                              ? 'border-amber-500 bg-amber-50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                           onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
@@ -743,7 +947,7 @@ const FreightReturnForm = () => {
                           key={vehicle.id}
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
                             formData.tiposVeiculos.some(v => v.id === vehicle.id)
-                              ? 'border-blue-500 bg-blue-50'
+                              ? 'border-amber-500 bg-amber-50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                           onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
@@ -762,7 +966,7 @@ const FreightReturnForm = () => {
                           key={vehicle.id}
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
                             formData.tiposVeiculos.some(v => v.id === vehicle.id)
-                              ? 'border-blue-500 bg-blue-50'
+                              ? 'border-amber-500 bg-amber-50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                           onClick={() => toggleVehicleType(vehicle.id, vehicle.type, vehicle.category)}
@@ -794,7 +998,7 @@ const FreightReturnForm = () => {
                           key={body.id}
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
                             formData.tiposCarrocerias.some(b => b.id === body.id)
-                              ? 'border-blue-500 bg-blue-50'
+                              ? 'border-amber-500 bg-amber-50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                           onClick={() => toggleBodyType(body.id, body.type, body.category)}
@@ -813,7 +1017,7 @@ const FreightReturnForm = () => {
                           key={body.id}
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
                             formData.tiposCarrocerias.some(b => b.id === body.id)
-                              ? 'border-blue-500 bg-blue-50'
+                              ? 'border-amber-500 bg-amber-50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                           onClick={() => toggleBodyType(body.id, body.type, body.category)}
@@ -832,7 +1036,7 @@ const FreightReturnForm = () => {
                           key={body.id}
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
                             formData.tiposCarrocerias.some(b => b.id === body.id)
-                              ? 'border-blue-500 bg-blue-50'
+                              ? 'border-amber-500 bg-amber-50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                           onClick={() => toggleBodyType(body.id, body.type, body.category)}
@@ -886,14 +1090,14 @@ const FreightReturnForm = () => {
                     <Label htmlFor="valor" className="cursor-pointer flex-1">
                       <div className={`border rounded-lg p-4 transition-all ${
                         formData.tipoValor === 'valor' 
-                          ? 'border-green-500 bg-green-50' 
-                          : 'border-gray-200 hover:border-green-300 hover:bg-green-25'
+                          ? 'border-amber-500 bg-amber-50' 
+                          : 'border-gray-200 hover:border-amber-300 hover:bg-amber-25'
                       }`}>
                         <h3 className={`font-medium ${
-                          formData.tipoValor === 'valor' ? 'text-green-800' : 'text-gray-800'
+                          formData.tipoValor === 'valor' ? 'text-amber-800' : 'text-gray-800'
                         }`}>Valor Fixo</h3>
                         <p className={`text-sm ${
-                          formData.tipoValor === 'valor' ? 'text-green-600' : 'text-gray-500'
+                          formData.tipoValor === 'valor' ? 'text-amber-600' : 'text-gray-500'
                         }`}>Definir um valor específico para o frete</p>
                       </div>
                     </Label>
@@ -919,6 +1123,121 @@ const FreightReturnForm = () => {
           </div>
         )}
 
+        {currentStep === 4 && (
+          <div className="space-y-6">
+            <Card className={errors.pedagioPagoPor || errors.pedagioDirecao ? 'border-red-300' : ''}>
+              <CardHeader>
+                <CardTitle>Quem paga o pedágio *</CardTitle>
+                <CardDescription>
+                  Defina quem será responsável pelo pagamento do pedágio
+                </CardDescription>
+                <ErrorMessage error={errors.pedagioPagoPor} />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="pedagio-pago-por">Responsável pelo pagamento *</Label>
+                  <Select 
+                    value={formData.pedagioPagoPor} 
+                    onValueChange={(value) => setFormData({ 
+                      ...formData, 
+                      pedagioPagoPor: value,
+                      pedagioDirecao: value === 'motorista' ? '' : formData.pedagioDirecao
+                    })}
+                  >
+                    <SelectTrigger className={errors.pedagioPagoPor ? 'border-red-300' : ''}>
+                      <SelectValue placeholder="Selecione quem paga" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="motorista">Motorista</SelectItem>
+                      <SelectItem value="empresa">Empresa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {formData.pedagioPagoPor === 'empresa' && (
+                  <div>
+                    <Label htmlFor="pedagio-direcao">Direção do pedágio *</Label>
+                    <Select 
+                      value={formData.pedagioDirecao} 
+                      onValueChange={(value) => setFormData({ ...formData, pedagioDirecao: value })}
+                    >
+                      <SelectTrigger className={errors.pedagioDirecao ? 'border-red-300' : ''}>
+                        <SelectValue placeholder="Selecione a direção" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ida">Apenas ida</SelectItem>
+                        <SelectItem value="volta">Apenas volta</SelectItem>
+                        <SelectItem value="ida_volta">IDA E VOLTA</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <ErrorMessage error={errors.pedagioDirecao} />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Requisitos</CardTitle>
+                <CardDescription>
+                  Defina os requisitos necessários para este frete
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="precisa-seguro"
+                    checked={formData.precisaSeguro}
+                    onCheckedChange={(checked) => setFormData({ ...formData, precisaSeguro: !!checked })}
+                  />
+                  <Label htmlFor="precisa-seguro">Precisa de seguro</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="precisa-ajudante"
+                    checked={formData.precisaAjudante}
+                    onCheckedChange={(checked) => setFormData({ ...formData, precisaAjudante: !!checked })}
+                  />
+                  <Label htmlFor="precisa-ajudante">Precisa de ajudante</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="precisa-rastreador"
+                    checked={formData.precisaRastreador}
+                    onCheckedChange={(checked) => setFormData({ ...formData, precisaRastreador: !!checked })}
+                  />
+                  <Label htmlFor="precisa-rastreador">Precisa de rastreador</Label>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Observações</CardTitle>
+                <CardDescription>
+                  Adicione informações adicionais sobre o frete (máximo 500 caracteres)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  <Label htmlFor="observacoes">Observações</Label>
+                  <Textarea
+                    id="observacoes"
+                    value={formData.observacoes}
+                    onChange={(e) => handleObservationsChange(e.target.value)}
+                    placeholder="Observações adicionais sobre o frete..."
+                    rows={4}
+                    maxLength={500}
+                  />
+                  <div className="text-right text-sm text-gray-500 mt-1">
+                    {formData.observacoes.length}/500 caracteres
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <div className="flex justify-between mt-8">
           <Button
             variant="outline"
@@ -935,7 +1254,7 @@ const FreightReturnForm = () => {
             className="flex items-center space-x-2"
             disabled={isSubmitting}
           >
-            <span>{currentStep === 3 ? 'Verificar Dados' : 'Próximo'}</span>
+            <span>{currentStep === 4 ? 'Verificar Dados' : 'Próximo'}</span>
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
@@ -944,33 +1263,7 @@ const FreightReturnForm = () => {
       <FreightVerificationDialog
         open={showVerificationDialog}
         onOpenChange={setShowVerificationDialog}
-        formData={{
-          collaborator_ids: formData.selectedCollaborators,
-          origem_cidade: formData.origem.cidade,
-          origem_estado: formData.origem.estado,
-          destino_cidade: formData.destino.cidade,
-          destino_estado: formData.destino.estado,
-          destinos: [{
-            id: '1',
-            state: formData.destino.estado,
-            city: formData.destino.cidade
-          }],
-          tipo_mercadoria: 'Geral',
-          tipos_veiculos: formData.tiposVeiculos,
-          tipos_carrocerias: formData.tiposCarrocerias,
-          vehicle_price_tables: [],
-          regras_agendamento: [],
-          beneficios: [],
-          horario_carregamento: formData.horarioColeta,
-          precisa_ajudante: formData.precisaAjudante,
-          precisa_rastreador: formData.precisaRastreador,
-          precisa_seguro: formData.precisaSeguro,
-          pedagio_pago_por: formData.pedagioPagoPor,
-          pedagio_direcao: formData.pedagioDirecao,
-          observacoes: formData.observacoes,
-          tipo_valor: formData.tipoValor,
-          valor_definido: formData.valorOfertado ? parseFloat(formData.valorOfertado) : undefined
-        }}
+        formData={convertedFormData}
         collaborators={collaborators || []}
         onEdit={() => setShowVerificationDialog(false)}
         onConfirm={handleSubmit}
@@ -985,14 +1278,14 @@ const FreightReturnForm = () => {
             navigate('/company-dashboard');
           }
         }}
-        generatedFreight={generatedFreight}
+        generatedFreights={generatedFreights}
         onNewFreight={() => {
           setShowSuccessDialog(false);
           setCurrentStep(1);
           setFormData({
             selectedCollaborators: [],
             origem: { estado: '', cidade: '' },
-            destino: { estado: '', cidade: '' },
+            paradas: [],
             dataColeta: '',
             horarioColeta: '',
             dimensoes: { altura: '', largura: '', comprimento: '' },
