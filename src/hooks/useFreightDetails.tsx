@@ -3,6 +3,17 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Freight } from '@/hooks/usePublicFreights';
 
+// Helper function to safely convert JSON to array
+const safeJsonToArray = (value: any): any[] => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (value === null || value === undefined) {
+    return [];
+  }
+  return [];
+};
+
 export const useFreightDetails = (freightCode: string) => {
   const [freight, setFreight] = useState<Freight | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,7 +44,7 @@ export const useFreightDetails = (freightCode: string) => {
           return;
         }
 
-        // Transform data similar to usePublicFreights
+        // Transform data similar to usePublicFreights with proper type handling
         const formattedFreight: Freight = {
           id: data.id,
           codigo_agregamento: data.codigo_agregamento || '',
@@ -46,7 +57,7 @@ export const useFreightDetails = (freightCode: string) => {
           origem_possui_escada: data.origem_possui_escada || false,
           origem_possui_elevador: data.origem_possui_elevador || false,
           origem_possui_doca: data.origem_possui_doca || false,
-          destinos: Array.isArray(data.destinos) ? data.destinos : [],
+          destinos: safeJsonToArray(data.destinos),
           destino_cidade: data.destino_cidade,
           destino_estado: data.destino_estado,
           destino_tipo_endereco: data.destino_tipo_endereco,
@@ -54,7 +65,7 @@ export const useFreightDetails = (freightCode: string) => {
           destino_possui_escada: data.destino_possui_escada || false,
           destino_possui_elevador: data.destino_possui_elevador || false,
           destino_possui_doca: data.destino_possui_doca || false,
-          paradas: Array.isArray(data.paradas) ? data.paradas : [],
+          paradas: safeJsonToArray(data.paradas),
           data_coleta: data.data_coleta,
           data_entrega: data.data_entrega,
           horario_carregamento: data.horario_carregamento,
@@ -62,9 +73,9 @@ export const useFreightDetails = (freightCode: string) => {
           peso_carga: data.peso_carga,
           valor_carga: data.valor_carga,
           valores_definidos: data.valores_definidos,
-          tipos_veiculos: Array.isArray(data.tipos_veiculos) ? data.tipos_veiculos : [],
-          tipos_carrocerias: Array.isArray(data.tipos_carrocerias) ? data.tipos_carrocerias : [],
-          itens_detalhados: Array.isArray(data.itens_detalhados) ? data.itens_detalhados : [],
+          tipos_veiculos: safeJsonToArray(data.tipos_veiculos),
+          tipos_carrocerias: safeJsonToArray(data.tipos_carrocerias),
+          itens_detalhados: safeJsonToArray(data.itens_detalhados),
           tipo_listagem_itens: data.tipo_listagem_itens,
           descricao_livre_itens: data.descricao_livre_itens,
           precisa_montar_desmontar: data.precisa_montar_desmontar || false,
@@ -77,9 +88,9 @@ export const useFreightDetails = (freightCode: string) => {
           local_possui_restricao: data.local_possui_restricao || false,
           descricao_restricao: data.descricao_restricao,
           observacoes: data.observacoes,
-          beneficios: Array.isArray(data.beneficios) ? data.beneficios : [],
-          regras_agendamento: Array.isArray(data.regras_agendamento) ? data.regras_agendamento : [],
-          tabelas_preco: Array.isArray(data.tabelas_preco) ? data.tabelas_preco : [],
+          beneficios: safeJsonToArray(data.beneficios),
+          regras_agendamento: safeJsonToArray(data.regras_agendamento),
+          tabelas_preco: safeJsonToArray(data.tabelas_preco),
           tipo_solicitacao: data.tipo_solicitacao,
           solicitante_nome: data.solicitante_nome,
           solicitante_telefone: data.solicitante_telefone,

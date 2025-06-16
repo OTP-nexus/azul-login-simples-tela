@@ -75,6 +75,17 @@ interface PaginationInfo {
   itemsPerPage: number;
 }
 
+// Helper function to safely convert JSON to array
+const safeJsonToArray = (value: any): any[] => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (value === null || value === undefined) {
+    return [];
+  }
+  return [];
+};
+
 export const usePublicFreights = (filters: PublicFreightFilters = {}, page = 1, itemsPerPage = 20) => {
   const [freights, setFreights] = useState<Freight[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,7 +154,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page = 1, 
           return;
         }
 
-        // Transform data to match the Freight interface
+        // Transform data to match the Freight interface with proper type handling
         const formattedFreights: Freight[] = (data || []).map((freight) => ({
           id: freight.id,
           codigo_agregamento: freight.codigo_agregamento || '',
@@ -156,7 +167,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page = 1, 
           origem_possui_escada: freight.origem_possui_escada || false,
           origem_possui_elevador: freight.origem_possui_elevador || false,
           origem_possui_doca: freight.origem_possui_doca || false,
-          destinos: freight.destinos || [],
+          destinos: safeJsonToArray(freight.destinos),
           destino_cidade: freight.destino_cidade,
           destino_estado: freight.destino_estado,
           destino_tipo_endereco: freight.destino_tipo_endereco,
@@ -164,7 +175,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page = 1, 
           destino_possui_escada: freight.destino_possui_escada || false,
           destino_possui_elevador: freight.destino_possui_elevador || false,
           destino_possui_doca: freight.destino_possui_doca || false,
-          paradas: freight.paradas || [],
+          paradas: safeJsonToArray(freight.paradas),
           data_coleta: freight.data_coleta,
           data_entrega: freight.data_entrega,
           horario_carregamento: freight.horario_carregamento,
@@ -172,9 +183,9 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page = 1, 
           peso_carga: freight.peso_carga,
           valor_carga: freight.valor_carga,
           valores_definidos: freight.valores_definidos,
-          tipos_veiculos: freight.tipos_veiculos || [],
-          tipos_carrocerias: freight.tipos_carrocerias || [],
-          itens_detalhados: freight.itens_detalhados || [],
+          tipos_veiculos: safeJsonToArray(freight.tipos_veiculos),
+          tipos_carrocerias: safeJsonToArray(freight.tipos_carrocerias),
+          itens_detalhados: safeJsonToArray(freight.itens_detalhados),
           tipo_listagem_itens: freight.tipo_listagem_itens,
           descricao_livre_itens: freight.descricao_livre_itens,
           precisa_montar_desmontar: freight.precisa_montar_desmontar || false,
@@ -187,9 +198,9 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page = 1, 
           local_possui_restricao: freight.local_possui_restricao || false,
           descricao_restricao: freight.descricao_restricao,
           observacoes: freight.observacoes,
-          beneficios: freight.beneficios || [],
-          regras_agendamento: freight.regras_agendamento || [],
-          tabelas_preco: freight.tabelas_preco || [],
+          beneficios: safeJsonToArray(freight.beneficios),
+          regras_agendamento: safeJsonToArray(freight.regras_agendamento),
+          tabelas_preco: safeJsonToArray(freight.tabelas_preco),
           tipo_solicitacao: freight.tipo_solicitacao,
           solicitante_nome: freight.solicitante_nome,
           solicitante_telefone: freight.solicitante_telefone,
