@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Truck, Package, MapPin, Calendar, DollarSign, RotateCcw, Combine, Eye, ChevronDown } from "lucide-react";
+import { Truck, Package, MapPin, Calendar, DollarSign, RotateCcw, Combine, Handshake, ChevronDown } from "lucide-react";
 import FreightTypeBadge from './FreightTypeBadge';
 import type { Freight } from '@/hooks/usePublicFreights';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -76,6 +77,7 @@ const getVehicleLabel = (value: unknown): string => {
   // If none of the above, it's an invalid format
   return 'Inválido';
 };
+
 
 const PublicFreightCard = ({
   freight,
@@ -153,8 +155,8 @@ const PublicFreightCard = ({
     }
     return 'Destino não definido';
   };
-  const handleViewDetails = () => {
-    navigate(`/${freight.codigo_agregamento}`);
+  const handleInterest = () => {
+    navigate('/login');
   };
 
   if (view === 'list') {
@@ -216,9 +218,9 @@ const PublicFreightCard = ({
                )}
             </div>
             <div className="flex-shrink-0">
-              <Button onClick={handleViewDetails} className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
-                <Eye className="w-4 h-4 mr-2" />
-                Ver Detalhes
+              <Button onClick={handleInterest} className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
+                <Handshake className="w-4 h-4 mr-2" />
+                Tenho Interesse
               </Button>
             </div>
           </div>
@@ -324,9 +326,9 @@ const PublicFreightCard = ({
           </div>}
 
         <div className="flex pt-2 border-t">
-          <Button onClick={handleViewDetails} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
-            <Eye className="w-4 h-4 mr-2" />
-            Ver Detalhes
+          <Button onClick={handleInterest} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
+            <Handshake className="w-4 h-4 mr-2" />
+            Tenho Interesse
           </Button>
         </div>
       </CardContent>
