@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ActiveFreight } from '@/hooks/useActiveFreights';
@@ -113,58 +112,49 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
 
       console.log('Aplicando filtros:', filters, 'Página:', page);
 
-      // First, get the total count for pagination
+      // Build the base query
+      let query = supabase
+        .from('fretes')
+        .select('*')
+        .in('status', ['ativo', 'pendente'])
+        .order('created_at', { ascending: false });
+
+      // Build count query with same filters
       let countQuery = supabase
         .from('fretes')
         .select('*', { count: 'exact', head: true })
         .in('status', ['ativo', 'pendente']);
 
-      // Apply simple filters to count query
-      if (filters.origin) {
-        countQuery = countQuery.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
+      // Apply filters to both queries
+      if (filters.origin && filters.origin.trim() !== '') {
+        const originFilter = `origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`;
+        query = query.or(originFilter);
+        countQuery = countQuery.or(originFilter);
       }
       
-      if (filters.destination) {
-        countQuery = countQuery.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+      if (filters.destination && filters.destination.trim() !== '') {
+        const destinationFilter = `destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%,destinos::text.ilike.%${filters.destination}%`;
+        query = query.or(destinationFilter);
+        countQuery = countQuery.or(destinationFilter);
       }
       
-      if (filters.freightType) {
+      if (filters.freightType && filters.freightType.trim() !== '') {
+        query = query.eq('tipo_frete', filters.freightType);
         countQuery = countQuery.eq('tipo_frete', filters.freightType);
       }
       
       if (filters.tracker === 'sim') {
+        query = query.eq('precisa_rastreador', true);
         countQuery = countQuery.eq('precisa_rastreador', true);
       } else if (filters.tracker === 'nao') {
+        query = query.eq('precisa_rastreador', false);
         countQuery = countQuery.eq('precisa_rastreador', false);
       }
 
-      // Now get the actual data with pagination
-      let query = supabase
-        .from('fretes')
-        .select('*')
-        .in('status', ['ativo', 'pendente'])
-        .order('created_at', { ascending: false })
-        .range((page - 1) * itemsPerPage, page * itemsPerPage - 1);
+      // Apply pagination to main query
+      query = query.range((page - 1) * itemsPerPage, page * itemsPerPage - 1);
 
-      // Apply the same filters to data query
-      if (filters.origin) {
-        query = query.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
-      }
-      
-      if (filters.destination) {
-        query = query.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
-      }
-      
-      if (filters.freightType) {
-        query = query.eq('tipo_frete', filters.freightType);
-      }
-      
-      if (filters.tracker === 'sim') {
-        query = query.eq('precisa_rastreador', true);
-      } else if (filters.tracker === 'nao') {
-        query = query.eq('precisa_rastreador', false);
-      }
-
+      // Execute both queries
       const [{ count }, { data: freightData, error: freightError }] = await Promise.all([
         countQuery,
         query
@@ -178,7 +168,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
 
       let filteredData = freightData || [];
 
-      // Apply complex filters on client side
+      // Apply complex filters on client side (for now)
       if (filters.vehicleTypes && filters.vehicleTypes.length > 0) {
         filteredData = filteredData.filter(freight => {
           return filters.vehicleTypes!.some(vehicleType => 
