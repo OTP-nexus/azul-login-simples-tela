@@ -81,14 +81,13 @@ const FreightFilters: React.FC<FreightFiltersProps> = ({
         <div>
           <label className="text-sm font-medium mb-2 block">Tipo de Frete</label>
           <Select
-            value={filters.freightType || ''}
+            value={filters.freightType || undefined}
             onValueChange={(value) => handleFilterChange('freightType', value || undefined)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecione o tipo" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
               <SelectItem value="agregamento">Agregamento</SelectItem>
               <SelectItem value="frete_completo">Frete Completo</SelectItem>
               <SelectItem value="frete_de_retorno">Frete de Retorno</SelectItem>
@@ -100,14 +99,13 @@ const FreightFilters: React.FC<FreightFiltersProps> = ({
         <div>
           <label className="text-sm font-medium mb-2 block">Rastreador</label>
           <Select
-            value={filters.tracker || ''}
+            value={filters.tracker || undefined}
             onValueChange={(value) => handleFilterChange('tracker', value || undefined)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
               <SelectItem value="sim">Necessário</SelectItem>
               <SelectItem value="nao">Não necessário</SelectItem>
             </SelectContent>
