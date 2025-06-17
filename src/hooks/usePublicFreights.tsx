@@ -127,15 +127,13 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
 
       // Apply filters to both queries
       if (filters.origin && filters.origin.trim() !== '') {
-        const originFilter = `origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`;
-        query = query.or(originFilter);
-        countQuery = countQuery.or(originFilter);
+        query = query.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
+        countQuery = countQuery.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
       }
       
       if (filters.destination && filters.destination.trim() !== '') {
-        const destinationFilter = `destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%,destinos::text.ilike.%${filters.destination}%`;
-        query = query.or(destinationFilter);
-        countQuery = countQuery.or(destinationFilter);
+        query = query.or(`destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        countQuery = countQuery.or(`destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
       }
       
       if (filters.freightType && filters.freightType.trim() !== '') {
