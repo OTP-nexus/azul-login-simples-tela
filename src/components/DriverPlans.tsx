@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, Star, Truck, MapPin, Bell, Shield, Zap } from 'lucide-react';
+import { Check, Star, Truck, MapPin, Bell, Shield, CreditCard, Smartphone } from 'lucide-react';
 
 const DriverPlans = () => {
   const currentPlan = 'basico';
@@ -27,8 +27,6 @@ const DriverPlans = () => {
     {
       id: 'profissional',
       name: 'Profissional',
-      price: 49.90,
-      period: '/mês',
       description: 'Para motoristas experientes',
       features: [
         'Acesso a todos os fretes',
@@ -37,29 +35,30 @@ const DriverPlans = () => {
         'Suporte prioritário',
         'Notificações avançadas',
         'Relatórios de desempenho',
-        'GPS integrado'
+        'GPS integrado',
+        'Seguro adicional',
+        'Dashboard avançado'
       ],
       icon: Star,
-      popular: true
-    },
-    {
-      id: 'premium',
-      name: 'Premium',
-      price: 89.90,
-      period: '/mês',
-      description: 'Máximo desempenho para profissionais',
-      features: [
-        'Todos os recursos do Profissional',
-        'Fretes exclusivos de alto valor',
-        'Consultor dedicado',
-        'Suporte 24/7',
-        'Seguro adicional',
-        'Análise de rotas otimizada',
-        'Dashboard avançado',
-        'API de integração'
-      ],
-      icon: Zap,
-      popular: false
+      popular: true,
+      paymentOptions: [
+        {
+          method: 'pix',
+          price: 99.80,
+          period: '/mês',
+          icon: Smartphone,
+          label: 'PIX',
+          discount: true
+        },
+        {
+          method: 'cartao',
+          price: 49.90,
+          period: '/mês',
+          icon: CreditCard,
+          label: 'Cartão de Crédito',
+          discount: false
+        }
+      ]
     }
   ];
 
@@ -98,10 +97,11 @@ const DriverPlans = () => {
       </Card>
 
       {/* Plans Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {plans.map((plan) => {
           const Icon = plan.icon;
           const isCurrentPlan = plan.id === currentPlan;
+          const isProfessional = plan.id === 'profissional';
           
           return (
             <Card 
@@ -124,14 +124,17 @@ const DriverPlans = () => {
                 </div>
                 <CardTitle className="text-xl">{plan.name}</CardTitle>
                 <CardDescription>{plan.description}</CardDescription>
-                <div className="mt-4">
-                  <span className="text-3xl font-bold text-gray-900">
-                    {plan.price === 0 ? 'Grátis' : `R$ ${plan.price}`}
-                  </span>
-                  {plan.price > 0 && (
-                    <span className="text-gray-600 ml-1">{plan.period}</span>
-                  )}
-                </div>
+                
+                {!isProfessional && (
+                  <div className="mt-4">
+                    <span className="text-3xl font-bold text-gray-900">
+                      {plan.price === 0 ? 'Grátis' : `R$ ${plan.price}`}
+                    </span>
+                    {plan.price > 0 && (
+                      <span className="text-gray-600 ml-1">{plan.period}</span>
+                    )}
+                  </div>
+                )}
               </CardHeader>
               
               <CardContent className="pt-0">
@@ -144,13 +147,50 @@ const DriverPlans = () => {
                   ))}
                 </ul>
                 
-                <Button 
-                  className="w-full" 
-                  variant={isCurrentPlan ? "secondary" : plan.popular ? "default" : "outline"}
-                  disabled={isCurrentPlan}
-                >
-                  {isCurrentPlan ? 'Plano Atual' : 'Escolher Plano'}
-                </Button>
+                {isProfessional ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-gray-900 mb-3">Escolha sua forma de pagamento:</p>
+                    {plan.paymentOptions?.map((option) => {
+                      const OptionIcon = option.icon;
+                      return (
+                        <div key={option.method} className="border rounded-lg p-4 hover:border-blue-300 transition-colors">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <OptionIcon className="h-5 w-5 text-gray-600" />
+                              <span className="font-medium">{option.label}</span>
+                              {option.discount && (
+                                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                                  Melhor Preço
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-gray-900">
+                                R$ {option.price.toFixed(2).replace('.', ',')}
+                              </div>
+                              <div className="text-sm text-gray-600">{option.period}</div>
+                            </div>
+                          </div>
+                          <Button 
+                            className="w-full mt-2" 
+                            variant={option.discount ? "default" : "outline"}
+                            disabled={isCurrentPlan}
+                          >
+                            {isCurrentPlan ? 'Plano Atual' : `Escolher ${option.label}`}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <Button 
+                    className="w-full" 
+                    variant={isCurrentPlan ? "secondary" : "outline"}
+                    disabled={isCurrentPlan}
+                  >
+                    {isCurrentPlan ? 'Plano Atual' : 'Escolher Plano'}
+                  </Button>
+                )}
               </CardContent>
             </Card>
           );
@@ -184,6 +224,8 @@ const DriverPlans = () => {
             * Cancele a qualquer momento sem taxas adicionais
             <br />
             * Suporte técnico disponível para todos os usuários
+            <br />
+            * Pagamento via PIX oferece desconto especial
           </p>
         </div>
       </div>
