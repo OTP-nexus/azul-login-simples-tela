@@ -32,11 +32,7 @@ const LoginForm = () => {
         if (profile.role === 'driver') {
           if (documentStatus.overall_status === 'approved') {
             console.log('Driver documents approved, redirecting to driver dashboard...');
-            // TODO: Create driver dashboard
-            toast({
-              title: "Bem-vindo!",
-              description: "Dashboard do motorista será implementado em breve.",
-            });
+            navigate('/driver-dashboard');
           } else {
             console.log('Redirecting to driver document verification...');
             navigate('/driver-document-verification');
