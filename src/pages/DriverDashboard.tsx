@@ -1,15 +1,130 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Truck, Heart, CreditCard, Settings, MapPin, Clock, Package } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import DriverFreightsList from '@/components/DriverFreightsList';
 import DriverFavorites from '@/components/DriverFavorites';
 import DriverPlans from '@/components/DriverPlans';
 import DriverSettings from '@/components/DriverSettings';
 
 const DriverDashboard = () => {
+  const isMobile = useIsMobile();
+  const [activeTab, setActiveTab] = useState('freights');
+
+  const tabItems = [
+    {
+      value: 'freights',
+      label: 'Fretes',
+      icon: Truck,
+      component: DriverFreightsList
+    },
+    {
+      value: 'favorites',
+      label: 'Favoritos',
+      icon: Heart,
+      component: DriverFavorites
+    },
+    {
+      value: 'plans',
+      label: 'Planos',
+      icon: CreditCard,
+      component: DriverPlans
+    },
+    {
+      value: 'settings',
+      label: 'Configurações',
+      icon: Settings,
+      component: DriverSettings
+    }
+  ];
+
+  const ActiveComponent = tabItems.find(item => item.value === activeTab)?.component || DriverFreightsList;
+
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="px-4 py-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Truck className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-gray-900">Dashboard</h1>
+                <p className="text-sm text-gray-600">Motorista</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards - Compact for mobile */}
+        <div className="px-4 py-4">
+          <div className="grid grid-cols-3 gap-3">
+            <Card className="p-3">
+              <div className="text-center">
+                <Package className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
+                <div className="text-lg font-bold">12</div>
+                <p className="text-xs text-muted-foreground">Fretes</p>
+              </div>
+            </Card>
+
+            <Card className="p-3">
+              <div className="text-center">
+                <Heart className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
+                <div className="text-lg font-bold">8</div>
+                <p className="text-xs text-muted-foreground">Favoritos</p>
+              </div>
+            </Card>
+
+            <Card className="p-3">
+              <div className="text-center">
+                <Clock className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
+                <div className="text-lg font-bold">2h</div>
+                <p className="text-xs text-muted-foreground">Próxima</p>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="px-4">
+          <ActiveComponent />
+        </div>
+
+        {/* Bottom Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+          <div className="grid grid-cols-4">
+            {tabItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.value;
+              
+              return (
+                <button
+                  key={item.value}
+                  onClick={() => setActiveTab(item.value)}
+                  className={`flex flex-col items-center justify-center py-2 px-1 transition-colors ${
+                    isActive 
+                      ? 'text-blue-600 bg-blue-50' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Icon className={`h-5 w-5 mb-1 ${isActive ? 'text-blue-600' : 'text-gray-600'}`} />
+                  <span className={`text-xs font-medium ${isActive ? 'text-blue-600' : 'text-gray-600'}`}>
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop version - keep existing layout
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
