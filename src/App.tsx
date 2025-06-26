@@ -25,6 +25,7 @@ import ActiveFreights from "./pages/ActiveFreights";
 import PublicFreightRequest from "./pages/PublicFreightRequest";
 import PublicFreightsList from "./pages/PublicFreightsList";
 import FreightDetails from "./pages/FreightDetails";
+import DriverDashboard from "./pages/DriverDashboard";
 import NotFound from "./pages/NotFound";
 import LandingPage from "./pages/LandingPage";
 
@@ -62,6 +63,7 @@ const App = () => (
                 <Route path="/document-verification" element={<DocumentVerification />} />
                 <Route path="/driver-document-verification" element={<DriverDocumentVerification />} />
                 <Route path="/company-dashboard" element={<CompanyDashboard />} />
+                <Route path="/driver-dashboard" element={<DriverDashboard />} />
                 <Route path="/company-profile" element={<CompanyProfile />} />
                 <Route path="/freight-request" element={<FreightRequest />} />
                 <Route path="/freight-aggregation" element={<FreightAggregation />} />
