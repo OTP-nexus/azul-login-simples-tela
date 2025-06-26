@@ -125,7 +125,13 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       }
       
       if (filters.destination) {
-        countQuery = countQuery.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        // Usar múltiplas condições separadas em vez de uma única OR complexa
+        countQuery = countQuery.or(
+          `paradas::text.ilike.%${filters.destination}%` + ',' +
+          `destinos::text.ilike.%${filters.destination}%` + ',' +
+          `destino_cidade.ilike.%${filters.destination}%` + ',' +
+          `destino_estado.ilike.%${filters.destination}%`
+        );
       }
       
       if (filters.freightType) {
@@ -152,7 +158,13 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       }
       
       if (filters.destination) {
-        query = query.or(`destinos::text.ilike.%${filters.destination}%,destino_cidade.ilike.%${filters.destination}%,destino_estado.ilike.%${filters.destination}%`);
+        // Usar múltiplas condições separadas em vez de uma única OR complexa
+        query = query.or(
+          `paradas::text.ilike.%${filters.destination}%` + ',' +
+          `destinos::text.ilike.%${filters.destination}%` + ',' +
+          `destino_cidade.ilike.%${filters.destination}%` + ',' +
+          `destino_estado.ilike.%${filters.destination}%`
+        );
       }
       
       if (filters.freightType) {
@@ -192,6 +204,64 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
           return filters.bodyTypes!.some(bodyType => 
             hasBodyType(freight.tipos_carrocerias, bodyType)
           );
+        });
+      }
+
+      // Apply more specific destination filtering on client side for better accuracy
+      if (filters.destination) {
+        console.log('Aplicando filtro de destino no cliente para:', filters.destination);
+        filteredData = filteredData.filter(freight => {
+          const searchTerm = filters.destination!.toLowerCase();
+          
+          // Para frete de retorno e frete completo, verificar nas paradas
+          if (freight.tipo_frete === 'frete_de_retorno' || freight.tipo_frete === 'frete_completo') {
+            console.log('Buscando nas paradas para frete:', freight.tipo_frete, freight.paradas);
+            
+            if (freight.paradas && Array.isArray(freight.paradas)) {
+              const foundInParadas = freight.paradas.some((parada: any) => {
+                if (typeof parada === 'object' && parada !== null) {
+                  const cidade = parada.cidade || parada.city || '';
+                  const estado = parada.estado || parada.state || '';
+                  return cidade.toLowerCase().includes(searchTerm) || 
+                         estado.toLowerCase().includes(searchTerm);
+                }
+                return false;
+              });
+              
+              if (foundInParadas) {
+                console.log('Encontrado nas paradas!');
+                return true;
+              }
+            }
+          } else {
+            // Para outros tipos de frete, verificar nos destinos normais
+            console.log('Buscando nos destinos normais para frete:', freight.tipo_frete);
+            
+            // Verificar destino_cidade e destino_estado
+            if (freight.destino_cidade?.toLowerCase().includes(searchTerm) ||
+                freight.destino_estado?.toLowerCase().includes(searchTerm)) {
+              return true;
+            }
+            
+            // Verificar no array destinos
+            if (freight.destinos && Array.isArray(freight.destinos)) {
+              const foundInDestinos = freight.destinos.some((destino: any) => {
+                if (typeof destino === 'object' && destino !== null) {
+                  const cidade = destino.cidade || destino.city || '';
+                  const estado = destino.estado || destino.state || '';
+                  return cidade.toLowerCase().includes(searchTerm) || 
+                         estado.toLowerCase().includes(searchTerm);
+                }
+                return false;
+              });
+              
+              if (foundInDestinos) {
+                return true;
+              }
+            }
+          }
+          
+          return false;
         });
       }
 

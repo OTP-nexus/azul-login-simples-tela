@@ -590,13 +590,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      search_public_freights: {
-        Args: { p_filters?: Json; p_page?: number; p_page_size?: number }
-        Returns: {
-          freight_data: Json
-          total_count: number
-        }[]
-      }
       search_vehicle_types: {
         Args: { vehicle_data: Json; search_values: string[] }
         Returns: boolean
