@@ -50,24 +50,11 @@ export const useActiveFreights = () => {
       setLoading(true);
       setError(null);
 
-      // Buscar a empresa do usuário
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (companyError) {
-        console.error('Erro ao buscar empresa:', companyError);
-        setError('Erro ao buscar empresa');
-        return;
-      }
-
-      // Buscar fretes da empresa
+      // Buscar todos os fretes ativos para motoristas
       const { data: freightData, error: freightError } = await supabase
         .from('fretes')
         .select('*')
-        .eq('company_id', company.id)
+        .eq('status', 'ativo')
         .order('created_at', { ascending: false });
 
       if (freightError) {
