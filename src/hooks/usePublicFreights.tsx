@@ -130,11 +130,21 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
     const textContains = (text: string | null | undefined): boolean => {
       if (!text) return false;
       const normalized = normalizeText(text);
-      return normalized.includes(normalizedSearch);
+      return normalized.includes(normalizedSearch) || 
+             // Também verificar se é uma sigla de estado (AC, SP, etc.)
+             (text.length === 2 && normalizedSearch.includes(normalized));
+    };
+
+    // Função adicional para verificar siglas de estado
+    const checkStateMatch = (state: string | null | undefined): boolean => {
+      if (!state) return false;
+      const stateNormalized = normalizeText(state);
+      // Verificar se o termo de busca contém a sigla do estado
+      return normalizedSearch.includes(stateNormalized) || stateNormalized.includes(normalizedSearch);
     };
 
     // 1. Verificar campos diretos de destino
-    if (textContains(freight.destino_cidade) || textContains(freight.destino_estado)) {
+    if (textContains(freight.destino_cidade) || checkStateMatch(freight.destino_estado)) {
       console.log('✅ Encontrado nos campos diretos destino_cidade/destino_estado');
       return true;
     }
@@ -149,7 +159,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
             if (typeof subDestino === 'object' && subDestino !== null) {
               const cidade = subDestino.cidade || subDestino.city || '';
               const estado = subDestino.estado || subDestino.state || '';
-              return textContains(cidade) || textContains(estado);
+              return textContains(cidade) || checkStateMatch(estado);
             }
             return false;
           });
