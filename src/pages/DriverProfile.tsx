@@ -183,39 +183,39 @@ const DriverProfile = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+        <div className="max-w-4xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8">
+          <div className="py-4 sm:py-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+              <div className="flex items-center space-x-3 sm:space-x-4">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => navigate('/driver-dashboard')}
                   className="p-2"
                 >
-                  <ArrowLeft className="h-5 w-5" />
+                  <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Meu Perfil</h1>
-                  <p className="text-gray-600">Gerencie suas informações pessoais</p>
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Meu Perfil</h1>
+                  <p className="text-sm sm:text-base text-gray-600 hidden sm:block">Gerencie suas informações pessoais</p>
                 </div>
               </div>
               
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 sm:space-x-3">
                 {!editing ? (
-                  <Button onClick={() => setEditing(true)} className="flex items-center space-x-2">
+                  <Button onClick={() => setEditing(true)} className="flex items-center space-x-2 text-sm sm:text-base h-9 sm:h-10">
                     <Edit2 className="h-4 w-4" />
-                    <span>Editar</span>
+                    <span className="hidden sm:inline">Editar</span>
                   </Button>
                 ) : (
                   <div className="flex items-center space-x-2">
-                    <Button onClick={handleSave} className="flex items-center space-x-2">
+                    <Button onClick={handleSave} className="flex items-center space-x-2 text-sm sm:text-base h-9 sm:h-10">
                       <Save className="h-4 w-4" />
-                      <span>Salvar</span>
+                      <span className="hidden sm:inline">Salvar</span>
                     </Button>
-                    <Button variant="outline" onClick={handleCancel} className="flex items-center space-x-2">
+                    <Button variant="outline" onClick={handleCancel} className="flex items-center space-x-2 text-sm sm:text-base h-9 sm:h-10">
                       <X className="h-4 w-4" />
-                      <span>Cancelar</span>
+                      <span className="hidden sm:inline">Cancelar</span>
                     </Button>
                   </div>
                 )}
@@ -226,39 +226,39 @@ const DriverProfile = () => {
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
+      <div className="max-w-4xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8">
           {/* Profile Overview */}
           <div className="lg:col-span-1">
             <Card>
-              <CardHeader className="text-center">
-                <Avatar className="w-24 h-24 mx-auto mb-4">
+              <CardHeader className="text-center p-4 sm:p-6">
+                <Avatar className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto mb-3 sm:mb-4">
                   <AvatarImage src={documents?.photo_url || undefined} />
-                  <AvatarFallback className="text-xl">
+                  <AvatarFallback className="text-lg sm:text-xl">
                     {profile?.full_name?.charAt(0) || 'M'}
                   </AvatarFallback>
                 </Avatar>
-                <CardTitle className="text-xl">{profile?.full_name}</CardTitle>
-                <p className="text-gray-600">Motorista</p>
+                <CardTitle className="text-lg sm:text-xl">{profile?.full_name}</CardTitle>
+                <p className="text-sm sm:text-base text-gray-600">Motorista</p>
                 <div className="mt-4">
                   {getStatusBadge(documents?.overall_status || 'not_submitted')}
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+              <CardContent className="p-4 sm:p-6 pt-0">
+                <div className="space-y-3 sm:space-y-4">
                   <div className="flex items-center space-x-3">
-                    <Mail className="h-5 w-5 text-gray-400" />
-                    <span className="text-sm text-gray-700">{profile?.email}</span>
+                    <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                    <span className="text-xs sm:text-sm text-gray-700 break-all">{profile?.email}</span>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <Phone className="h-5 w-5 text-gray-400" />
-                    <span className="text-sm text-gray-700">
+                    <Phone className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                    <span className="text-xs sm:text-sm text-gray-700">
                       {profile?.phone ? formatPhone(profile.phone) : 'Não informado'}
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <CreditCard className="h-5 w-5 text-gray-400" />
-                    <span className="text-sm text-gray-700">
+                    <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                    <span className="text-xs sm:text-sm text-gray-700">
                       {driver?.cpf ? formatCPF(driver.cpf) : 'Não informado'}
                     </span>
                   </div>
@@ -267,34 +267,34 @@ const DriverProfile = () => {
             </Card>
 
             {/* Support Card */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <HelpCircle className="h-5 w-5" />
+            <Card className="mt-4 sm:mt-6">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                  <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span>Precisa de Ajuda?</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6 pt-0">
                 <p className="text-sm text-gray-600 mb-4">
                   Nossa equipe está pronta para ajudá-lo com qualquer dúvida.
                 </p>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full h-9 sm:h-10 text-sm sm:text-base">
                   Entrar em Contato
                 </Button>
               </CardContent>
             </Card>
           </div>
 
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Alert for incomplete driver data */}
             {!driver && (
               <Card className="border-orange-200 bg-orange-50">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-3">
-                    <AlertCircle className="h-6 w-6 text-orange-600" />
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
+                    <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 flex-shrink-0" />
                     <div>
-                      <h3 className="font-medium text-orange-900">Cadastro Incompleto</h3>
+                      <h3 className="font-medium text-orange-900 text-sm sm:text-base">Cadastro Incompleto</h3>
                       <p className="text-sm text-orange-700 mt-1">
                         Você precisa completar seu cadastro como motorista para acessar todas as funcionalidades.
                       </p>
@@ -303,7 +303,7 @@ const DriverProfile = () => {
                   <div className="mt-4">
                     <Button 
                       onClick={() => navigate('/driver-registration')}
-                      className="bg-orange-600 hover:bg-orange-700"
+                      className="bg-orange-600 hover:bg-orange-700 w-full sm:w-auto h-9 sm:h-10 text-sm sm:text-base"
                     >
                       Completar Cadastro
                     </Button>
@@ -314,58 +314,58 @@ const DriverProfile = () => {
 
             {/* Personal Information */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <User className="h-5 w-5" />
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                  <User className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span>Informações Pessoais</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div>
-                    <Label htmlFor="full_name" className="text-base font-medium">Nome Completo</Label>
+                    <Label htmlFor="full_name" className="text-sm sm:text-base font-medium">Nome Completo</Label>
                     {editing ? (
                       <Input
                         id="full_name"
                         value={formData.full_name}
                         onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                        className="mt-2 text-base h-12"
+                        className="mt-2 text-sm sm:text-base h-10 sm:h-12"
                         placeholder="Digite seu nome completo"
                       />
                     ) : (
-                      <p className="mt-2 text-base text-gray-900 bg-gray-50 p-3 rounded-md">
+                      <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
                         {profile?.full_name || 'Não informado'}
                       </p>
                     )}
                   </div>
 
                   <div>
-                    <Label htmlFor="phone" className="text-base font-medium">Telefone</Label>
+                    <Label htmlFor="phone" className="text-sm sm:text-base font-medium">Telefone</Label>
                     {editing ? (
                       <Input
                         id="phone"
                         value={formData.phone}
                         onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                        className="mt-2 text-base h-12"
+                        className="mt-2 text-sm sm:text-base h-10 sm:h-12"
                         placeholder="(11) 99999-9999"
                       />
                     ) : (
-                      <p className="mt-2 text-base text-gray-900 bg-gray-50 p-3 rounded-md">
+                      <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
                         {profile?.phone ? formatPhone(profile.phone) : 'Não informado'}
                       </p>
                     )}
                   </div>
 
                   <div>
-                    <Label className="text-base font-medium">Email</Label>
-                    <p className="mt-2 text-base text-gray-900 bg-gray-50 p-3 rounded-md">
+                    <Label className="text-sm sm:text-base font-medium">Email</Label>
+                    <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
                       {profile?.email}
                     </p>
                   </div>
 
                   <div>
-                    <Label className="text-base font-medium">CPF</Label>
-                    <p className="mt-2 text-base text-gray-900 bg-gray-50 p-3 rounded-md">
+                    <Label className="text-sm sm:text-base font-medium">CPF</Label>
+                    <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
                       {driver?.cpf ? formatCPF(driver.cpf) : 'Não informado'}
                     </p>
                   </div>
@@ -375,34 +375,34 @@ const DriverProfile = () => {
 
             {/* Vehicle Information */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Truck className="h-5 w-5" />
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                  <Truck className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span>Informações do Veículo</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div>
-                    <Label htmlFor="vehicle_type" className="text-base font-medium">Tipo de Veículo</Label>
+                    <Label htmlFor="vehicle_type" className="text-sm sm:text-base font-medium">Tipo de Veículo</Label>
                     {editing ? (
                       <Input
                         id="vehicle_type"
                         value={formData.vehicle_type}
                         onChange={(e) => setFormData(prev => ({ ...prev, vehicle_type: e.target.value }))}
-                        className="mt-2 text-base h-12"
+                        className="mt-2 text-sm sm:text-base h-10 sm:h-12"
                         placeholder="Ex: Caminhão, Van, Carreta"
                       />
                     ) : (
-                      <p className="mt-2 text-base text-gray-900 bg-gray-50 p-3 rounded-md">
+                      <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
                         {driver?.vehicle_type || 'Não informado'}
                       </p>
                     )}
                   </div>
 
                   <div>
-                    <Label className="text-base font-medium">CNH</Label>
-                    <p className="mt-2 text-base text-gray-900 bg-gray-50 p-3 rounded-md">
+                    <Label className="text-sm sm:text-base font-medium">CNH</Label>
+                    <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
                       {driver?.cnh || 'Não informado'}
                     </p>
                   </div>
@@ -412,40 +412,40 @@ const DriverProfile = () => {
 
             {/* Document Status */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <FileText className="h-5 w-5" />
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                  <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span>Status dos Documentos</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+              <CardContent className="p-4 sm:p-6">
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 px-3 sm:px-4 bg-gray-50 rounded-lg space-y-2 sm:space-y-0">
                     <div className="flex items-center space-x-3">
-                      <FileText className="h-5 w-5 text-gray-400" />
-                      <span className="text-base font-medium">CNH</span>
+                      <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                      <span className="text-sm sm:text-base font-medium">CNH</span>
                     </div>
                     {getStatusBadge(documents?.cnh_document_status || 'not_submitted')}
                   </div>
 
-                  <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 px-3 sm:px-4 bg-gray-50 rounded-lg space-y-2 sm:space-y-0">
                     <div className="flex items-center space-x-3">
-                      <Camera className="h-5 w-5 text-gray-400" />
-                      <span className="text-base font-medium">Foto do Perfil</span>
+                      <Camera className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                      <span className="text-sm sm:text-base font-medium">Foto do Perfil</span>
                     </div>
                     {getStatusBadge(documents?.photo_status || 'not_submitted')}
                   </div>
 
-                  <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 px-3 sm:px-4 bg-gray-50 rounded-lg space-y-2 sm:space-y-0">
                     <div className="flex items-center space-x-3">
-                      <Home className="h-5 w-5 text-gray-400" />
-                      <span className="text-base font-medium">Comprovante de Endereço</span>
+                      <Home className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                      <span className="text-sm sm:text-base font-medium">Comprovante de Endereço</span>
                     </div>
                     {getStatusBadge(documents?.driver_address_proof_status || 'not_submitted')}
                   </div>
 
                   {documents?.rejection_reason && (
-                    <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="mt-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
                       <p className="text-sm text-red-800">
                         <strong>Motivo da rejeição:</strong> {documents.rejection_reason}
                       </p>
@@ -456,7 +456,7 @@ const DriverProfile = () => {
                     <div className="mt-4">
                       <Button 
                         onClick={() => navigate('/driver-document-verification')}
-                        className="w-full text-base h-12"
+                        className="w-full text-sm sm:text-base h-10 sm:h-12"
                       >
                         Enviar Documentos
                       </Button>
