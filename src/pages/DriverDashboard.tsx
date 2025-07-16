@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Truck, Heart, CreditCard, Settings, MapPin, Clock, Package } from 'lucide-react';
+import { Truck, Heart, CreditCard, Settings, MapPin, Clock, Package, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDriverStats } from '@/hooks/useDriverStats';
 import DriverFreightsList from '@/components/DriverFreightsList';
@@ -12,6 +13,7 @@ import DriverSettings from '@/components/DriverSettings';
 
 const DriverDashboard = () => {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('freights');
   const { stats, loading: statsLoading } = useDriverStats();
 
@@ -50,14 +52,24 @@ const DriverDashboard = () => {
         {/* Header */}
         <div className="bg-white shadow-sm border-b">
           <div className="px-4 py-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Truck className="h-5 w-5 text-blue-600" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Truck className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-gray-900">Dashboard</h1>
+                  <p className="text-sm text-gray-600">Motorista</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">Dashboard</h1>
-                <p className="text-sm text-gray-600">Motorista</p>
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/driver-profile')}
+                className="p-2"
+              >
+                <User className="h-5 w-5" />
+              </Button>
             </div>
           </div>
         </div>
@@ -149,6 +161,14 @@ const DriverDashboard = () => {
                   <p className="text-gray-600">Gerencie seus fretes e configurações</p>
                 </div>
               </div>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/driver-profile')}
+                className="flex items-center space-x-2"
+              >
+                <User className="h-4 w-4" />
+                <span>Meu Perfil</span>
+              </Button>
             </div>
           </div>
         </div>
