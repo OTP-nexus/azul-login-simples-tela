@@ -28,42 +28,104 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
 const DriverProfile = () => {
-  const { data, loading, error, refetch, updateProfile, updateDriver } = useDriverProfile();
+  const { data, loading, error, refetch, updateProfile, updateDriver, updateAvailability } = useDriverProfile();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
-    vehicle_type: ''
+    vehicle_type: '',
+    // Novos campos de endereço
+    cep: '',
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    // Novos campos de veículo
+    main_vehicle_plate: '',
+    main_vehicle_model: '',
+    main_vehicle_year: '',
+    main_vehicle_capacity: '',
+    main_vehicle_body_type: '',
+    // Campos de disponibilidade
+    available_days: [] as number[],
+    start_time: '',
+    end_time: '',
+    preferred_regions: [] as string[]
   });
 
   // Inicializar dados do formulário quando os dados estão carregados
   React.useEffect(() => {
-    if (data.profile) {
+    if (data.profile || data.driver || data.availability) {
       setFormData({
-        full_name: data.profile.full_name || '',
-        phone: data.profile.phone || '',
-        vehicle_type: data.driver?.vehicle_type || ''
+        full_name: data.profile?.full_name || '',
+        phone: data.profile?.phone || '',
+        vehicle_type: data.driver?.vehicle_type || '',
+        // Campos de endereço
+        cep: data.driver?.cep || '',
+        street: data.driver?.street || '',
+        number: data.driver?.number || '',
+        complement: data.driver?.complement || '',
+        neighborhood: data.driver?.neighborhood || '',
+        city: data.driver?.city || '',
+        state: data.driver?.state || '',
+        // Campos de veículo
+        main_vehicle_plate: data.driver?.main_vehicle_plate || '',
+        main_vehicle_model: data.driver?.main_vehicle_model || '',
+        main_vehicle_year: data.driver?.main_vehicle_year?.toString() || '',
+        main_vehicle_capacity: data.driver?.main_vehicle_capacity?.toString() || '',
+        main_vehicle_body_type: data.driver?.main_vehicle_body_type || '',
+        // Campos de disponibilidade
+        available_days: data.availability?.available_days || [],
+        start_time: data.availability?.start_time || '',
+        end_time: data.availability?.end_time || '',
+        preferred_regions: data.availability?.preferred_regions || []
       });
     }
-  }, [data.profile, data.driver]);
+  }, [data.profile, data.driver, data.availability]);
 
   const handleSave = async () => {
     try {
+      // Atualizar perfil
       const profileUpdates = {
         full_name: formData.full_name,
         phone: formData.phone
       };
 
-      // Só atualiza dados do driver se o driver existir
+      // Atualizar dados do motorista se existir
       const updates = [updateProfile(profileUpdates)];
       
-      if (driver && formData.vehicle_type) {
+      if (data.driver) {
         const driverUpdates = {
-          vehicle_type: formData.vehicle_type
+          vehicle_type: formData.vehicle_type,
+          cep: formData.cep,
+          street: formData.street,
+          number: formData.number,
+          complement: formData.complement,
+          neighborhood: formData.neighborhood,
+          city: formData.city,
+          state: formData.state,
+          main_vehicle_plate: formData.main_vehicle_plate,
+          main_vehicle_model: formData.main_vehicle_model,
+          main_vehicle_year: parseInt(formData.main_vehicle_year) || undefined,
+          main_vehicle_capacity: parseFloat(formData.main_vehicle_capacity) || undefined,
+          main_vehicle_body_type: formData.main_vehicle_body_type
         };
         updates.push(updateDriver(driverUpdates));
+      }
+
+      // Atualizar disponibilidade
+      if (data.driver) {
+        const availabilityUpdates = {
+          available_days: formData.available_days,
+          start_time: formData.start_time,
+          end_time: formData.end_time,
+          preferred_regions: formData.preferred_regions
+        };
+        updates.push(updateAvailability(availabilityUpdates));
       }
 
       const results = await Promise.all(updates);
@@ -84,6 +146,7 @@ const DriverProfile = () => {
       });
 
       setEditing(false);
+      refetch(); // Recarregar dados
     } catch (error) {
       console.error('Error saving:', error);
       toast({
@@ -96,11 +159,30 @@ const DriverProfile = () => {
 
   const handleCancel = () => {
     // Restaurar dados originais
-    if (data.profile) {
+    if (data.profile || data.driver || data.availability) {
       setFormData({
-        full_name: data.profile.full_name || '',
-        phone: data.profile.phone || '',
-        vehicle_type: data.driver?.vehicle_type || ''
+        full_name: data.profile?.full_name || '',
+        phone: data.profile?.phone || '',
+        vehicle_type: data.driver?.vehicle_type || '',
+        // Campos de endereço
+        cep: data.driver?.cep || '',
+        street: data.driver?.street || '',
+        number: data.driver?.number || '',
+        complement: data.driver?.complement || '',
+        neighborhood: data.driver?.neighborhood || '',
+        city: data.driver?.city || '',
+        state: data.driver?.state || '',
+        // Campos de veículo
+        main_vehicle_plate: data.driver?.main_vehicle_plate || '',
+        main_vehicle_model: data.driver?.main_vehicle_model || '',
+        main_vehicle_year: data.driver?.main_vehicle_year?.toString() || '',
+        main_vehicle_capacity: data.driver?.main_vehicle_capacity?.toString() || '',
+        main_vehicle_body_type: data.driver?.main_vehicle_body_type || '',
+        // Campos de disponibilidade
+        available_days: data.availability?.available_days || [],
+        start_time: data.availability?.start_time || '',
+        end_time: data.availability?.end_time || '',
+        preferred_regions: data.availability?.preferred_regions || []
       });
     }
     setEditing(false);
@@ -395,7 +477,7 @@ const DriverProfile = () => {
                       />
                     ) : (
                       <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
-                        {driver?.vehicle_type || 'Não informado'}
+                        {data.driver?.vehicle_type || 'Não informado'}
                       </p>
                     )}
                   </div>
@@ -403,8 +485,239 @@ const DriverProfile = () => {
                   <div>
                     <Label className="text-sm sm:text-base font-medium">CNH</Label>
                     <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
-                      {driver?.cnh || 'Não informado'}
+                      {data.driver?.cnh || 'Não informado'}
                     </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="main_vehicle_plate" className="text-sm sm:text-base font-medium">Placa</Label>
+                    {editing ? (
+                      <Input
+                        id="main_vehicle_plate"
+                        value={formData.main_vehicle_plate}
+                        onChange={(e) => setFormData(prev => ({ ...prev, main_vehicle_plate: e.target.value }))}
+                        className="mt-2 text-sm sm:text-base h-10 sm:h-12 uppercase"
+                        placeholder="ABC-1234"
+                      />
+                    ) : (
+                      <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
+                        {data.driver?.main_vehicle_plate || 'Não informado'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="main_vehicle_model" className="text-sm sm:text-base font-medium">Modelo</Label>
+                    {editing ? (
+                      <Input
+                        id="main_vehicle_model"
+                        value={formData.main_vehicle_model}
+                        onChange={(e) => setFormData(prev => ({ ...prev, main_vehicle_model: e.target.value }))}
+                        className="mt-2 text-sm sm:text-base h-10 sm:h-12"
+                        placeholder="Ex: Scania R450"
+                      />
+                    ) : (
+                      <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
+                        {data.driver?.main_vehicle_model || 'Não informado'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="main_vehicle_year" className="text-sm sm:text-base font-medium">Ano</Label>
+                    {editing ? (
+                      <Input
+                        id="main_vehicle_year"
+                        value={formData.main_vehicle_year}
+                        onChange={(e) => setFormData(prev => ({ ...prev, main_vehicle_year: e.target.value }))}
+                        className="mt-2 text-sm sm:text-base h-10 sm:h-12"
+                        placeholder="2020"
+                        type="number"
+                      />
+                    ) : (
+                      <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
+                        {data.driver?.main_vehicle_year || 'Não informado'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="main_vehicle_capacity" className="text-sm sm:text-base font-medium">Capacidade (t)</Label>
+                    {editing ? (
+                      <Input
+                        id="main_vehicle_capacity"
+                        value={formData.main_vehicle_capacity}
+                        onChange={(e) => setFormData(prev => ({ ...prev, main_vehicle_capacity: e.target.value }))}
+                        className="mt-2 text-sm sm:text-base h-10 sm:h-12"
+                        placeholder="15.5"
+                        type="number"
+                        step="0.1"
+                      />
+                    ) : (
+                      <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
+                        {data.driver?.main_vehicle_capacity ? `${data.driver.main_vehicle_capacity}t` : 'Não informado'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Address Information */}
+            <Card>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                  <Home className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span>Endereço Completo</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                  <div>
+                    <Label htmlFor="cep" className="text-sm sm:text-base font-medium">CEP</Label>
+                    {editing ? (
+                      <Input
+                        id="cep"
+                        value={formData.cep}
+                        onChange={(e) => setFormData(prev => ({ ...prev, cep: e.target.value }))}
+                        className="mt-2 text-sm sm:text-base h-10 sm:h-12"
+                        placeholder="00000-000"
+                      />
+                    ) : (
+                      <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
+                        {data.driver?.cep || 'Não informado'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="street" className="text-sm sm:text-base font-medium">Rua</Label>
+                    {editing ? (
+                      <Input
+                        id="street"
+                        value={formData.street}
+                        onChange={(e) => setFormData(prev => ({ ...prev, street: e.target.value }))}
+                        className="mt-2 text-sm sm:text-base h-10 sm:h-12"
+                        placeholder="Nome da rua"
+                      />
+                    ) : (
+                      <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
+                        {data.driver?.street || 'Não informado'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="number" className="text-sm sm:text-base font-medium">Número</Label>
+                    {editing ? (
+                      <Input
+                        id="number"
+                        value={formData.number}
+                        onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value }))}
+                        className="mt-2 text-sm sm:text-base h-10 sm:h-12"
+                        placeholder="123"
+                      />
+                    ) : (
+                      <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
+                        {data.driver?.number || 'Não informado'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="complement" className="text-sm sm:text-base font-medium">Complemento</Label>
+                    {editing ? (
+                      <Input
+                        id="complement"
+                        value={formData.complement}
+                        onChange={(e) => setFormData(prev => ({ ...prev, complement: e.target.value }))}
+                        className="mt-2 text-sm sm:text-base h-10 sm:h-12"
+                        placeholder="Apto, casa, etc."
+                      />
+                    ) : (
+                      <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
+                        {data.driver?.complement || 'Não informado'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="neighborhood" className="text-sm sm:text-base font-medium">Bairro</Label>
+                    {editing ? (
+                      <Input
+                        id="neighborhood"
+                        value={formData.neighborhood}
+                        onChange={(e) => setFormData(prev => ({ ...prev, neighborhood: e.target.value }))}
+                        className="mt-2 text-sm sm:text-base h-10 sm:h-12"
+                        placeholder="Nome do bairro"
+                      />
+                    ) : (
+                      <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
+                        {data.driver?.neighborhood || 'Não informado'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="city" className="text-sm sm:text-base font-medium">Cidade</Label>
+                    {editing ? (
+                      <Input
+                        id="city"
+                        value={formData.city}
+                        onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                        className="mt-2 text-sm sm:text-base h-10 sm:h-12"
+                        placeholder="Nome da cidade"
+                      />
+                    ) : (
+                      <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
+                        {data.driver?.city || 'Não informado'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="state" className="text-sm sm:text-base font-medium">Estado</Label>
+                    {editing ? (
+                      <select
+                        id="state"
+                        value={formData.state}
+                        onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
+                        className="mt-2 h-10 sm:h-12 w-full border border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500 bg-white text-sm sm:text-base"
+                      >
+                        <option value="">Selecione</option>
+                        <option value="AC">Acre</option>
+                        <option value="AL">Alagoas</option>
+                        <option value="AP">Amapá</option>
+                        <option value="AM">Amazonas</option>
+                        <option value="BA">Bahia</option>
+                        <option value="CE">Ceará</option>
+                        <option value="DF">Distrito Federal</option>
+                        <option value="ES">Espírito Santo</option>
+                        <option value="GO">Goiás</option>
+                        <option value="MA">Maranhão</option>
+                        <option value="MT">Mato Grosso</option>
+                        <option value="MS">Mato Grosso do Sul</option>
+                        <option value="MG">Minas Gerais</option>
+                        <option value="PA">Pará</option>
+                        <option value="PB">Paraíba</option>
+                        <option value="PR">Paraná</option>
+                        <option value="PE">Pernambuco</option>
+                        <option value="PI">Piauí</option>
+                        <option value="RJ">Rio de Janeiro</option>
+                        <option value="RN">Rio Grande do Norte</option>
+                        <option value="RS">Rio Grande do Sul</option>
+                        <option value="RO">Rondônia</option>
+                        <option value="RR">Roraima</option>
+                        <option value="SC">Santa Catarina</option>
+                        <option value="SP">São Paulo</option>
+                        <option value="SE">Sergipe</option>
+                        <option value="TO">Tocantins</option>
+                      </select>
+                    ) : (
+                      <p className="mt-2 text-sm sm:text-base text-gray-900 bg-gray-50 p-2 sm:p-3 rounded-md">
+                        {data.driver?.state || 'Não informado'}
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardContent>

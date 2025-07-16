@@ -243,6 +243,47 @@ export type Database = {
           },
         ]
       }
+      driver_availability: {
+        Row: {
+          available_days: number[] | null
+          created_at: string | null
+          driver_id: string | null
+          end_time: string | null
+          id: string
+          preferred_regions: string[] | null
+          start_time: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          available_days?: number[] | null
+          created_at?: string | null
+          driver_id?: string | null
+          end_time?: string | null
+          id?: string
+          preferred_regions?: string[] | null
+          start_time?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          available_days?: number[] | null
+          created_at?: string | null
+          driver_id?: string | null
+          end_time?: string | null
+          id?: string
+          preferred_regions?: string[] | null
+          start_time?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_availability_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_favorites: {
         Row: {
           created_at: string | null
@@ -281,28 +322,82 @@ export type Database = {
       }
       drivers: {
         Row: {
+          accepts_multiple_vehicles: boolean | null
+          cep: string | null
+          city: string | null
           cnh: string
+          cnh_categories: string[] | null
+          cnh_expiry_date: string | null
+          complement: string | null
           cpf: string
           created_at: string | null
+          date_of_birth: string | null
           id: string
+          main_vehicle_body_type: string | null
+          main_vehicle_capacity: number | null
+          main_vehicle_insurance_expiry: string | null
+          main_vehicle_model: string | null
+          main_vehicle_plate: string | null
+          main_vehicle_renavam: string | null
+          main_vehicle_year: number | null
+          neighborhood: string | null
+          number: string | null
+          state: string | null
+          street: string | null
           updated_at: string | null
           user_id: string
           vehicle_type: string
         }
         Insert: {
+          accepts_multiple_vehicles?: boolean | null
+          cep?: string | null
+          city?: string | null
           cnh: string
+          cnh_categories?: string[] | null
+          cnh_expiry_date?: string | null
+          complement?: string | null
           cpf: string
           created_at?: string | null
+          date_of_birth?: string | null
           id?: string
+          main_vehicle_body_type?: string | null
+          main_vehicle_capacity?: number | null
+          main_vehicle_insurance_expiry?: string | null
+          main_vehicle_model?: string | null
+          main_vehicle_plate?: string | null
+          main_vehicle_renavam?: string | null
+          main_vehicle_year?: number | null
+          neighborhood?: string | null
+          number?: string | null
+          state?: string | null
+          street?: string | null
           updated_at?: string | null
           user_id: string
           vehicle_type: string
         }
         Update: {
+          accepts_multiple_vehicles?: boolean | null
+          cep?: string | null
+          city?: string | null
           cnh?: string
+          cnh_categories?: string[] | null
+          cnh_expiry_date?: string | null
+          complement?: string | null
           cpf?: string
           created_at?: string | null
+          date_of_birth?: string | null
           id?: string
+          main_vehicle_body_type?: string | null
+          main_vehicle_capacity?: number | null
+          main_vehicle_insurance_expiry?: string | null
+          main_vehicle_model?: string | null
+          main_vehicle_plate?: string | null
+          main_vehicle_renavam?: string | null
+          main_vehicle_year?: number | null
+          neighborhood?: string | null
+          number?: string | null
+          state?: string | null
+          street?: string | null
           updated_at?: string | null
           user_id?: string
           vehicle_type?: string

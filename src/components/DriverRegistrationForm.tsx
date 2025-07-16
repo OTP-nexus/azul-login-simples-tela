@@ -28,16 +28,29 @@ const DriverRegistrationForm = () => {
     email: '',
     phone: '',
     confirmPhone: '',
+    dateOfBirth: '',
     cpf: '',
     cnh: '',
+    cnhCategories: [] as string[],
+    cnhExpiryDate: '',
     vehicleType: '',
+    vehiclePlate: '',
+    vehicleModel: '',
+    vehicleYear: '',
+    cep: '',
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
     password: '',
     confirmPassword: ''
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  const totalSteps = 3;
+  const totalSteps = 4;
   const progressPercentage = (currentStep / totalSteps) * 100;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -58,6 +71,7 @@ const DriverRegistrationForm = () => {
       if (!formData.email) errors.email = 'Email é obrigatório';
       if (!formData.phone) errors.phone = 'Telefone é obrigatório';
       if (!formData.confirmPhone) errors.confirmPhone = 'Confirmação de telefone é obrigatória';
+      if (!formData.dateOfBirth) errors.dateOfBirth = 'Data de nascimento é obrigatória';
 
       if (formData.phone !== formData.confirmPhone) {
         errors.confirmPhone = 'Telefones não conferem';
@@ -67,10 +81,22 @@ const DriverRegistrationForm = () => {
     if (step === 2) {
       if (!formData.cpf) errors.cpf = 'CPF é obrigatório';
       if (!formData.cnh) errors.cnh = 'CNH é obrigatória';
+      if (!formData.cnhExpiryDate) errors.cnhExpiryDate = 'Data de validade da CNH é obrigatória';
       if (!formData.vehicleType) errors.vehicleType = 'Tipo de veículo é obrigatório';
+      if (!formData.vehiclePlate) errors.vehiclePlate = 'Placa do veículo é obrigatória';
+      if (!formData.vehicleModel) errors.vehicleModel = 'Modelo do veículo é obrigatório';
     }
 
     if (step === 3) {
+      if (!formData.cep) errors.cep = 'CEP é obrigatório';
+      if (!formData.street) errors.street = 'Rua é obrigatória';
+      if (!formData.number) errors.number = 'Número é obrigatório';
+      if (!formData.neighborhood) errors.neighborhood = 'Bairro é obrigatório';
+      if (!formData.city) errors.city = 'Cidade é obrigatória';
+      if (!formData.state) errors.state = 'Estado é obrigatório';
+    }
+
+    if (step === 4) {
       if (!formData.password) errors.password = 'Senha é obrigatória';
       if (formData.password.length < 6) errors.password = 'Senha deve ter pelo menos 6 caracteres';
       if (!formData.confirmPassword) errors.confirmPassword = 'Confirmação de senha é obrigatória';
@@ -99,7 +125,7 @@ const DriverRegistrationForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const isValid = await validateStep(3);
+    const isValid = await validateStep(4);
     if (!isValid) return;
 
     setIsSubmitting(true);
@@ -111,7 +137,21 @@ const DriverRegistrationForm = () => {
         phone: cleanFormatting(formData.phone),
         cpf: cleanFormatting(formData.cpf),
         cnh: cleanFormatting(formData.cnh),
-        vehicle_type: formData.vehicleType
+        vehicle_type: formData.vehicleType,
+        // Novos campos
+        date_of_birth: formData.dateOfBirth,
+        cnh_categories: formData.cnhCategories,
+        cnh_expiry_date: formData.cnhExpiryDate,
+        cep: cleanFormatting(formData.cep),
+        street: formData.street,
+        number: formData.number,
+        complement: formData.complement,
+        neighborhood: formData.neighborhood,
+        city: formData.city,
+        state: formData.state,
+        main_vehicle_plate: formData.vehiclePlate,
+        main_vehicle_model: formData.vehicleModel,
+        main_vehicle_year: parseInt(formData.vehicleYear) || null
       };
 
       const { error } = await signUp(formData.email, formData.password, userData);
@@ -147,8 +187,9 @@ const DriverRegistrationForm = () => {
   const getStepTitle = () => {
     switch (currentStep) {
       case 1: return 'Dados Pessoais';
-      case 2: return 'Documentos';
-      case 3: return 'Acesso';
+      case 2: return 'Documentos e Veículo';
+      case 3: return 'Endereço';
+      case 4: return 'Acesso';
       default: return 'Cadastro';
     }
   };
@@ -236,6 +277,24 @@ const DriverRegistrationForm = () => {
           <p className="text-sm text-red-600">{validationErrors.confirmPhone}</p>
         )}
       </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="dateOfBirth" className="text-sm font-medium text-gray-700">
+          Data de nascimento *
+        </Label>
+        <Input
+          id="dateOfBirth"
+          name="dateOfBirth"
+          type="date"
+          value={formData.dateOfBirth}
+          onChange={handleInputChange}
+          className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+          required
+        />
+        {validationErrors.dateOfBirth && (
+          <p className="text-sm text-red-600">{validationErrors.dateOfBirth}</p>
+        )}
+      </div>
     </div>
   );
 
@@ -275,6 +334,24 @@ const DriverRegistrationForm = () => {
       )}
 
       <div className="space-y-2">
+        <Label htmlFor="cnhExpiryDate" className="text-sm font-medium text-gray-700">
+          Validade da CNH *
+        </Label>
+        <Input
+          id="cnhExpiryDate"
+          name="cnhExpiryDate"
+          type="date"
+          value={formData.cnhExpiryDate}
+          onChange={handleInputChange}
+          className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+          required
+        />
+        {validationErrors.cnhExpiryDate && (
+          <p className="text-sm text-red-600">{validationErrors.cnhExpiryDate}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="vehicleType" className="text-sm font-medium text-gray-700">
           Tipo de veículo *
         </Label>
@@ -299,10 +376,231 @@ const DriverRegistrationForm = () => {
           <p className="text-sm text-red-600">{validationErrors.vehicleType}</p>
         )}
       </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="vehiclePlate" className="text-sm font-medium text-gray-700">
+          Placa do veículo *
+        </Label>
+        <Input
+          id="vehiclePlate"
+          name="vehiclePlate"
+          type="text"
+          placeholder="ABC-1234"
+          value={formData.vehiclePlate}
+          onChange={handleInputChange}
+          className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 uppercase"
+          required
+        />
+        {validationErrors.vehiclePlate && (
+          <p className="text-sm text-red-600">{validationErrors.vehiclePlate}</p>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="vehicleModel" className="text-sm font-medium text-gray-700">
+            Modelo *
+          </Label>
+          <Input
+            id="vehicleModel"
+            name="vehicleModel"
+            type="text"
+            placeholder="Ex: Scania R450"
+            value={formData.vehicleModel}
+            onChange={handleInputChange}
+            className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+            required
+          />
+          {validationErrors.vehicleModel && (
+            <p className="text-sm text-red-600">{validationErrors.vehicleModel}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="vehicleYear" className="text-sm font-medium text-gray-700">
+            Ano
+          </Label>
+          <Input
+            id="vehicleYear"
+            name="vehicleYear"
+            type="number"
+            placeholder="2020"
+            value={formData.vehicleYear}
+            onChange={handleInputChange}
+            className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+            min="1980"
+            max="2025"
+          />
+        </div>
+      </div>
     </div>
   );
 
   const renderStep3 = () => (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="cep" className="text-sm font-medium text-gray-700">
+          CEP *
+        </Label>
+        <Input
+          id="cep"
+          name="cep"
+          type="text"
+          placeholder="00000-000"
+          value={formData.cep}
+          onChange={handleInputChange}
+          className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+          required
+        />
+        {validationErrors.cep && (
+          <p className="text-sm text-red-600">{validationErrors.cep}</p>
+        )}
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="col-span-2 space-y-2">
+          <Label htmlFor="street" className="text-sm font-medium text-gray-700">
+            Rua *
+          </Label>
+          <Input
+            id="street"
+            name="street"
+            type="text"
+            placeholder="Nome da rua"
+            value={formData.street}
+            onChange={handleInputChange}
+            className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+            required
+          />
+          {validationErrors.street && (
+            <p className="text-sm text-red-600">{validationErrors.street}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="number" className="text-sm font-medium text-gray-700">
+            Número *
+          </Label>
+          <Input
+            id="number"
+            name="number"
+            type="text"
+            placeholder="123"
+            value={formData.number}
+            onChange={handleInputChange}
+            className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+            required
+          />
+          {validationErrors.number && (
+            <p className="text-sm text-red-600">{validationErrors.number}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="complement" className="text-sm font-medium text-gray-700">
+          Complemento
+        </Label>
+        <Input
+          id="complement"
+          name="complement"
+          type="text"
+          placeholder="Apto, casa, etc."
+          value={formData.complement}
+          onChange={handleInputChange}
+          className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="neighborhood" className="text-sm font-medium text-gray-700">
+          Bairro *
+        </Label>
+        <Input
+          id="neighborhood"
+          name="neighborhood"
+          type="text"
+          placeholder="Nome do bairro"
+          value={formData.neighborhood}
+          onChange={handleInputChange}
+          className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+          required
+        />
+        {validationErrors.neighborhood && (
+          <p className="text-sm text-red-600">{validationErrors.neighborhood}</p>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="city" className="text-sm font-medium text-gray-700">
+            Cidade *
+          </Label>
+          <Input
+            id="city"
+            name="city"
+            type="text"
+            placeholder="Nome da cidade"
+            value={formData.city}
+            onChange={handleInputChange}
+            className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+            required
+          />
+          {validationErrors.city && (
+            <p className="text-sm text-red-600">{validationErrors.city}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="state" className="text-sm font-medium text-gray-700">
+            Estado *
+          </Label>
+          <select
+            id="state"
+            name="state"
+            value={formData.state}
+            onChange={handleInputChange}
+            className="h-12 w-full border border-gray-200 rounded-md focus:border-blue-500 focus:ring-blue-500 bg-white"
+            required
+          >
+            <option value="">Selecione</option>
+            <option value="AC">Acre</option>
+            <option value="AL">Alagoas</option>
+            <option value="AP">Amapá</option>
+            <option value="AM">Amazonas</option>
+            <option value="BA">Bahia</option>
+            <option value="CE">Ceará</option>
+            <option value="DF">Distrito Federal</option>
+            <option value="ES">Espírito Santo</option>
+            <option value="GO">Goiás</option>
+            <option value="MA">Maranhão</option>
+            <option value="MT">Mato Grosso</option>
+            <option value="MS">Mato Grosso do Sul</option>
+            <option value="MG">Minas Gerais</option>
+            <option value="PA">Pará</option>
+            <option value="PB">Paraíba</option>
+            <option value="PR">Paraná</option>
+            <option value="PE">Pernambuco</option>
+            <option value="PI">Piauí</option>
+            <option value="RJ">Rio de Janeiro</option>
+            <option value="RN">Rio Grande do Norte</option>
+            <option value="RS">Rio Grande do Sul</option>
+            <option value="RO">Rondônia</option>
+            <option value="RR">Roraima</option>
+            <option value="SC">Santa Catarina</option>
+            <option value="SP">São Paulo</option>
+            <option value="SE">Sergipe</option>
+            <option value="TO">Tocantins</option>
+          </select>
+          {validationErrors.state && (
+            <p className="text-sm text-red-600">{validationErrors.state}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStep4 = () => (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="password" className="text-sm font-medium text-gray-700">
@@ -389,6 +687,7 @@ const DriverRegistrationForm = () => {
               {currentStep === 1 && renderStep1()}
               {currentStep === 2 && renderStep2()}
               {currentStep === 3 && renderStep3()}
+              {currentStep === 4 && renderStep4()}
               
               <div className="flex justify-between gap-4">
                 {currentStep > 1 && (

@@ -14,13 +14,33 @@ interface DriverProfileData {
     updated_at: string;
   } | null;
   
-  // Dados do motorista (drivers table)
+  // Dados do motorista (drivers table) - Expandido com novos campos
   driver: {
     id: string;
     user_id: string;
     cpf: string;
     cnh: string;
     vehicle_type: string;
+    // Novos campos de prioridade alta
+    date_of_birth: string | null;
+    cnh_categories: string[] | null;
+    cnh_expiry_date: string | null;
+    cep: string | null;
+    street: string | null;
+    number: string | null;
+    complement: string | null;
+    neighborhood: string | null;
+    city: string | null;
+    state: string | null;
+    main_vehicle_plate: string | null;
+    main_vehicle_model: string | null;
+    main_vehicle_year: number | null;
+    main_vehicle_capacity: number | null;
+    // Novos campos de prioridade média
+    main_vehicle_body_type: string | null;
+    main_vehicle_renavam: string | null;
+    main_vehicle_insurance_expiry: string | null;
+    accepts_multiple_vehicles: boolean | null;
     created_at: string;
     updated_at: string;
   } | null;
@@ -38,6 +58,18 @@ interface DriverProfileData {
     verified_at: string | null;
     rejection_reason: string | null;
   } | null;
+
+  // Dados de disponibilidade (driver_availability table)
+  availability: {
+    id: string;
+    driver_id: string;
+    available_days: number[] | null;
+    start_time: string | null;
+    end_time: string | null;
+    preferred_regions: string[] | null;
+    created_at: string;
+    updated_at: string;
+  } | null;
 }
 
 export function useDriverProfile() {
@@ -45,7 +77,8 @@ export function useDriverProfile() {
   const [data, setData] = useState<DriverProfileData>({
     profile: null,
     driver: null,
-    documents: null
+    documents: null,
+    availability: null
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,10 +130,28 @@ export function useDriverProfile() {
         // Não tratamos como erro fatal se não existir verificação de documentos
       }
 
+      // Buscar dados de disponibilidade (se o motorista existir)
+      let availabilityData = null;
+      if (driverData) {
+        const { data: availData, error: availError } = await supabase
+          .from('driver_availability')
+          .select('*')
+          .eq('driver_id', driverData.id)
+          .maybeSingle();
+
+        if (availError) {
+          console.error('Error fetching availability:', availError);
+          // Não tratamos como erro fatal
+        } else {
+          availabilityData = availData;
+        }
+      }
+
       setData({
         profile: profileData,
         driver: driverData,
-        documents: documentsData
+        documents: documentsData,
+        availability: availabilityData
       });
 
     } catch (err) {
@@ -135,7 +186,27 @@ export function useDriverProfile() {
     }
   };
 
-  const updateDriver = async (updates: Partial<{ vehicle_type: string; }>) => {
+  const updateDriver = async (updates: Partial<{
+    vehicle_type: string;
+    date_of_birth: string;
+    cnh_categories: string[];
+    cnh_expiry_date: string;
+    cep: string;
+    street: string;
+    number: string;
+    complement: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    main_vehicle_plate: string;
+    main_vehicle_model: string;
+    main_vehicle_year: number;
+    main_vehicle_capacity: number;
+    main_vehicle_body_type: string;
+    main_vehicle_renavam: string;
+    main_vehicle_insurance_expiry: string;
+    accepts_multiple_vehicles: boolean;
+  }>) => {
     if (!user) return { error: 'Usuário não autenticado' };
 
     try {
@@ -159,6 +230,56 @@ export function useDriverProfile() {
     }
   };
 
+  const updateAvailability = async (updates: Partial<{
+    available_days: number[];
+    start_time: string;
+    end_time: string;
+    preferred_regions: string[];
+  }>) => {
+    if (!user || !data.driver) return { error: 'Usuário não autenticado ou motorista não encontrado' };
+
+    try {
+      if (data.availability) {
+        // Atualizar disponibilidade existente
+        const { error } = await supabase
+          .from('driver_availability')
+          .update(updates)
+          .eq('driver_id', data.driver.id);
+
+        if (error) throw error;
+
+        // Atualizar dados locais
+        setData(prev => ({
+          ...prev,
+          availability: prev.availability ? { ...prev.availability, ...updates } : null
+        }));
+      } else {
+        // Criar nova disponibilidade
+        const { data: newAvailability, error } = await supabase
+          .from('driver_availability')
+          .insert({
+            driver_id: data.driver.id,
+            ...updates
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Atualizar dados locais
+        setData(prev => ({
+          ...prev,
+          availability: newAvailability
+        }));
+      }
+
+      return { error: null };
+    } catch (error) {
+      console.error('Error updating availability:', error);
+      return { error: 'Erro ao atualizar disponibilidade' };
+    }
+  };
+
   useEffect(() => {
     fetchDriverProfile();
   }, [user]);
@@ -169,6 +290,7 @@ export function useDriverProfile() {
     error,
     refetch: fetchDriverProfile,
     updateProfile,
-    updateDriver
+    updateDriver,
+    updateAvailability
   };
 }
