@@ -9,15 +9,15 @@ import { MapPin, Calendar, Package, DollarSign, Search, Heart, Truck, RotateCcw,
 import FreightStatusBadge from './FreightStatusBadge';
 import FreightDetailsModal from './FreightDetailsModal';
 import { useActiveFreights } from '@/hooks/useActiveFreights';
+import { useDriverFavorites } from '@/hooks/useDriverFavorites';
 
 const DriverFreightsList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedFreight, setSelectedFreight] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [favorites, setFavorites] = useState(new Set());
-
   const { freights, loading, error } = useActiveFreights();
+  const { addFavorite, removeFavorite, isFavorite } = useDriverFavorites();
 
   const getFreightTypeConfig = (tipo: string) => {
     switch (tipo) {
@@ -73,16 +73,12 @@ const DriverFreightsList = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const toggleFavorite = (freightId: string) => {
-    setFavorites(prev => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(freightId)) {
-        newFavorites.delete(freightId);
-      } else {
-        newFavorites.add(freightId);
-      }
-      return newFavorites;
-    });
+  const toggleFavorite = async (freightId: string) => {
+    if (isFavorite(freightId)) {
+      await removeFavorite(freightId);
+    } else {
+      await addFavorite(freightId);
+    }
   };
 
   const openDetailsModal = (freight: any) => {
@@ -185,7 +181,7 @@ const DriverFreightsList = () => {
         {filteredFreights.map((freight) => {
           const typeConfig = getFreightTypeConfig(freight.tipo_frete);
           const TypeIcon = typeConfig.icon;
-          const isFavorite = favorites.has(freight.id);
+          
 
           return (
             <Card 
@@ -215,9 +211,9 @@ const DriverFreightsList = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => toggleFavorite(freight.id)}
-                      className={isFavorite ? 'text-red-500' : 'text-gray-400'}
+                      className={isFavorite(freight.id) ? 'text-red-500' : 'text-gray-400'}
                     >
-                      <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
+                      <Heart className={`h-4 w-4 ${isFavorite(freight.id) ? 'fill-current' : ''}`} />
                     </Button>
                     <FreightStatusBadge status={freight.status} />
                   </div>

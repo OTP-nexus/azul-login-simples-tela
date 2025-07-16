@@ -243,6 +243,42 @@ export type Database = {
           },
         ]
       }
+      driver_favorites: {
+        Row: {
+          created_at: string | null
+          driver_id: string | null
+          freight_id: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          driver_id?: string | null
+          freight_id?: string | null
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          driver_id?: string | null
+          freight_id?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_favorites_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_favorites_freight_id_fkey"
+            columns: ["freight_id"]
+            isOneToOne: false
+            referencedRelation: "fretes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drivers: {
         Row: {
           cnh: string

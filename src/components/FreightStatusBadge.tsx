@@ -17,6 +17,27 @@ const FreightStatusBadge = ({ status, className = "" }: FreightStatusBadgeProps)
           icon: Truck,
           text: 'Ativo'
         };
+      case 'pendente':
+        return {
+          variant: 'default' as const,
+          className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+          icon: AlertCircle,
+          text: 'Pendente'
+        };
+      case 'aceito':
+        return {
+          variant: 'default' as const,
+          className: 'bg-orange-100 text-orange-800 border-orange-200',
+          icon: CheckCircle,
+          text: 'Aceito'
+        };
+      case 'em_andamento':
+        return {
+          variant: 'default' as const,
+          className: 'bg-purple-100 text-purple-800 border-purple-200',
+          icon: Truck,
+          text: 'Em Andamento'
+        };
       case 'concluido':
         return {
           variant: 'default' as const,

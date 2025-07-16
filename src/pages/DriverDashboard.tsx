@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Truck, Heart, CreditCard, Settings, MapPin, Clock, Package } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useDriverStats } from '@/hooks/useDriverStats';
 import DriverFreightsList from '@/components/DriverFreightsList';
 import DriverFavorites from '@/components/DriverFavorites';
 import DriverPlans from '@/components/DriverPlans';
@@ -12,6 +13,7 @@ import DriverSettings from '@/components/DriverSettings';
 const DriverDashboard = () => {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState('freights');
+  const { stats, loading: statsLoading } = useDriverStats();
 
   const tabItems = [
     {
@@ -66,7 +68,9 @@ const DriverDashboard = () => {
             <Card className="p-3">
               <div className="text-center">
                 <Package className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
-                <div className="text-lg font-bold">12</div>
+                <div className="text-lg font-bold">
+                  {statsLoading ? '...' : stats.activeFreights}
+                </div>
                 <p className="text-xs text-muted-foreground">Fretes</p>
               </div>
             </Card>
@@ -74,7 +78,9 @@ const DriverDashboard = () => {
             <Card className="p-3">
               <div className="text-center">
                 <Heart className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
-                <div className="text-lg font-bold">8</div>
+                <div className="text-lg font-bold">
+                  {statsLoading ? '...' : stats.totalFavorites}
+                </div>
                 <p className="text-xs text-muted-foreground">Favoritos</p>
               </div>
             </Card>
@@ -82,8 +88,10 @@ const DriverDashboard = () => {
             <Card className="p-3">
               <div className="text-center">
                 <Clock className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
-                <div className="text-lg font-bold">2h</div>
-                <p className="text-xs text-muted-foreground">Próxima</p>
+                <div className="text-lg font-bold">
+                  {statsLoading ? '...' : stats.acceptedFreights}
+                </div>
+                <p className="text-xs text-muted-foreground">Aceitos</p>
               </div>
             </Card>
           </div>
@@ -155,9 +163,11 @@ const DriverDashboard = () => {
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">12</div>
+              <div className="text-2xl font-bold">
+                {statsLoading ? '...' : stats.activeFreights}
+              </div>
               <p className="text-xs text-muted-foreground">
-                +2 desde ontem
+                Disponíveis para aceitar
               </p>
             </CardContent>
           </Card>
@@ -168,7 +178,9 @@ const DriverDashboard = () => {
               <Heart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">8</div>
+              <div className="text-2xl font-bold">
+                {statsLoading ? '...' : stats.totalFavorites}
+              </div>
               <p className="text-xs text-muted-foreground">
                 Fretes salvos
               </p>
@@ -177,13 +189,15 @@ const DriverDashboard = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Próxima Entrega</CardTitle>
+              <CardTitle className="text-sm font-medium">Aceitos</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">2h</div>
+              <div className="text-2xl font-bold">
+                {statsLoading ? '...' : stats.acceptedFreights}
+              </div>
               <p className="text-xs text-muted-foreground">
-                São Paulo - SP
+                Fretes aceitos
               </p>
             </CardContent>
           </Card>

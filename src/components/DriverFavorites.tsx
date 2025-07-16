@@ -4,49 +4,72 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Heart, MapPin, Calendar, Package, DollarSign, Trash2 } from 'lucide-react';
+import { useDriverFavorites } from '@/hooks/useDriverFavorites';
+import FreightStatusBadge from './FreightStatusBadge';
 
 const DriverFavorites = () => {
-  // Mock data - será substituído por dados reais do Supabase
-  const favoriteFreights = [
-    {
-      id: '2',
-      code: 'AGR-CD23E45FG6',
-      origin: 'Belo Horizonte, MG',
-      destination: 'Salvador, BA',
-      pickupDate: '2025-01-20',
-      deliveryDate: '2025-01-22',
-      cargo: 'Alimentos',
-      weight: 2000,
-      value: 3200,
-      status: 'aceito',
-      savedAt: '2025-01-10T10:30:00'
-    },
-    {
-      id: '4',
-      code: 'FRT-GH45I67JK8',
-      origin: 'Fortaleza, CE',
-      destination: 'Recife, PE',
-      pickupDate: '2025-01-25',
-      deliveryDate: '2025-01-26',
-      cargo: 'Roupas',
-      weight: 800,
-      value: 1500,
-      status: 'disponivel',
-      savedAt: '2025-01-12T14:20:00'
-    }
-  ];
+  const { favorites, loading, error, removeFavorite } = useDriverFavorites();
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      disponivel: { label: 'Disponível', variant: 'default' as const },
-      aceito: { label: 'Aceito', variant: 'secondary' as const },
-      em_andamento: { label: 'Em Andamento', variant: 'outline' as const },
-      concluido: { label: 'Concluído', variant: 'secondary' as const }
-    };
+  const getDestinationText = (destinos: any) => {
+    if (!destinos || (Array.isArray(destinos) && destinos.length === 0)) {
+      return 'Destino não definido';
+    }
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.disponivel;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    if (Array.isArray(destinos) && destinos.length > 0) {
+      const firstDestination = destinos[0];
+      if (typeof firstDestination === 'string') {
+        return firstDestination;
+      }
+      if (typeof firstDestination === 'object' && firstDestination !== null) {
+        const cidade = firstDestination.cidade || firstDestination.city || '';
+        const estado = firstDestination.estado || firstDestination.state || '';
+        return cidade && estado ? `${cidade}, ${estado}` : 'Destino não definido';
+      }
+    }
+    
+    return 'Destino não definido';
   };
+
+  const formatValue = (value: number | null) => {
+    if (!value) return 'Não definido';
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  const formatDate = (date: string | null) => {
+    if (!date) return 'Não definida';
+    return new Date(date).toLocaleDateString('pt-BR');
+  };
+
+  const handleRemoveFavorite = async (freightId: string) => {
+    await removeFavorite(freightId);
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <Heart className="h-12 w-12 text-red-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            Erro ao carregar favoritos
+          </h3>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -56,28 +79,28 @@ const DriverFavorites = () => {
           <p className="text-gray-600">Gerencie seus fretes salvos para acompanhamento rápido</p>
         </div>
         <Badge variant="secondary" className="text-sm">
-          {favoriteFreights.length} favorito(s)
+          {favorites.length} favorito(s)
         </Badge>
       </div>
 
-      {favoriteFreights.length > 0 ? (
+      {favorites.length > 0 ? (
         <div className="grid gap-4">
-          {favoriteFreights.map((freight) => (
-            <Card key={freight.id} className="hover:shadow-md transition-shadow">
+          {favorites.map((favorite) => (
+            <Card key={favorite.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Heart className="h-4 w-4 text-red-500 fill-current" />
-                      {freight.code}
+                      {favorite.freight.codigo_agregamento}
                     </CardTitle>
                     <CardDescription className="flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
-                      {freight.origin} → {freight.destination}
+                      {favorite.freight.origem_cidade}, {favorite.freight.origem_estado} → {getDestinationText(favorite.freight.destinos)}
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    {getStatusBadge(freight.status)}
+                    <FreightStatusBadge status={favorite.freight.status} />
                   </div>
                 </div>
               </CardHeader>
@@ -87,38 +110,38 @@ const DriverFavorites = () => {
                     <Calendar className="h-4 w-4 text-gray-400" />
                     <div className="text-sm">
                       <div className="font-medium">Coleta</div>
-                      <div className="text-gray-600">{new Date(freight.pickupDate).toLocaleDateString('pt-BR')}</div>
+                      <div className="text-gray-600">{formatDate(favorite.freight.data_coleta)}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-gray-400" />
                     <div className="text-sm">
                       <div className="font-medium">Entrega</div>
-                      <div className="text-gray-600">{new Date(freight.deliveryDate).toLocaleDateString('pt-BR')}</div>
+                      <div className="text-gray-600">{formatDate(favorite.freight.data_entrega)}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-gray-400" />
                     <div className="text-sm">
                       <div className="font-medium">Carga</div>
-                      <div className="text-gray-600">{freight.cargo}</div>
+                      <div className="text-gray-600">{favorite.freight.tipo_mercadoria}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-gray-400" />
                     <div className="text-sm">
                       <div className="font-medium">Valor</div>
-                      <div className="text-gray-600">R$ {freight.value.toLocaleString('pt-BR')}</div>
+                      <div className="text-gray-600">{formatValue(favorite.freight.valor_carga)}</div>
                     </div>
                   </div>
                 </div>
                 
                 <div className="flex justify-between items-center pt-3 border-t">
                   <div className="text-sm text-gray-500">
-                    Salvo em {new Date(freight.savedAt).toLocaleDateString('pt-BR')} às {new Date(freight.savedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    Salvo em {new Date(favorite.created_at).toLocaleDateString('pt-BR')} às {new Date(favorite.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                   <div className="flex gap-2">
-                    {freight.status === 'disponivel' && (
+                    {favorite.freight.status === 'ativo' && (
                       <Button size="sm">
                         Aceitar Frete
                       </Button>
@@ -126,7 +149,12 @@ const DriverFavorites = () => {
                     <Button variant="outline" size="sm">
                       Ver Detalhes
                     </Button>
-                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => handleRemoveFavorite(favorite.freight_id)}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
