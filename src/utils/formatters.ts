@@ -1,4 +1,40 @@
 
+// Formatar data
+export const formatDate = (date: string | Date | null): string => {
+  if (!date) return 'Data não disponível';
+  
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  if (isNaN(dateObj.getTime())) {
+    return 'Data inválida';
+  }
+  
+  return dateObj.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
+
+// Formatar data e hora
+export const formatDateTime = (date: string | Date | null): string => {
+  if (!date) return 'Data não disponível';
+  
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  if (isNaN(dateObj.getTime())) {
+    return 'Data inválida';
+  }
+  
+  return dateObj.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
 // Formatar moeda
 export const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('pt-BR', {
@@ -7,9 +43,26 @@ export const formatCurrency = (value: number): string => {
   }).format(value);
 };
 
-// Formatar data
-export const formatDate = (date: string): string => {
-  return new Date(date).toLocaleDateString('pt-BR');
+// Formatar peso
+export const formatWeight = (weight: number | null): string => {
+  if (!weight) return 'Peso não definido';
+  
+  if (weight >= 1000) {
+    return `${(weight / 1000).toFixed(1)} t`;
+  }
+  
+  return `${weight} kg`;
+};
+
+// Formatar dimensões
+export const formatDimensions = (length: number | null, width: number | null, height: number | null): string => {
+  if (!length && !width && !height) return 'Dimensões não definidas';
+  
+  const dimensions = [length, width, height].filter(Boolean);
+  
+  if (dimensions.length === 0) return 'Dimensões não definidas';
+  
+  return `${dimensions.join(' x ')} cm`;
 };
 
 // Formatar texto para apenas letras e maiúsculas

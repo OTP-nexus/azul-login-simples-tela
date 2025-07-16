@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   MapPin, 
@@ -27,12 +28,17 @@ import {
   Settings,
   User,
   Phone,
-  Mail
+  Mail,
+  MessageSquare,
+  Heart,
+  ExternalLink
 } from "lucide-react";
 import FreightStatusBadge from './FreightStatusBadge';
 import type { ActiveFreight } from '@/hooks/useActiveFreights';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useFreightInterest } from '@/hooks/useFreightInterest';
 
 interface FreightDetailsModalProps {
   freight: ActiveFreight | null;
@@ -41,6 +47,11 @@ interface FreightDetailsModalProps {
 }
 
 const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalProps) => {
+  const { user, profile } = useAuth();
+  const { demonstrateInterest, isLoading: interestLoading, checkExistingInterest } = useFreightInterest();
+  const [hasInterest, setHasInterest] = useState(false);
+  const [companyData, setCompanyData] = useState<any>(null);
+
   // Buscar dados dos colaboradores
   const { data: collaborators } = useQuery({
     queryKey: ['collaborators', freight?.collaborator_ids],
@@ -63,6 +74,38 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     },
     enabled: !!freight?.collaborator_ids && freight.collaborator_ids.length > 0
   });
+
+  // Buscar dados da empresa
+  const { data: company } = useQuery({
+    queryKey: ['company', freight?.company_id],
+    queryFn: async () => {
+      if (!freight?.company_id) return null;
+      
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', freight.company_id)
+        .single();
+      
+      if (error) {
+        console.error('Erro ao buscar empresa:', error);
+        return null;
+      }
+      
+      return data;
+    },
+    enabled: !!freight?.company_id
+  });
+
+  // Verificar se o motorista já demonstrou interesse
+  useEffect(() => {
+    if (freight && user && profile?.role === 'driver') {
+      checkExistingInterest(freight.id).then(setHasInterest);
+    }
+  }, [freight, user, profile?.role, checkExistingInterest]);
+
+  // Definir se é motorista
+  const isDriver = profile?.role === 'driver';
 
   if (!freight) return null;
 
@@ -455,6 +498,117 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
           </div>
         ))}
       </div>
+    );
+  };
+
+  // Função para formatar telefone para WhatsApp
+  const formatPhoneForWhatsApp = (phone: string) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (!cleanPhone.startsWith('55')) {
+      return `55${cleanPhone}`;
+    }
+    return cleanPhone;
+  };
+
+  // Função para abrir WhatsApp
+  const openWhatsApp = (phone: string) => {
+    const whatsappPhone = formatPhoneForWhatsApp(phone);
+    const freightCode = freight?.codigo_agregamento || 'N/A';
+    const message = `Olá! Vi seu frete ${freightCode} e gostaria de conversar sobre os detalhes.`;
+    const url = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
+  // Função para ligar
+  const makeCall = (phone: string) => {
+    window.open(`tel:${phone}`, '_self');
+  };
+
+  // Função para demonstrar interesse
+  const handleDemonstrateInterest = () => {
+    if (freight) {
+      demonstrateInterest(freight.id);
+      setHasInterest(true);
+    }
+  };
+
+  // Função para renderizar contato da empresa
+  const renderCompanyContact = () => {
+    if (!company) return null;
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Phone className="w-5 h-5" />
+            <span>Contato da Empresa</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">{company.company_name}</h4>
+              <p className="text-sm text-blue-700 mb-2">
+                Responsável: {company.contact_name}
+              </p>
+              <p className="text-sm text-blue-600">
+                📞 {company.phone}
+              </p>
+            </div>
+
+            {isDriver && (
+              <div className="space-y-2">
+                {!hasInterest ? (
+                  <Button
+                    onClick={handleDemonstrateInterest}
+                    disabled={interestLoading}
+                    className="w-full bg-green-600 hover:bg-green-700"
+                  >
+                    {interestLoading ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Demonstrando interesse...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <Heart className="w-4 h-4" />
+                        <span>Demonstrar Interesse</span>
+                      </div>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                    <div className="flex items-center space-x-2 text-green-700">
+                      <Heart className="w-4 h-4 fill-current" />
+                      <span className="text-sm font-medium">
+                        Você já demonstrou interesse neste frete
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={() => openWhatsApp(company.phone)}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    WhatsApp
+                  </Button>
+                  <Button
+                    onClick={() => makeCall(company.phone)}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    <Phone className="w-4 h-4 mr-2" />
+                    Ligar
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     );
   };
 

@@ -21,6 +21,7 @@ export interface ActiveFreight {
   tipos_veiculos: any[];
   tipos_carrocerias: any[];
   collaborator_ids: string[];
+  company_id: string;
   created_at: string;
   updated_at: string;
   pedagio_pago_por: string;
@@ -81,6 +82,7 @@ export const useActiveFreights = () => {
         tipos_veiculos: Array.isArray(freight.tipos_veiculos) ? freight.tipos_veiculos : [],
         tipos_carrocerias: Array.isArray(freight.tipos_carrocerias) ? freight.tipos_carrocerias : [],
         collaborator_ids: freight.collaborator_ids,
+        company_id: freight.company_id,
         created_at: freight.created_at,
         updated_at: freight.updated_at,
         pedagio_pago_por: freight.pedagio_pago_por,

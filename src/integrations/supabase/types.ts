@@ -317,6 +317,48 @@ export type Database = {
           },
         ]
       }
+      freight_contacts: {
+        Row: {
+          company_response: string | null
+          created_at: string
+          driver_id: string
+          freight_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          company_response?: string | null
+          created_at?: string
+          driver_id: string
+          freight_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          company_response?: string | null
+          created_at?: string
+          driver_id?: string
+          freight_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freight_contacts_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freight_contacts_freight_id_fkey"
+            columns: ["freight_id"]
+            isOneToOne: false
+            referencedRelation: "fretes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       freight_price_tables: {
         Row: {
           created_at: string
