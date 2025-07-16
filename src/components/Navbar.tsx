@@ -40,7 +40,7 @@ const Navbar = () => {
     navigate("/");
   };
 
-  const navLinks = profile?.user_type === 'company' ? companyLinks : (profile?.user_type === 'driver' ? driverLinks : []);
+  const navLinks = profile?.role === 'company' ? companyLinks : (profile?.role === 'driver' ? driverLinks : []);
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
@@ -50,7 +50,7 @@ const Navbar = () => {
     <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <Link to={user ? (profile?.user_type === 'company' ? '/company-dashboard' : '/') : '/'} className="flex items-center space-x-2">
+          <Link to={user ? (profile?.role === 'company' ? '/company-dashboard' : '/') : '/'} className="flex items-center space-x-2">
             <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
               <Truck className="w-6 h-6 text-white" />
             </div>
@@ -92,7 +92,7 @@ const Navbar = () => {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate(profile.user_type === 'company' ? '/company-profile' : '#')} disabled={profile.user_type !== 'company'}>
+                  <DropdownMenuItem onClick={() => navigate(profile.role === 'company' ? '/company-profile' : '/driver-profile')}>
                     <User className="mr-2 h-4 w-4" />
                     <span>Perfil</span>
                   </DropdownMenuItem>
