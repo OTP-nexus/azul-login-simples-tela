@@ -114,6 +114,40 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       .replace(/[\u0300-\u036f]/g, ''); // Remove acentos
   };
 
+  // Função para buscar na origem
+  const searchInOrigin = (freight: any, searchTerm: string): boolean => {
+    if (!searchTerm || !searchTerm.trim()) return true;
+    
+    const normalizedSearch = normalizeText(searchTerm.trim());
+    console.log(`🔍 Buscando origem para: "${searchTerm}" (normalizado: "${normalizedSearch}")`);
+
+    // Função para verificar se o texto contém o termo de busca
+    const textContains = (text: string | null | undefined): boolean => {
+      if (!text) return false;
+      const normalized = normalizeText(text);
+      return normalized.includes(normalizedSearch) || 
+             // Também verificar se é uma sigla de estado (AC, SP, etc.)
+             (text.length === 2 && normalizedSearch.includes(normalized));
+    };
+
+    // Função adicional para verificar siglas de estado
+    const checkStateMatch = (state: string | null | undefined): boolean => {
+      if (!state) return false;
+      const stateNormalized = normalizeText(state);
+      // Verificar se o termo de busca contém a sigla do estado
+      return normalizedSearch.includes(stateNormalized) || stateNormalized.includes(normalizedSearch);
+    };
+
+    // Verificar campos diretos de origem
+    if (textContains(freight.origem_cidade) || checkStateMatch(freight.origem_estado)) {
+      console.log('✅ Encontrado nos campos diretos origem_cidade/origem_estado');
+      return true;
+    }
+
+    console.log('❌ Não encontrado na origem');
+    return false;
+  };
+
   // Função auxiliar para buscar destinos de forma mais robusta
   const searchInDestinations = (freight: any, searchTerm: string): boolean => {
     const normalizedSearch = normalizeText(searchTerm);
@@ -219,7 +253,8 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       console.log('Aplicando filtros:', filters, 'Página:', page);
 
       // Para filtros que são aplicados no client-side, precisamos buscar mais dados
-      const needsClientSideFiltering = filters.destination || 
+      const needsClientSideFiltering = filters.origin || 
+                                       filters.destination || 
                                        (filters.vehicleTypes && filters.vehicleTypes.length > 0) || 
                                        (filters.bodyTypes && filters.bodyTypes.length > 0);
       
@@ -234,11 +269,7 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
         .in('status', ['ativo', 'pendente'])
         .order('created_at', { ascending: false });
 
-      // Apply simple server-side filters
-      if (filters.origin) {
-        query = query.or(`origem_cidade.ilike.%${filters.origin}%,origem_estado.ilike.%${filters.origin}%`);
-      }
-      
+      // Apply simple server-side filters only
       if (filters.freightType) {
         query = query.eq('tipo_frete', filters.freightType);
       }
@@ -265,32 +296,47 @@ export const usePublicFreights = (filters: PublicFreightFilters = {}, page: numb
       let filteredData = freightData || [];
       console.log(`📊 Dados iniciais: ${filteredData.length} fretes`);
 
-      // Apply client-side filters
+      // Apply client-side filters in order
+      // 1. Origin filter
+      if (filters.origin && filters.origin.trim()) {
+        const originFilter = filters.origin.trim();
+        console.log(`🎯 Aplicando filtro de origem: "${originFilter}"`);
+        
+        const beforeOriginFilter = filteredData.length;
+        filteredData = filteredData.filter(freight => searchInOrigin(freight, originFilter));
+        console.log(`📊 Filtro origem: ${beforeOriginFilter} → ${filteredData.length} fretes`);
+      }
+
+      // 2. Destination filter
+      if (filters.destination && filters.destination.trim()) {
+        const destinationFilter = filters.destination.trim();
+        console.log(`🎯 Aplicando filtro de destino: "${destinationFilter}"`);
+        
+        const beforeDestinationFilter = filteredData.length;
+        filteredData = filteredData.filter(freight => searchInDestinations(freight, destinationFilter));
+        console.log(`📊 Filtro destino: ${beforeDestinationFilter} → ${filteredData.length} fretes`);
+      }
+
+      // 3. Vehicle types filter
       if (filters.vehicleTypes && filters.vehicleTypes.length > 0) {
+        const beforeVehicleFilter = filteredData.length;
         filteredData = filteredData.filter(freight => {
           return filters.vehicleTypes!.some(vehicleType => 
             hasVehicleType(freight.tipos_veiculos, vehicleType)
           );
         });
-        console.log(`📊 Após filtro de tipos de veículo: ${filteredData.length} fretes`);
+        console.log(`📊 Filtro veículos: ${beforeVehicleFilter} → ${filteredData.length} fretes`);
       }
 
+      // 4. Body types filter
       if (filters.bodyTypes && filters.bodyTypes.length > 0) {
+        const beforeBodyFilter = filteredData.length;
         filteredData = filteredData.filter(freight => {
           return filters.bodyTypes!.some(bodyType => 
             hasBodyType(freight.tipos_carrocerias, bodyType)
           );
         });
-        console.log(`📊 Após filtro de tipos de carroceria: ${filteredData.length} fretes`);
-      }
-
-      // Apply destination filtering using the robust search function
-      if (filters.destination) {
-        console.log('🔍 Aplicando filtro de destino robuste para:', filters.destination);
-        filteredData = filteredData.filter(freight => {
-          return searchInDestinations(freight, filters.destination!);
-        });
-        console.log(`📊 Após filtro de destino: ${filteredData.length} fretes`);
+        console.log(`📊 Filtro carrocerias: ${beforeBodyFilter} → ${filteredData.length} fretes`);
       }
 
       // Apply pagination for client-side filtered data
