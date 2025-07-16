@@ -65,7 +65,7 @@ export function useDriverProfile() {
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) {
         console.error('Error fetching profile:', profileError);
@@ -73,30 +73,28 @@ export function useDriverProfile() {
         return;
       }
 
-      // Buscar dados do motorista
+      // Buscar dados do motorista (pode não existir ainda)
       const { data: driverData, error: driverError } = await supabase
         .from('drivers')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (driverError) {
         console.error('Error fetching driver:', driverError);
-        setError('Erro ao buscar dados do motorista');
-        return;
+        // Não tratamos como erro fatal se não existir dados do motorista
       }
 
-      // Buscar status dos documentos
+      // Buscar status dos documentos (pode não existir ainda)
       const { data: documentsData, error: documentsError } = await supabase
         .from('document_verifications')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (documentsError) {
         console.error('Error fetching documents:', documentsError);
-        setError('Erro ao buscar status dos documentos');
-        return;
+        // Não tratamos como erro fatal se não existir verificação de documentos
       }
 
       setData({

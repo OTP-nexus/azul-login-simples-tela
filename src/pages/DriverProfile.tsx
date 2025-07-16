@@ -28,7 +28,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
 const DriverProfile = () => {
-  const { data, loading, error, updateProfile, updateDriver } = useDriverProfile();
+  const { data, loading, error, refetch, updateProfile, updateDriver } = useDriverProfile();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
@@ -40,11 +40,11 @@ const DriverProfile = () => {
 
   // Inicializar dados do formulário quando os dados estão carregados
   React.useEffect(() => {
-    if (data.profile && data.driver) {
+    if (data.profile) {
       setFormData({
         full_name: data.profile.full_name || '',
         phone: data.profile.phone || '',
-        vehicle_type: data.driver.vehicle_type || ''
+        vehicle_type: data.driver?.vehicle_type || ''
       });
     }
   }, [data.profile, data.driver]);
@@ -56,16 +56,19 @@ const DriverProfile = () => {
         phone: formData.phone
       };
 
-      const driverUpdates = {
-        vehicle_type: formData.vehicle_type
-      };
+      // Só atualiza dados do driver se o driver existir
+      const updates = [updateProfile(profileUpdates)];
+      
+      if (driver && formData.vehicle_type) {
+        const driverUpdates = {
+          vehicle_type: formData.vehicle_type
+        };
+        updates.push(updateDriver(driverUpdates));
+      }
 
-      const [profileResult, driverResult] = await Promise.all([
-        updateProfile(profileUpdates),
-        updateDriver(driverUpdates)
-      ]);
-
-      if (profileResult.error || driverResult.error) {
+      const results = await Promise.all(updates);
+      
+      if (results.some(result => result.error)) {
         toast({
           title: "Erro",
           description: "Erro ao atualizar dados",
@@ -93,11 +96,11 @@ const DriverProfile = () => {
 
   const handleCancel = () => {
     // Restaurar dados originais
-    if (data.profile && data.driver) {
+    if (data.profile) {
       setFormData({
         full_name: data.profile.full_name || '',
         phone: data.profile.phone || '',
-        vehicle_type: data.driver.vehicle_type || ''
+        vehicle_type: data.driver?.vehicle_type || ''
       });
     }
     setEditing(false);
@@ -156,6 +159,25 @@ const DriverProfile = () => {
   }
 
   const { profile, driver, documents } = data;
+  
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <CardTitle className="text-xl">Perfil não encontrado</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="text-gray-600 mb-6">Não foi possível carregar os dados do seu perfil.</p>
+            <Button onClick={() => navigate('/driver-dashboard')} className="w-full">
+              Voltar ao Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -265,6 +287,31 @@ const DriverProfile = () => {
 
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Alert for incomplete driver data */}
+            {!driver && (
+              <Card className="border-orange-200 bg-orange-50">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-3">
+                    <AlertCircle className="h-6 w-6 text-orange-600" />
+                    <div>
+                      <h3 className="font-medium text-orange-900">Cadastro Incompleto</h3>
+                      <p className="text-sm text-orange-700 mt-1">
+                        Você precisa completar seu cadastro como motorista para acessar todas as funcionalidades.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <Button 
+                      onClick={() => navigate('/driver-registration')}
+                      className="bg-orange-600 hover:bg-orange-700"
+                    >
+                      Completar Cadastro
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Personal Information */}
             <Card>
               <CardHeader>
