@@ -140,9 +140,14 @@ const PublicFreightsFilter = ({ onFilterChange, initialFilters }: PublicFreights
         }
         if (cleanFilters.destinationState) {
           const selectedState = states.find(state => state.sigla === cleanFilters.destinationState);
-          if (selectedState) destinationParts.push(selectedState.nome);
+          if (selectedState) {
+            // Incluir tanto o nome completo quanto a sigla para busca mais flexível
+            destinationParts.push(selectedState.nome);
+            destinationParts.push(selectedState.sigla);
+          }
         }
         if (destinationParts.length > 0) {
+          // Usar join com espaço para permitir busca por qualquer um dos termos
           convertedFilters.destination = destinationParts.join(' ');
         }
       }
