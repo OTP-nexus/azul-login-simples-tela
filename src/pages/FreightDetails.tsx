@@ -565,13 +565,14 @@ const FreightDetails = () => {
                   <p className="font-semibold text-lg text-blue-600">{formatDimensions(freight)}</p>
                 </div>
                 
-                <div className="space-y-2">
+                {/* Valor - Não mostrar para frete de agregamento pois aparece na tabela de preços */}
+                {freight.tipo_frete !== 'agregamento' && <div className="space-y-2">
                   <div className="flex items-center space-x-2 mb-1">
                     <DollarSign className="w-4 h-4 text-gray-500" />
                     <p className="text-sm text-gray-500">Valor</p>
                   </div>
                   <p className="font-semibold text-lg text-green-600">{formatValue(freight.valores_definidos)}</p>
-                </div>
+                </div>}
               </div>
 
               {/* Itens da Carga - Apenas para frete comum */}
