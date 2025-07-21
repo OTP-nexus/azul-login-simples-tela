@@ -6,7 +6,7 @@ const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    navigate('/', { replace: true });
+    navigate('/landing', { replace: true });
   }, [navigate]);
 
   return null;
