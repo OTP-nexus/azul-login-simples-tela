@@ -21,7 +21,8 @@ import {
   Save,
   X,
   ArrowLeft,
-  HelpCircle
+  HelpCircle,
+  Crown
 } from 'lucide-react';
 import { useDriverProfile } from '@/hooks/useDriverProfile';
 import { useNavigate } from 'react-router-dom';
@@ -344,6 +345,30 @@ const DriverProfile = () => {
                       {driver?.cpf ? formatCPF(driver.cpf) : 'Não informado'}
                     </span>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* My Plan Card */}
+            <Card className="mt-4 sm:mt-6">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                  <Crown className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span>Meu Plano</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-6 pt-0">
+                <div className="text-center space-y-3">
+                  <div className="px-3 py-2 bg-gray-100 rounded-lg">
+                    <p className="text-sm font-medium text-gray-900">Plano Gratuito</p>
+                    <p className="text-xs text-gray-600">5 contatos por mês</p>
+                  </div>
+                  <Button 
+                    onClick={() => navigate('/driver/plans')}
+                    className="w-full h-9 sm:h-10 text-sm sm:text-base"
+                  >
+                    Ver Planos
+                  </Button>
                 </div>
               </CardContent>
             </Card>
