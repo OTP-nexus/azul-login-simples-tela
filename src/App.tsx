@@ -31,6 +31,8 @@ import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 import DriverPlans from "./pages/DriverPlans";
 import CompanyPlans from "./pages/CompanyPlans";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancel from "./pages/PaymentCancel";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +72,8 @@ function App() {
                 <Route path="/active-freights" element={<ActiveFreights />} />
                 <Route path="/driver/plans" element={<DriverPlans />} />
                 <Route path="/company/plans" element={<CompanyPlans />} />
+                <Route path="/payment-success" element={<PaymentSuccess />} />
+                <Route path="/payment-cancel" element={<PaymentCancel />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />

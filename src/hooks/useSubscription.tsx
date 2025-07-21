@@ -36,6 +36,7 @@ interface SubscriptionData {
   contactViewsRemaining: number;
   canCreateFreight: boolean;
   canViewContacts: boolean;
+  refreshSubscription: () => Promise<void>;
 }
 
 export function useSubscription(): SubscriptionData {
@@ -124,6 +125,12 @@ export function useSubscription(): SubscriptionData {
     subscription?.status === 'active'
   );
 
+  const refreshSubscription = async () => {
+    if (user && profile) {
+      await fetchSubscription();
+    }
+  };
+
   return {
     subscription,
     plan,
@@ -132,6 +139,7 @@ export function useSubscription(): SubscriptionData {
     trialEndsAt: subscription?.trial_ends_at || null,
     contactViewsRemaining,
     canCreateFreight,
-    canViewContacts
+    canViewContacts,
+    refreshSubscription
   };
 }

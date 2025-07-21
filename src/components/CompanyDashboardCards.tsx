@@ -9,6 +9,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDocumentStatus } from '@/hooks/useDocumentStatus';
 import { useCompany } from '@/hooks/useCompany';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscription } from '@/hooks/useSubscription';
+import { useAccessCheck } from '@/hooks/useAccessCheck';
+import { SubscriptionStatus } from '@/components/SubscriptionStatus';
 import LogoRequiredDialog from '@/components/LogoRequiredDialog';
 import FreightContactsList from '@/components/FreightContactsList';
 
@@ -17,6 +20,8 @@ const CompanyDashboardCards = () => {
   const { user, signOut } = useAuth();
   const { documentStatus, loading } = useDocumentStatus();
   const { company, loading: companyLoading } = useCompany();
+  const { subscription, plan, isInTrial, trialEndsAt, canCreateFreight } = useSubscription();
+  const { checkAccess, isChecking } = useAccessCheck();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [showLogoDialog, setShowLogoDialog] = useState(false);
@@ -71,7 +76,7 @@ const CompanyDashboardCards = () => {
     return true;
   };
 
-  const handleCardClick = (cardType: string) => {
+  const handleCardClick = async (cardType: string) => {
     console.log(`Clicked on ${cardType} card`);
     
     // Verificar se precisa de logo para esta funcionalidade
@@ -80,6 +85,22 @@ const CompanyDashboardCards = () => {
     }
     
     if (cardType === 'SOLICITAR FRETE') {
+      // Verificar acesso antes de navegar
+      const accessResult = await checkAccess('create_freight');
+      
+      if (!accessResult.canAccess) {
+        toast({
+          title: "Acesso restrito",
+          description: accessResult.message || "Você não tem permissão para criar fretes.",
+          variant: "destructive"
+        });
+        
+        if (accessResult.reason === 'trial_expired' || accessResult.reason === 'no_subscription') {
+          navigate('/company/plans');
+        }
+        return;
+      }
+      
       navigate('/freight-request');
       return;
     }
@@ -156,12 +177,56 @@ const CompanyDashboardCards = () => {
           <p className="text-gray-600">Gerencie suas operações de frete e colaboradores</p>
         </div>
 
+        {/* Alerta de Trial/Assinatura */}
+        {isInTrial && trialEndsAt && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-amber-800">Período de Trial</h3>
+                <p className="text-sm text-amber-700">
+                  Seu trial expira em {new Date(trialEndsAt).toLocaleDateString('pt-BR')}. 
+                  Faça upgrade para continuar criando fretes.
+                </p>
+              </div>
+              <Button
+                onClick={() => navigate('/company/plans')}
+                className="bg-amber-600 text-white hover:bg-amber-700"
+              >
+                Fazer Upgrade
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {!canCreateFreight && !isInTrial && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-red-800">Assinatura Necessária</h3>
+                <p className="text-sm text-red-700">
+                  Você precisa de uma assinatura ativa para criar fretes.
+                </p>
+              </div>
+              <Button
+                onClick={() => navigate('/company/plans')}
+                className="bg-red-600 text-white hover:bg-red-700"
+              >
+                Ver Planos
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Dashboard Tabs */}
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="dashboard" className="flex items-center space-x-2">
               <Building2 className="w-4 h-4" />
               <span>Dashboard</span>
+            </TabsTrigger>
+            <TabsTrigger value="subscription" className="flex items-center space-x-2">
+              <UserCircle className="w-4 h-4" />
+              <span>Assinatura</span>
             </TabsTrigger>
             <TabsTrigger value="contacts" className="flex items-center space-x-2">
               <MessageSquare className="w-4 h-4" />
@@ -174,7 +239,9 @@ const CompanyDashboardCards = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Solicitar Frete Card */}
               <Card 
-                className="cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl bg-gradient-to-br from-green-50 to-green-100 border-green-200 group"
+                className={`cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl bg-gradient-to-br border-green-200 group ${
+                  canCreateFreight ? 'from-green-50 to-green-100' : 'from-gray-50 to-gray-100 opacity-60'
+                }`}
                 onClick={() => handleCardClick('SOLICITAR FRETE')}
               >
                 <CardHeader className="text-center pb-4">
@@ -192,11 +259,14 @@ const CompanyDashboardCards = () => {
                   <p className="text-sm text-green-700 mb-4">
                     Solicite um novo frete informando origem, destino e detalhes da carga
                   </p>
-                  <div className="bg-green-200 rounded-lg p-3">
-                    <p className="text-xs text-green-800 font-medium">
-                      Clique para começar
+                  <div className={`rounded-lg p-3 ${canCreateFreight ? 'bg-green-200' : 'bg-gray-200'}`}>
+                    <p className={`text-xs font-medium ${canCreateFreight ? 'text-green-800' : 'text-gray-600'}`}>
+                      {canCreateFreight ? 'Clique para começar' : 'Assinatura necessária'}
                     </p>
                   </div>
+                  {isChecking && (
+                    <div className="mt-2 text-xs text-gray-500">Verificando acesso...</div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -303,6 +373,10 @@ const CompanyDashboardCards = () => {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="subscription" className="space-y-6">
+            <SubscriptionStatus />
           </TabsContent>
 
           <TabsContent value="contacts" className="space-y-6">
