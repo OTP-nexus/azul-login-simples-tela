@@ -7,6 +7,7 @@ import { Check, Star, Eye, MessageCircle, Phone, BarChart3, Bell } from 'lucide-
 import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import Navbar from '@/components/Navbar';
 
 const DriverPlans = () => {
   const { plan: currentPlan, subscription, isLoading } = useSubscription();
@@ -115,13 +116,16 @@ const DriverPlans = () => {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/3 mx-auto"></div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {[1, 2].map((i) => (
-              <div key={i} className="h-96 bg-gray-200 rounded-lg"></div>
-            ))}
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto p-6">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 bg-gray-200 rounded w-1/3 mx-auto"></div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-96 bg-gray-200 rounded-lg"></div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -129,7 +133,9 @@ const DriverPlans = () => {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <div className="container mx-auto p-6 space-y-6">
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Escolha seu Plano</h1>
         <p className="text-gray-600">
@@ -280,6 +286,7 @@ const DriverPlans = () => {
           </p>
         </div>
       </div>
+    </div>
     </div>
   );
 };
