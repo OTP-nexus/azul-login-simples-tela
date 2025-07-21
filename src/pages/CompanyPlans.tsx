@@ -7,6 +7,7 @@ import { Check, Building, Crown, Zap, FileText, Users, BarChart3, Headphones, Sh
 import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import Navbar from '@/components/Navbar';
 
 const CompanyPlans = () => {
   const { plan: currentPlan, subscription, isInTrial, trialEndsAt, isLoading } = useSubscription();
@@ -130,7 +131,9 @@ const CompanyPlans = () => {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <>
+      <Navbar />
+      <div className="container mx-auto p-6 space-y-6">
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Planos Empresariais</h1>
         <p className="text-gray-600">
@@ -267,6 +270,7 @@ const CompanyPlans = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
