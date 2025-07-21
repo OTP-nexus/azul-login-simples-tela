@@ -3,13 +3,13 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, Star, Eye, MessageCircle, Phone, BarChart3, Bell, Crown } from 'lucide-react';
+import { Check, Star, Eye, MessageCircle, Phone, BarChart3, Bell } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const DriverPlans = () => {
-  const { plan: currentPlan, subscription, contactViewsRemaining, isLoading } = useSubscription();
+  const { plan: currentPlan, subscription, isLoading } = useSubscription();
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -42,7 +42,7 @@ const DriverPlans = () => {
         'Telefone completo das empresas',
         'Notificações prioritárias de novos fretes',
         'Histórico completo de contatos',
-        'Relatórios de performance detalhados',
+        'Relatórios de performance',
         'Suporte prioritário via WhatsApp'
       ],
       icon: Star,
@@ -115,8 +115,8 @@ const DriverPlans = () => {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="animate-pulse space-y-4">
+      <div className="container mx-auto p-6">
+        <div className="animate-pulse space-y-6">
           <div className="h-8 bg-gray-200 rounded w-1/3 mx-auto"></div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {[1, 2].map((i) => (
@@ -129,40 +129,14 @@ const DriverPlans = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Escolha seu Plano</h2>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Escolha seu Plano</h1>
         <p className="text-gray-600">
-          Maximize suas oportunidades com acesso completo aos contatos das empresas
+          Maximize suas oportunidades com acesso ilimitado aos contatos das empresas
         </p>
       </div>
 
-      {/* Status atual */}
-      <Card className="border-blue-200 bg-blue-50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-800">
-            <Crown className="h-5 w-5" />
-            Status Atual
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-blue-900">
-                {currentPlan?.name || 'Plano Gratuito'}
-              </h3>
-              <p className="text-blue-700">
-                Visualizações restantes: {contactViewsRemaining === -1 ? 'Ilimitadas' : contactViewsRemaining}
-              </p>
-            </div>
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-              {subscription?.status === 'active' ? 'Ativo' : 'Gratuito'}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Grid de planos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {plans.map((plan) => {
           const Icon = plan.icon;
@@ -263,7 +237,6 @@ const DriverPlans = () => {
         })}
       </div>
 
-      {/* Informações adicionais */}
       <div className="bg-gray-50 rounded-lg p-6">
         <h3 className="font-semibold text-gray-900 mb-3">Por que escolher o Premium?</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
@@ -303,7 +276,7 @@ const DriverPlans = () => {
             <br />
             ✓ Suporte técnico disponível 24/7
             <br />
-            ✓ Pagamento via PIX oferece desconto especial de 10%
+            ✓ Pagamento via PIX oferece desconto especial
           </p>
         </div>
       </div>
