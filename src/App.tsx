@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import UserTypeSelection from "./pages/UserTypeSelection";
@@ -55,78 +55,22 @@ function App() {
               <Route path="/public-freight-request" element={<PublicFreightRequest />} />
               
               {/* Rotas protegidas */}
-              <Route path="/driver-dashboard" element={
-                <ProtectedRoute>
-                  <DriverDashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/company-dashboard" element={
-                <ProtectedRoute>
-                  <CompanyDashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/driver-profile" element={
-                <ProtectedRoute>
-                  <DriverProfile />
-                </ProtectedRoute>
-              } />
-              <Route path="/company-profile" element={
-                <ProtectedRoute>
-                  <CompanyProfile />
-                </ProtectedRoute>
-              } />
-              <Route path="/document-verification" element={
-                <ProtectedRoute>
-                  <DocumentVerification />
-                </ProtectedRoute>
-              } />
-              <Route path="/driver-document-verification" element={
-                <ProtectedRoute>
-                  <DriverDocumentVerification />
-                </ProtectedRoute>
-              } />
-              <Route path="/freight-request" element={
-                <ProtectedRoute>
-                  <FreightRequest />
-                </ProtectedRoute>
-              } />
-              <Route path="/freight-aggregation" element={
-                <ProtectedRoute>
-                  <FreightAggregation />
-                </ProtectedRoute>
-              } />
-              <Route path="/freight-return" element={
-                <ProtectedRoute>
-                  <FreightReturn />
-                </ProtectedRoute>
-              } />
-              <Route path="/freight-complete" element={
-                <ProtectedRoute>
-                  <FreightComplete />
-                </ProtectedRoute>
-              } />
-              <Route path="/freight/:id" element={
-                <ProtectedRoute>
-                  <FreightDetails />
-                </ProtectedRoute>
-              } />
-              <Route path="/active-freights" element={
-                <ProtectedRoute>
-                  <ActiveFreights />
-                </ProtectedRoute>
-              } />
-              
-              {/* Rotas de planos */}
-              <Route path="/driver/plans" element={
-                <ProtectedRoute>
-                  <DriverPlans />
-                </ProtectedRoute>
-              } />
-              <Route path="/company/plans" element={
-                <ProtectedRoute>
-                  <CompanyPlans />
-                </ProtectedRoute>
-              } />
+              <Route element={<ProtectedRoute />}>
+                <Route path="/driver-dashboard" element={<DriverDashboard />} />
+                <Route path="/company-dashboard" element={<CompanyDashboard />} />
+                <Route path="/driver-profile" element={<DriverProfile />} />
+                <Route path="/company-profile" element={<CompanyProfile />} />
+                <Route path="/document-verification" element={<DocumentVerification />} />
+                <Route path="/driver-document-verification" element={<DriverDocumentVerification />} />
+                <Route path="/freight-request" element={<FreightRequest />} />
+                <Route path="/freight-aggregation" element={<FreightAggregation />} />
+                <Route path="/freight-return" element={<FreightReturn />} />
+                <Route path="/freight-complete" element={<FreightComplete />} />
+                <Route path="/freight/:id" element={<FreightDetails />} />
+                <Route path="/active-freights" element={<ActiveFreights />} />
+                <Route path="/driver/plans" element={<DriverPlans />} />
+                <Route path="/company/plans" element={<CompanyPlans />} />
+              </Route>
               
               <Route path="*" element={<NotFound />} />
             </Routes>

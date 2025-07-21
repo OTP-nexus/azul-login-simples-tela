@@ -60,7 +60,7 @@ export function useSubscription(): SubscriptionData {
       
       // Buscar assinatura ativa do usuário
       const { data: subscriptionData, error: subError } = await supabase
-        .from('subscriptions')
+        .from('subscriptions' as any)
         .select(`
           *,
           plan:subscription_plans(*)
@@ -74,32 +74,32 @@ export function useSubscription(): SubscriptionData {
         return;
       }
 
-      if (subscriptionData) {
-        setSubscription(subscriptionData as Subscription);
-        setPlan(subscriptionData.plan as SubscriptionPlan);
+      if (subscriptionData && (subscriptionData as any).plan) {
+        setSubscription(subscriptionData as any);
+        setPlan((subscriptionData as any).plan);
       } else {
         // Se não tem assinatura, buscar plano gratuito padrão
         const userType = profile.role === 'driver' ? 'driver' : 'company';
         const defaultSlug = userType === 'driver' ? 'driver-free' : 'company-trial';
         
         const { data: defaultPlan, error: planError } = await supabase
-          .from('subscription_plans')
+          .from('subscription_plans' as any)
           .select('*')
           .eq('slug', defaultSlug)
           .eq('is_active', true)
           .single();
 
         if (!planError && defaultPlan) {
-          setPlan(defaultPlan as SubscriptionPlan);
+          setPlan(defaultPlan as any);
         }
       }
 
       // Se for motorista, verificar limite de visualizações
       if (profile.role === 'driver') {
         const { data: remainingViews } = await supabase
-          .rpc('check_driver_contact_limit', { driver_user_id: user!.id });
+          .rpc('check_driver_contact_limit' as any, { driver_user_id: user!.id });
         
-        setContactViewsRemaining(remainingViews || 0);
+        setContactViewsRemaining(typeof remainingViews === 'number' ? remainingViews : 0);
       }
 
     } catch (error) {
