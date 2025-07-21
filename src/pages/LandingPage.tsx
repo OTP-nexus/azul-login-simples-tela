@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Truck, Building2, Shield, Clock, MapPin, Users, CheckCircle, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import Navbar from '@/components/Navbar';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -34,30 +35,7 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-blue-100 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                <Truck className="w-6 h-6 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold text-gray-800">FreightConnect</h1>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" onClick={handleViewFreights}>
-                Ver Fretes
-              </Button>
-              <Button variant="outline" onClick={handleDriverLogin}>
-                Login
-              </Button>
-              <Button onClick={handlePublicFreightRequest}>
-                Solicitar Frete
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       {/* Hero Section */}
       <section className="py-20 px-4">

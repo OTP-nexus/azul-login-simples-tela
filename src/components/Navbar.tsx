@@ -106,6 +106,7 @@ const Navbar = () => {
             ) : (
               <>
                 <Button variant="ghost" onClick={() => navigate('/lista-fretes')}>Ver Fretes</Button>
+                <Button variant="ghost" onClick={() => navigate('/solicitar-frete')}>Solicitar Frete</Button>
                 <Button onClick={() => navigate('/login')}>Login</Button>
               </>
             )}
