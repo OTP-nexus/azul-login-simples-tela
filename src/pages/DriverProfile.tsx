@@ -21,13 +21,11 @@ import {
   Save,
   X,
   ArrowLeft,
-  HelpCircle,
-  Crown
+  HelpCircle
 } from 'lucide-react';
 import { useDriverProfile } from '@/hooks/useDriverProfile';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { SubscriptionStatus } from '@/components/SubscriptionStatus';
 
 const DriverProfile = () => {
   const { data, loading, error, refetch, updateProfile, updateDriver, updateAvailability } = useDriverProfile();
@@ -312,30 +310,6 @@ const DriverProfile = () => {
       {/* Content */}
       <div className="max-w-4xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8">
-          {/* Subscription Plan Card */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-yellow-500" />
-                  Meu Plano
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 sm:p-6 pt-0">
-                <SubscriptionStatus />
-                <div className="mt-4">
-                  <Button 
-                    onClick={() => navigate('/driver/plans')} 
-                    className="w-full"
-                    variant="outline"
-                  >
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Ver Planos
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
           {/* Profile Overview */}
           <div className="lg:col-span-1">
             <Card>
