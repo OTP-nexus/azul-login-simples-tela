@@ -31,13 +31,16 @@ import {
   Mail,
   MessageSquare,
   Heart,
-  ExternalLink
+  ExternalLink,
+  Eye
 } from "lucide-react";
 import FreightStatusBadge from './FreightStatusBadge';
+import { ContactViewPaywall } from './ContactViewPaywall';
 import type { ActiveFreight } from '@/hooks/useActiveFreights';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscription } from '@/hooks/useSubscription';
 import { useFreightInterest } from '@/hooks/useFreightInterest';
 
 interface FreightDetailsModalProps {
@@ -48,9 +51,11 @@ interface FreightDetailsModalProps {
 
 const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalProps) => {
   const { user, profile } = useAuth();
+  const { canViewContacts, contactViewsRemaining, refreshSubscription } = useSubscription();
   const { demonstrateInterest, isLoading: interestLoading, checkExistingInterest } = useFreightInterest();
   const [hasInterest, setHasInterest] = useState(false);
-  const [companyData, setCompanyData] = useState<any>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [hasViewedContact, setHasViewedContact] = useState(false);
 
   // Buscar dados dos colaboradores
   const { data: collaborators } = useQuery({
@@ -161,6 +166,32 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
   const formatDateTime = (date: string | null) => {
     if (!date) return 'Não definido';
     return new Date(date).toLocaleString('pt-BR');
+  };
+
+  // Função para registrar visualização de contato
+  const handleViewContact = async () => {
+    if (!freight || !isDriver || hasViewedContact) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('record-contact-view', {
+        body: { freightId: freight.id }
+      });
+
+      if (error) {
+        console.error('Erro ao registrar visualização:', error);
+        return;
+      }
+
+      if (data?.success) {
+        setHasViewedContact(true);
+        // Atualizar contadores
+        if (!data.alreadyViewed) {
+          refreshSubscription();
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao registrar visualização:', error);
+    }
   };
 
   // Função para "desembrulhar" arrays aninhados
@@ -532,10 +563,107 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     }
   };
 
-  // Função para renderizar contato da empresa
+  // Função para renderizar contato da empresa com controle de acesso
   const renderCompanyContact = () => {
     if (!company) return null;
 
+    // Se não é motorista, exibir contato normalmente
+    if (!isDriver) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Phone className="w-5 h-5" />
+              <span>Contato da Empresa</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="font-medium text-blue-900 mb-2">{company.company_name}</h4>
+                <p className="text-sm text-blue-700 mb-2">
+                  Responsável: {company.contact_name}
+                </p>
+                <p className="text-sm text-blue-600">
+                  📞 {company.phone}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // Se é motorista, verificar se pode ver contatos
+    if (!canViewContacts && !hasViewedContact) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Phone className="w-5 h-5" />
+              <span>Contato da Empresa</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="font-medium text-blue-900 mb-2">{company.company_name}</h4>
+                <p className="text-sm text-blue-700 mb-2">
+                  Responsável: {company.contact_name}
+                </p>
+                <div className="bg-gray-100 p-3 rounded-lg border-2 border-dashed border-gray-300">
+                  <div className="flex items-center space-x-2 text-gray-600">
+                    <Eye className="w-4 h-4" />
+                    <span className="text-sm">Telefone disponível após visualizar</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <div className="flex items-start space-x-3">
+                  <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-orange-800">
+                      {contactViewsRemaining > 0 
+                        ? `${contactViewsRemaining} visualizações restantes`
+                        : 'Limite de visualizações atingido'
+                      }
+                    </p>
+                    <p className="text-xs text-orange-700 mt-1">
+                      {contactViewsRemaining > 0 
+                        ? 'Clique em "Ver Contato" para visualizar os dados'
+                        : 'Faça upgrade para visualizar mais contatos'
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {contactViewsRemaining > 0 ? (
+                  <Button
+                    onClick={handleViewContact}
+                    className="w-full"
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    Ver Contato ({contactViewsRemaining} restantes)
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => setShowPaywall(true)}
+                    className="w-full"
+                  >
+                    Fazer Upgrade para Ver Contato
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // Se pode ver contatos ou já visualizou, mostrar contato completo
     return (
       <Card>
         <CardHeader>
@@ -556,313 +684,326 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
               </p>
             </div>
 
-            {isDriver && (
-              <div className="space-y-2">
-                {!hasInterest ? (
-                  <Button
-                    onClick={handleDemonstrateInterest}
-                    disabled={interestLoading}
-                    className="w-full bg-green-600 hover:bg-green-700"
-                  >
-                    {interestLoading ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Demonstrando interesse...</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-2">
-                        <Heart className="w-4 h-4" />
-                        <span>Demonstrar Interesse</span>
-                      </div>
-                    )}
-                  </Button>
-                ) : (
-                  <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                    <div className="flex items-center space-x-2 text-green-700">
-                      <Heart className="w-4 h-4 fill-current" />
-                      <span className="text-sm font-medium">
-                        Você já demonstrou interesse neste frete
-                      </span>
+            <div className="space-y-2">
+              {!hasInterest ? (
+                <Button
+                  onClick={handleDemonstrateInterest}
+                  disabled={interestLoading}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  {interestLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Demonstrando interesse...</span>
                     </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <Heart className="w-4 h-4" />
+                      <span>Demonstrar Interesse</span>
+                    </div>
+                  )}
+                </Button>
+              ) : (
+                <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                  <div className="flex items-center space-x-2 text-green-700">
+                    <Heart className="w-4 h-4 fill-current" />
+                    <span className="text-sm font-medium">
+                      Você já demonstrou interesse neste frete
+                    </span>
                   </div>
-                )}
-
-                <div className="flex space-x-2">
-                  <Button
-                    onClick={() => openWhatsApp(company.phone)}
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                  >
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    WhatsApp
-                  </Button>
-                  <Button
-                    onClick={() => makeCall(company.phone)}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <Phone className="w-4 h-4 mr-2" />
-                    Ligar
-                  </Button>
                 </div>
+              )}
+
+              <div className="flex space-x-2">
+                <Button
+                  onClick={() => openWhatsApp(company.phone)}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  WhatsApp
+                </Button>
+                <Button
+                  onClick={() => makeCall(company.phone)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Phone className="w-4 h-4 mr-2" />
+                  Ligar
+                </Button>
               </div>
-            )}
+            </div>
           </div>
         </CardContent>
       </Card>
     );
   };
 
+  const handleUpgrade = () => {
+    // Implementar lógica de upgrade
+    console.log('Upgrade solicitado');
+    setShowPaywall(false);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-3">
-            <div className={`w-10 h-10 ${typeConfig.bgColor} rounded-lg flex items-center justify-center`}>
-              <TypeIcon className={`w-5 h-5 ${typeConfig.color}`} />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">
-                {freight.codigo_agregamento || 'Código não gerado'}
-              </h2>
-              <div className="flex items-center space-x-2 mt-1">
-                <Badge variant="outline">{typeConfig.label}</Badge>
-                <FreightStatusBadge status={freight.status} />
-              </div>
-            </div>
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-6">
-          {/* Informações Gerais */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="w-5 h-5" />
-                <span>Informações Gerais</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500">Criado em</p>
-                <p className="font-medium">{formatDateTime(freight.created_at)}</p>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-3">
+              <div className={`w-10 h-10 ${typeConfig.bgColor} rounded-lg flex items-center justify-center`}>
+                <TypeIcon className={`w-5 h-5 ${typeConfig.color}`} />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Última atualização</p>
-                <p className="font-medium">{formatDateTime(freight.updated_at)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Data de Coleta</p>
-                <p className="font-medium">{formatDate(freight.data_coleta)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Data de Entrega</p>
-                <p className="font-medium">{formatDate(freight.data_entrega)}</p>
-              </div>
-              {freight.horario_carregamento && (
-                <div>
-                  <p className="text-sm text-gray-500">Horário de Carregamento</p>
-                  <p className="font-medium">{freight.horario_carregamento}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Origem e Destinos */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <MapPin className="w-5 h-5" />
-                <span>Origem e Destinos</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Origem</p>
-                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                    <p className="font-medium text-blue-900">{freight.origem_cidade}, {freight.origem_estado}</p>
-                  </div>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-gray-500 mb-2">Destinos</p>
-                  {renderDestinations()}
-                </div>
-
-                {renderStops()}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Detalhes da Carga */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Package className="w-5 h-5" />
-                <span>Detalhes da Carga</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500">Tipo de Mercadoria</p>
-                <p className="font-medium">{freight.tipo_mercadoria || 'Não especificado'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Peso da Carga</p>
-                <p className="font-medium">
-                  {freight.peso_carga ? `${freight.peso_carga} kg` : 'Não especificado'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Valor da Carga</p>
-                <p className="font-medium">{formatValue(freight.valor_carga)}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Veículos e Carrocerias */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Truck className="w-5 h-5" />
-                <span>Veículos e Carrocerias</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div>
-                  <p className="text-sm text-gray-500 mb-3">Tipos de Veículos Aceitos</p>
-                  {renderVehiclesAndBodies(freight.tipos_veiculos, 'Nenhum tipo de veículo especificado')}
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 mb-3">Tipos de Carrocerias Aceitas</p>
-                  {renderVehiclesAndBodies(freight.tipos_carrocerias, 'Nenhum tipo de carroceria especificado')}
+                <h2 className="text-xl font-bold">
+                  {freight.codigo_agregamento || 'Código não gerado'}
+                </h2>
+                <div className="flex items-center space-x-2 mt-1">
+                  <Badge variant="outline">{typeConfig.label}</Badge>
+                  <FreightStatusBadge status={freight.status} />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </DialogTitle>
+          </DialogHeader>
 
-          {/* Seções específicas para Agregamento */}
-          {freight.tipo_frete === 'agregamento' && (
-            <>
-              {/* Tabelas de Preços */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Calculator className="w-5 h-5" />
-                    <span>Tabelas de Preços</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {renderPricingTables()}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Benefícios */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Users className="w-5 h-5" />
-                    <span>Benefícios Oferecidos</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {renderBenefits()}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Regras de Agendamento */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Route className="w-5 h-5" />
-                    <span>Regras de Agendamento</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {renderSchedulingRules()}
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          {/* Configurações e Extras */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Settings className="w-5 h-5" />
-                <span>Configurações e Extras</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2">
-                  <Shield className={freight.precisa_seguro ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
-                  <span className={freight.precisa_seguro ? "text-green-600" : "text-gray-400"}>
-                    Seguro {freight.precisa_seguro ? "necessário" : "não necessário"}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Radar className={freight.precisa_rastreador ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
-                  <span className={freight.precisa_rastreador ? "text-green-600" : "text-gray-400"}>
-                    Rastreador {freight.precisa_rastreador ? "necessário" : "não necessário"}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <UserPlus className={freight.precisa_ajudante ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
-                  <span className={freight.precisa_ajudante ? "text-green-600" : "text-gray-400"}>
-                    Ajudante {freight.precisa_ajudante ? "necessário" : "não necessário"}
-                  </span>
-                </div>
-                {freight.pedagio_pago_por && (
-                  <div>
-                    <p className="text-sm text-gray-500">Pedágio pago por</p>
-                    <p className="font-medium capitalize">{freight.pedagio_pago_por}</p>
-                    {freight.pedagio_direcao && (
-                      <p className="text-sm text-gray-600">Direção: {freight.pedagio_direcao}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Colaboradores */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Users className="w-5 h-5" />
-                <span>Colaboradores Responsáveis</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {renderCollaborators()}
-            </CardContent>
-          </Card>
-
-          {/* Observações */}
-          {freight.observacoes && (
+          <div className="space-y-6">
+            {/* Informações Gerais */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <FileText className="w-5 h-5" />
-                  <span>Observações</span>
+                  <span>Informações Gerais</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Criado em</p>
+                  <p className="font-medium">{formatDateTime(freight.created_at)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Última atualização</p>
+                  <p className="font-medium">{formatDateTime(freight.updated_at)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Data de Coleta</p>
+                  <p className="font-medium">{formatDate(freight.data_coleta)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Data de Entrega</p>
+                  <p className="font-medium">{formatDate(freight.data_entrega)}</p>
+                </div>
+                {freight.horario_carregamento && (
+                  <div>
+                    <p className="text-sm text-gray-500">Horário de Carregamento</p>
+                    <p className="font-medium">{freight.horario_carregamento}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Origem e Destinos */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <MapPin className="w-5 h-5" />
+                  <span>Origem e Destinos</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 whitespace-pre-wrap">{freight.observacoes}</p>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Origem</p>
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <p className="font-medium text-blue-900">{freight.origem_cidade}, {freight.origem_estado}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-500 mb-2">Destinos</p>
+                    {renderDestinations()}
+                  </div>
+
+                  {renderStops()}
+                </div>
               </CardContent>
             </Card>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+
+            {/* Detalhes da Carga */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Package className="w-5 h-5" />
+                  <span>Detalhes da Carga</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Tipo de Mercadoria</p>
+                  <p className="font-medium">{freight.tipo_mercadoria || 'Não especificado'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Peso da Carga</p>
+                  <p className="font-medium">
+                    {freight.peso_carga ? `${freight.peso_carga} kg` : 'Não especificado'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Valor da Carga</p>
+                  <p className="font-medium">{formatValue(freight.valor_carga)}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Veículos e Carrocerias */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Truck className="w-5 h-5" />
+                  <span>Veículos e Carrocerias</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-sm text-gray-500 mb-3">Tipos de Veículos Aceitos</p>
+                    {renderVehiclesAndBodies(freight.tipos_veiculos, 'Nenhum tipo de veículo especificado')}
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-3">Tipos de Carrocerias Aceitas</p>
+                    {renderVehiclesAndBodies(freight.tipos_carrocerias, 'Nenhum tipo de carroceria especificado')}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Seções específicas para Agregamento */}
+            {freight.tipo_frete === 'agregamento' && (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Calculator className="w-5 h-5" />
+                      <span>Tabelas de Preços</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {renderPricingTables()}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Users className="w-5 h-5" />
+                      <span>Benefícios Oferecidos</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {renderBenefits()}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Route className="w-5 h-5" />
+                      <span>Regras de Agendamento</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {renderSchedulingRules()}
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
+            {/* Configurações e Extras */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Settings className="w-5 h-5" />
+                  <span>Configurações e Extras</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Shield className={freight.precisa_seguro ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
+                    <span className={freight.precisa_seguro ? "text-green-600" : "text-gray-400"}>
+                      Seguro {freight.precisa_seguro ? "necessário" : "não necessário"}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Radar className={freight.precisa_rastreador ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
+                    <span className={freight.precisa_rastreador ? "text-green-600" : "text-gray-400"}>
+                      Rastreador {freight.precisa_rastreador ? "necessário" : "não necessário"}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <UserPlus className={freight.precisa_ajudante ? "w-4 h-4 text-green-600" : "w-4 h-4 text-gray-400"} />
+                    <span className={freight.precisa_ajudante ? "text-green-600" : "text-gray-400"}>
+                      Ajudante {freight.precisa_ajudante ? "necessário" : "não necessário"}
+                    </span>
+                  </div>
+                  {freight.pedagio_pago_por && (
+                    <div>
+                      <p className="text-sm text-gray-500">Pedágio pago por</p>
+                      <p className="font-medium capitalize">{freight.pedagio_pago_por}</p>
+                      {freight.pedagio_direcao && (
+                        <p className="text-sm text-gray-600">Direção: {freight.pedagio_direcao}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Colaboradores */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="w-5 h-5" />
+                  <span>Colaboradores Responsáveis</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {renderCollaborators()}
+              </CardContent>
+            </Card>
+
+            {/* Contato da Empresa - com controle de acesso */}
+            {renderCompanyContact()}
+
+            {/* Observações */}
+            {freight.observacoes && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FileText className="w-5 h-5" />
+                    <span>Observações</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-700 whitespace-pre-wrap">{freight.observacoes}</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Paywall Modal */}
+      <ContactViewPaywall
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onUpgrade={handleUpgrade}
+      />
+    </>
   );
 };
 

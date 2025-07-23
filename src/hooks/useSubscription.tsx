@@ -119,10 +119,10 @@ export function useSubscription(): SubscriptionData {
     (subscription?.status === 'active' && plan?.slug !== 'company-trial')
   );
 
+  // Corrigir a lógica do canViewContacts - remover condição problemática
   const canViewContacts = profile?.role === 'driver' && (
     contactViewsRemaining > 0 || 
-    plan?.contact_views_limit === -1 ||
-    subscription?.status === 'active'
+    plan?.contact_views_limit === -1
   );
 
   const refreshSubscription = async () => {
