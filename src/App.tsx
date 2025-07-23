@@ -54,7 +54,9 @@ function App() {
               <Route path="/collaborator-registration" element={<CollaboratorRegistration />} />
               <Route path="/landing" element={<LandingPage />} />
               <Route path="/public-freights" element={<PublicFreightsList />} />
+              <Route path="/lista-fretes" element={<PublicFreightsList />} />
               <Route path="/public-freight-request" element={<PublicFreightRequest />} />
+              <Route path="/solicitar-frete" element={<PublicFreightRequest />} />
               
               {/* Rotas protegidas */}
               <Route element={<ProtectedRoute />}>
