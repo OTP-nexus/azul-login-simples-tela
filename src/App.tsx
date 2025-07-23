@@ -33,6 +33,10 @@ import DriverPlans from "./pages/DriverPlans";
 import CompanyPlans from "./pages/CompanyPlans";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
+import Dashboard from "./pages/Dashboard";
+import Plans from "./pages/Plans";
+import CompanySubscription from "./pages/CompanySubscription";
+import DriverSubscription from "./pages/DriverSubscription";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +70,8 @@ function App() {
               
               {/* Rotas protegidas */}
               <Route element={<ProtectedRoute />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/plans" element={<Plans />} />
                 <Route path="/driver-dashboard" element={<DriverDashboard />} />
                 <Route path="/company-dashboard" element={<CompanyDashboard />} />
                 <Route path="/driver-profile" element={<DriverProfile />} />
@@ -80,6 +86,8 @@ function App() {
                 <Route path="/active-freights" element={<ActiveFreights />} />
                 <Route path="/driver/plans" element={<DriverPlans />} />
                 <Route path="/company/plans" element={<CompanyPlans />} />
+                <Route path="/company/subscription" element={<CompanySubscription />} />
+                <Route path="/driver/subscription" element={<DriverSubscription />} />
                 <Route path="/payment-success" element={<PaymentSuccess />} />
                 <Route path="/payment-cancel" element={<PaymentCancel />} />
               </Route>
