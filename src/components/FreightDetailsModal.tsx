@@ -42,6 +42,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useFreightInterest } from '@/hooks/useFreightInterest';
+import { useToast } from '@/hooks/use-toast';
 
 interface FreightDetailsModalProps {
   freight: ActiveFreight | null;
@@ -51,11 +52,13 @@ interface FreightDetailsModalProps {
 
 const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalProps) => {
   const { user, profile } = useAuth();
-  const { canViewContacts, contactViewsRemaining, refreshSubscription } = useSubscription();
+  const { canViewContacts, contactViewsRemaining, refreshSubscription, plan } = useSubscription();
   const { demonstrateInterest, isLoading: interestLoading, checkExistingInterest } = useFreightInterest();
+  const { toast } = useToast();
   const [hasInterest, setHasInterest] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [hasViewedContact, setHasViewedContact] = useState(false);
+  const [isViewingContact, setIsViewingContact] = useState(false);
 
   // Buscar dados dos colaboradores
   const { data: collaborators } = useQuery({
@@ -108,6 +111,14 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
       checkExistingInterest(freight.id).then(setHasInterest);
     }
   }, [freight, user, profile?.role, checkExistingInterest]);
+
+  // Reset do estado quando modal fecha
+  useEffect(() => {
+    if (!isOpen) {
+      setHasViewedContact(false);
+      setIsViewingContact(false);
+    }
+  }, [isOpen]);
 
   // Definir se é motorista
   const isDriver = profile?.role === 'driver';
@@ -170,7 +181,15 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
 
   // Função para registrar visualização de contato
   const handleViewContact = async () => {
-    if (!freight || !isDriver || hasViewedContact) return;
+    if (!freight || !isDriver || hasViewedContact || isViewingContact) return;
+
+    // Verificar se tem visualizações restantes
+    if (contactViewsRemaining === 0) {
+      setShowPaywall(true);
+      return;
+    }
+
+    setIsViewingContact(true);
 
     try {
       const { data, error } = await supabase.functions.invoke('record-contact-view', {
@@ -179,6 +198,11 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
 
       if (error) {
         console.error('Erro ao registrar visualização:', error);
+        toast({
+          title: 'Erro',
+          description: 'Erro ao registrar visualização. Tente novamente.',
+          variant: 'destructive'
+        });
         return;
       }
 
@@ -186,25 +210,32 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
         setHasViewedContact(true);
         // Atualizar contadores
         if (!data.alreadyViewed) {
-          refreshSubscription();
+          await refreshSubscription();
         }
+        toast({
+          title: 'Sucesso',
+          description: 'Contato visualizado com sucesso!',
+        });
       }
     } catch (error) {
       console.error('Erro ao registrar visualização:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro interno. Tente novamente.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsViewingContact(false);
     }
   };
 
-  // Função para "desembrulhar" arrays aninhados
   const flattenNestedArrays = (data: any): any[] => {
     if (!data) return [];
     
-    // Se já é um array
     if (Array.isArray(data)) {
-      // Se tem apenas um elemento e esse elemento é um array, desembrulhar
       if (data.length === 1 && Array.isArray(data[0])) {
         return data[0];
       }
-      // Se tem apenas um elemento e esse elemento é uma string que parece JSON
       if (data.length === 1 && typeof data[0] === 'string' && data[0].startsWith('[')) {
         try {
           return JSON.parse(data[0]);
@@ -215,7 +246,6 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
       return data;
     }
 
-    // Se é uma string que parece JSON
     if (typeof data === 'string' && data.startsWith('[')) {
       try {
         const parsed = JSON.parse(data);
@@ -225,7 +255,6 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
       }
     }
 
-    // Se é um objeto único, colocar em array
     if (typeof data === 'object') {
       return [data];
     }
@@ -233,14 +262,12 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     return [data];
   };
 
-  // Função para extrair texto legível de objetos
   const extractDisplayText = (item: any) => {
     if (typeof item === 'string') {
       return item;
     }
     
     if (typeof item === 'object' && item !== null) {
-      // Priorizar campos mais descritivos
       const textFields = [
         'nome', 'name', 'tipo', 'type', 'descricao', 'description', 
         'label', 'title', 'categoria', 'category', 'modelo', 'model',
@@ -253,7 +280,6 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
         }
       }
       
-      // Se não encontrou campos conhecidos, pegar a primeira propriedade string
       const firstStringValue = Object.values(item).find(value => typeof value === 'string');
       if (firstStringValue) {
         return firstStringValue;
@@ -263,7 +289,6 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     return String(item);
   };
 
-  // Função para extrair informações adicionais
   const extractSubtitle = (item: any) => {
     if (typeof item !== 'object' || item === null) return '';
     
@@ -292,11 +317,8 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     return '';
   };
 
-  // Função melhorada para renderizar destinos
   const renderDestinations = () => {
     const flattenedDestinations = flattenNestedArrays(freight.destinos);
-    console.log('Destinos originais:', freight.destinos);
-    console.log('Destinos após flatten:', flattenedDestinations);
     
     if (!Array.isArray(flattenedDestinations) || flattenedDestinations.length === 0) {
       return <p className="text-gray-500 italic">Nenhum destino definido</p>;
@@ -305,7 +327,6 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     return (
       <div className="space-y-2">
         {flattenedDestinations.map((destino: any, index: number) => {
-          // Se o destino é uma string simples
           if (typeof destino === 'string') {
             return (
               <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
@@ -314,7 +335,6 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
             );
           }
 
-          // Se o destino é um objeto
           if (typeof destino === 'object' && destino !== null) {
             const cidade = destino.cidade || destino.city || '';
             const estado = destino.estado || destino.state || '';
@@ -346,7 +366,6 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     );
   };
 
-  // Função melhorada para renderizar paradas
   const renderStops = () => {
     const flattenedStops = flattenNestedArrays(freight.paradas);
     
@@ -391,11 +410,8 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     );
   };
 
-  // Função melhorada para renderizar itens de array com formatação adequada
   const renderVehiclesAndBodies = (items: any[], emptyMessage: string = 'Não especificado') => {
     const flattenedItems = flattenNestedArrays(items);
-    console.log('Items originais:', items);
-    console.log('Items após flatten:', flattenedItems);
     
     if (!Array.isArray(flattenedItems) || flattenedItems.length === 0) {
       return <p className="text-gray-500 italic">{emptyMessage}</p>;
@@ -420,7 +436,6 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     );
   };
 
-  // Função específica para renderizar badges simples
   const renderSimpleBadges = (items: any[], emptyMessage: string = 'Não especificado') => {
     const flattenedItems = flattenNestedArrays(items);
     
@@ -443,7 +458,6 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     );
   };
 
-  // Helper function to render pricing tables for agregamento
   const renderPricingTables = () => {
     const flattenedTables = flattenNestedArrays(freight.tabelas_preco);
     
@@ -471,12 +485,10 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     ));
   };
 
-  // Helper function to render benefits for agregamento
   const renderBenefits = () => {
     return renderSimpleBadges(freight.beneficios, 'Nenhum benefício definido');
   };
 
-  // Helper function to render scheduling rules for agregamento
   const renderSchedulingRules = () => {
     const flattenedRules = flattenNestedArrays(freight.regras_agendamento);
     
@@ -495,7 +507,6 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     });
   };
 
-  // Função para renderizar colaboradores responsáveis
   const renderCollaborators = () => {
     if (!collaborators || collaborators.length === 0) {
       return <p className="text-gray-500 italic">Nenhum colaborador atribuído</p>;
@@ -563,7 +574,7 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     }
   };
 
-  // Função para renderizar contato da empresa com controle de acesso
+  // Função para renderizar contato da empresa com controle de acesso simplificado
   const renderCompanyContact = () => {
     if (!company) return null;
 
@@ -594,76 +605,10 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
       );
     }
 
-    // Se é motorista, verificar se pode ver contatos
-    if (!canViewContacts && !hasViewedContact) {
-      return (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Phone className="w-5 h-5" />
-              <span>Contato da Empresa</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">{company.company_name}</h4>
-                <p className="text-sm text-blue-700 mb-2">
-                  Responsável: {company.contact_name}
-                </p>
-                <div className="bg-gray-100 p-3 rounded-lg border-2 border-dashed border-gray-300">
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <Eye className="w-4 h-4" />
-                    <span className="text-sm">Telefone disponível após visualizar</span>
-                  </div>
-                </div>
-              </div>
+    // Lógica para motoristas
+    const canView = hasViewedContact || (plan?.contact_views_limit === -1);
+    const hasViews = contactViewsRemaining > 0;
 
-              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                <div className="flex items-start space-x-3">
-                  <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-orange-800">
-                      {contactViewsRemaining > 0 
-                        ? `${contactViewsRemaining} visualizações restantes`
-                        : 'Limite de visualizações atingido'
-                      }
-                    </p>
-                    <p className="text-xs text-orange-700 mt-1">
-                      {contactViewsRemaining > 0 
-                        ? 'Clique em "Ver Contato" para visualizar os dados'
-                        : 'Faça upgrade para visualizar mais contatos'
-                      }
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {contactViewsRemaining > 0 ? (
-                  <Button
-                    onClick={handleViewContact}
-                    className="w-full"
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    Ver Contato ({contactViewsRemaining} restantes)
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => setShowPaywall(true)}
-                    className="w-full"
-                  >
-                    Fazer Upgrade para Ver Contato
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-
-    // Se pode ver contatos ou já visualizou, mostrar contato completo
     return (
       <Card>
         <CardHeader>
@@ -679,58 +624,123 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
               <p className="text-sm text-blue-700 mb-2">
                 Responsável: {company.contact_name}
               </p>
-              <p className="text-sm text-blue-600">
-                📞 {company.phone}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              {!hasInterest ? (
-                <Button
-                  onClick={handleDemonstrateInterest}
-                  disabled={interestLoading}
-                  className="w-full bg-green-600 hover:bg-green-700"
-                >
-                  {interestLoading ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Demonstrando interesse...</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-2">
-                      <Heart className="w-4 h-4" />
-                      <span>Demonstrar Interesse</span>
-                    </div>
-                  )}
-                </Button>
+              
+              {canView ? (
+                <p className="text-sm text-blue-600">
+                  📞 {company.phone}
+                </p>
               ) : (
-                <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                  <div className="flex items-center space-x-2 text-green-700">
-                    <Heart className="w-4 h-4 fill-current" />
-                    <span className="text-sm font-medium">
-                      Você já demonstrou interesse neste frete
-                    </span>
+                <div className="bg-gray-100 p-3 rounded-lg border-2 border-dashed border-gray-300">
+                  <div className="flex items-center space-x-2 text-gray-600">
+                    <Eye className="w-4 h-4" />
+                    <span className="text-sm">Telefone disponível após visualizar</span>
                   </div>
                 </div>
               )}
+            </div>
 
-              <div className="flex space-x-2">
-                <Button
-                  onClick={() => openWhatsApp(company.phone)}
-                  className="flex-1 bg-green-600 hover:bg-green-700"
-                >
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  WhatsApp
-                </Button>
-                <Button
-                  onClick={() => makeCall(company.phone)}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  <Phone className="w-4 h-4 mr-2" />
-                  Ligar
-                </Button>
+            {!canView && (
+              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <div className="flex items-start space-x-3">
+                  <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-orange-800">
+                      {hasViews 
+                        ? `${contactViewsRemaining} visualizações restantes`
+                        : 'Limite de visualizações atingido'
+                      }
+                    </p>
+                    <p className="text-xs text-orange-700 mt-1">
+                      {hasViews 
+                        ? 'Clique em "Ver Contato" para visualizar os dados'
+                        : 'Faça upgrade para visualizar mais contatos'
+                      }
+                    </p>
+                  </div>
+                </div>
               </div>
+            )}
+
+            <div className="space-y-2">
+              {!canView && (
+                hasViews ? (
+                  <Button
+                    onClick={handleViewContact}
+                    disabled={isViewingContact}
+                    className="w-full"
+                  >
+                    {isViewingContact ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Visualizando...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <Eye className="w-4 h-4 mr-2" />
+                        Ver Contato ({contactViewsRemaining} restantes)
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => setShowPaywall(true)}
+                    className="w-full"
+                  >
+                    Fazer Upgrade para Ver Contato
+                  </Button>
+                )
+              )}
+
+              {canView && (
+                <>
+                  {!hasInterest ? (
+                    <Button
+                      onClick={handleDemonstrateInterest}
+                      disabled={interestLoading}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                    >
+                      {interestLoading ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          <span>Demonstrando interesse...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <Heart className="w-4 h-4" />
+                          <span>Demonstrar Interesse</span>
+                        </div>
+                      )}
+                    </Button>
+                  ) : (
+                    <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                      <div className="flex items-center space-x-2 text-green-700">
+                        <Heart className="w-4 h-4 fill-current" />
+                        <span className="text-sm font-medium">
+                          Você já demonstrou interesse neste frete
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex space-x-2">
+                    <Button
+                      onClick={() => openWhatsApp(company.phone)}
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                    >
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      WhatsApp
+                    </Button>
+                    <Button
+                      onClick={() => makeCall(company.phone)}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      <Phone className="w-4 h-4 mr-2" />
+                      Ligar
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </CardContent>
@@ -739,8 +749,7 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
   };
 
   const handleUpgrade = () => {
-    // Implementar lógica de upgrade
-    console.log('Upgrade solicitado');
+    window.location.href = '/driver/plans';
     setShowPaywall(false);
   };
 

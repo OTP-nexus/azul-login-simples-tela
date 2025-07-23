@@ -41,6 +41,45 @@ serve(async (req) => {
       throw new Error("Driver not found");
     }
 
+    // Verificar se o motorista tem um plano ativo
+    const { data: subscription, error: subError } = await supabaseClient
+      .from("subscriptions")
+      .select(`
+        *,
+        plan:subscription_plans(*)
+      `)
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .single();
+
+    let contactLimit = 5; // Limite padrão do plano gratuito
+    
+    if (subscription && subscription.plan) {
+      contactLimit = subscription.plan.contact_views_limit;
+    }
+
+    // Se tem limite ilimitado, não precisa verificar
+    if (contactLimit !== -1) {
+      // Verificar quantas visualizações já foram feitas este mês
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+      const { data: existingViews, error: viewsError } = await supabaseClient
+        .from("driver_contact_views")
+        .select("id")
+        .eq("driver_id", driver.id)
+        .eq("month_year", currentMonth);
+
+      if (viewsError) {
+        throw new Error(`Error checking views: ${viewsError.message}`);
+      }
+
+      const viewsCount = existingViews ? existingViews.length : 0;
+      
+      // Verificar se já atingiu o limite
+      if (viewsCount >= contactLimit) {
+        throw new Error("Contact view limit exceeded");
+      }
+    }
+
     // Buscar dados do frete
     const { data: freight, error: freightError } = await supabaseClient
       .from("fretes")

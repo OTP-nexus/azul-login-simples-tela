@@ -72,7 +72,7 @@ export function useSubscription(): SubscriptionData {
 
       if (subError) {
         console.error('Erro ao buscar assinatura:', subError);
-        return;
+        // Não retornar aqui, continuar com plano padrão
       }
 
       if (subscriptionData && (subscriptionData as any).plan) {
@@ -92,15 +92,22 @@ export function useSubscription(): SubscriptionData {
 
         if (!planError && defaultPlan) {
           setPlan(defaultPlan as any);
+        } else {
+          console.error('Erro ao buscar plano padrão:', planError);
         }
       }
 
       // Se for motorista, verificar limite de visualizações
       if (profile.role === 'driver') {
-        const { data: remainingViews } = await supabase
-          .rpc('check_driver_contact_limit' as any, { driver_user_id: user!.id });
-        
-        setContactViewsRemaining(typeof remainingViews === 'number' ? remainingViews : 0);
+        try {
+          const { data: remainingViews } = await supabase
+            .rpc('check_driver_contact_limit' as any, { driver_user_id: user!.id });
+          
+          setContactViewsRemaining(typeof remainingViews === 'number' ? remainingViews : 0);
+        } catch (error) {
+          console.error('Erro ao verificar limite de visualizações:', error);
+          setContactViewsRemaining(0);
+        }
       }
 
     } catch (error) {
@@ -119,10 +126,10 @@ export function useSubscription(): SubscriptionData {
     (subscription?.status === 'active' && plan?.slug !== 'company-trial')
   );
 
-  // Corrigir a lógica do canViewContacts - remover condição problemática
+  // Lógica corrigida para canViewContacts
   const canViewContacts = profile?.role === 'driver' && (
-    contactViewsRemaining > 0 || 
-    plan?.contact_views_limit === -1
+    plan?.contact_views_limit === -1 || // Plano ilimitado
+    contactViewsRemaining > 0 // Tem visualizações restantes
   );
 
   const refreshSubscription = async () => {
