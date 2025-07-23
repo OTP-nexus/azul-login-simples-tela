@@ -22,6 +22,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import Navbar from '@/components/Navbar';
 
 const PublicFreightsList = () => {
   const [filters, setFilters] = useState<PublicFreightFilters>({});
@@ -127,6 +128,7 @@ const PublicFreightsList = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <Navbar />
       {/* Header */}
       <div className="text-center py-6">
         <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
