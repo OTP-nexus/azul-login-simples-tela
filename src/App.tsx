@@ -52,6 +52,12 @@ function App() {
               <Route path="/company-registration" element={<CompanyRegistration />} />
               <Route path="/company-type-selection" element={<CompanyTypeSelection />} />
               <Route path="/collaborator-registration" element={<CollaboratorRegistration />} />
+              
+              {/* Rotas de registro alternativas */}
+              <Route path="/register" element={<UserTypeSelection />} />
+              <Route path="/register/driver" element={<DriverRegistration />} />
+              <Route path="/register/company" element={<CompanyTypeSelection />} />
+              <Route path="/register/company/form" element={<CompanyRegistration />} />
               <Route path="/landing" element={<LandingPage />} />
               <Route path="/public-freights" element={<PublicFreightsList />} />
               <Route path="/lista-fretes" element={<PublicFreightsList />} />
