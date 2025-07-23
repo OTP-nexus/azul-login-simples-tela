@@ -40,20 +40,29 @@ export const useDriverStats = () => {
         throw new Error('Erro ao buscar dados do motorista');
       }
 
-      // Buscar estatísticas de fretes
-      const { data: freightsData, error: freightsError } = await supabase
+      // Buscar todos os fretes ativos (disponíveis para o motorista)
+      const { data: allFreightsData, error: allFreightsError } = await supabase
         .from('fretes')
-        .select('status')
+        .select('id, status')
         .eq('status', 'ativo');
 
-      if (freightsError) {
+      if (allFreightsError) {
         throw new Error('Erro ao buscar fretes');
       }
 
-      // Contar fretes por status
-      const activeFreights = freightsData?.filter(f => f.status === 'ativo').length || 0;
-      const acceptedFreights = freightsData?.filter(f => f.status === 'aceito').length || 0;
-      const completedFreights = freightsData?.filter(f => f.status === 'concluido').length || 0;
+      // Buscar fretes que o motorista tem interesse (através de contatos)
+      const { data: contactsData, error: contactsError } = await supabase
+        .from('freight_contacts')
+        .select('freight_id, company_response')
+        .eq('driver_id', driverData.id);
+
+      if (contactsError) {
+        throw new Error('Erro ao buscar contatos');
+      }
+
+      // Contar fretes aceitos e concluídos baseado nos contatos
+      const acceptedFreights = contactsData?.filter(c => c.company_response === 'accepted').length || 0;
+      const completedFreights = contactsData?.filter(c => c.company_response === 'completed').length || 0;
 
       // Buscar favoritos
       const { data: favoritesData, error: favoritesError } = await supabase
@@ -68,8 +77,8 @@ export const useDriverStats = () => {
       const totalFavorites = favoritesData?.length || 0;
 
       setStats({
-        totalFreights: freightsData?.length || 0,
-        activeFreights,
+        totalFreights: allFreightsData?.length || 0,
+        activeFreights: allFreightsData?.length || 0,
         acceptedFreights,
         completedFreights,
         totalFavorites

@@ -14,6 +14,11 @@ import { useAccessCheck } from '@/hooks/useAccessCheck';
 import { SubscriptionStatus } from '@/components/SubscriptionStatus';
 import LogoRequiredDialog from '@/components/LogoRequiredDialog';
 import FreightContactsList from '@/components/FreightContactsList';
+import { useCompanyStats } from '@/hooks/useCompanyStats';
+import { useNotifications } from '@/hooks/useNotifications';
+import { NotificationCenter } from '@/components/ui/notification-center';
+import { StatsCard } from '@/components/ui/stats-card';
+import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
 
 const CompanyDashboardCards = () => {
   const navigate = useNavigate();
@@ -25,6 +30,15 @@ const CompanyDashboardCards = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [showLogoDialog, setShowLogoDialog] = useState(false);
+  const { stats, loading: statsLoading } = useCompanyStats();
+  const { 
+    notifications, 
+    markAsRead, 
+    markAllAsRead, 
+    removeNotification,
+    notifySuccess,
+    notifyInfo 
+  } = useNotifications();
 
   useEffect(() => {
     if (!loading && !companyLoading && user && documentStatus) {
@@ -133,10 +147,9 @@ const CompanyDashboardCards = () => {
 
   if (loading || companyLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Verificando acesso...</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <DashboardSkeleton />
         </div>
       </div>
     );
@@ -158,14 +171,22 @@ const CompanyDashboardCards = () => {
               </div>
             </div>
             
-            <Button
-              onClick={handleLogout}
-              variant="outline"
-              className="flex items-center space-x-2 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Sair</span>
-            </Button>
+            <div className="flex items-center space-x-4">
+              <NotificationCenter
+                notifications={notifications}
+                onMarkAsRead={markAsRead}
+                onMarkAllAsRead={markAllAsRead}
+                onRemove={removeNotification}
+              />
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                className="flex items-center space-x-2 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sair</span>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -235,6 +256,41 @@ const CompanyDashboardCards = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <StatsCard
+                title="Total de Fretes"
+                value={stats.totalFreights}
+                description="Fretes criados pela empresa"
+                icon={Truck}
+                loading={statsLoading}
+              />
+              
+              <StatsCard
+                title="Fretes Ativos"
+                value={stats.activeFreights}
+                description="Aguardando motoristas"
+                icon={Activity}
+                loading={statsLoading}
+              />
+              
+              <StatsCard
+                title="Contatos Recebidos"
+                value={stats.totalContacts}
+                description={`${stats.contactsThisMonth} este mês`}
+                icon={MessageSquare}
+                loading={statsLoading}
+              />
+              
+              <StatsCard
+                title="Receita Estimada"
+                value={`R$ ${stats.estimatedRevenue.toLocaleString('pt-BR')}`}
+                description="Fretes concluídos"
+                icon={Building2}
+                loading={statsLoading}
+              />
+            </div>
+
             {/* Dashboard Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Solicitar Frete Card */}

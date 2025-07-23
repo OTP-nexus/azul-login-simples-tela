@@ -6,6 +6,10 @@ import { Truck, Heart, CreditCard, Settings, MapPin, Clock, Package, User } from
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDriverStats } from '@/hooks/useDriverStats';
+import { useNotifications } from '@/hooks/useNotifications';
+import { NotificationCenter } from '@/components/ui/notification-center';
+import { StatsCard } from '@/components/ui/stats-card';
+import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
 import DriverFreightsList from '@/components/DriverFreightsList';
 import DriverFavorites from '@/components/DriverFavorites';
 import DriverPlans from '@/components/DriverPlans';
@@ -16,6 +20,12 @@ const DriverDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('freights');
   const { stats, loading: statsLoading } = useDriverStats();
+  const { 
+    notifications, 
+    markAsRead, 
+    markAllAsRead, 
+    removeNotification 
+  } = useNotifications();
 
   const tabItems = [
     {
@@ -62,14 +72,22 @@ const DriverDashboard = () => {
                   <p className="text-sm text-gray-600">Motorista</p>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/driver-profile')}
-                className="p-2"
-              >
-                <User className="h-5 w-5" />
-              </Button>
+              <div className="flex items-center space-x-2">
+                <NotificationCenter
+                  notifications={notifications}
+                  onMarkAsRead={markAsRead}
+                  onMarkAllAsRead={markAllAsRead}
+                  onRemove={removeNotification}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/driver-profile')}
+                  className="p-2"
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -161,14 +179,22 @@ const DriverDashboard = () => {
                   <p className="text-gray-600">Gerencie seus fretes e configurações</p>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => navigate('/driver-profile')}
-                className="flex items-center space-x-2"
-              >
-                <User className="h-4 w-4" />
-                <span>Meu Perfil</span>
-              </Button>
+              <div className="flex items-center space-x-4">
+                <NotificationCenter
+                  notifications={notifications}
+                  onMarkAsRead={markAsRead}
+                  onMarkAllAsRead={markAllAsRead}
+                  onRemove={removeNotification}
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/driver-profile')}
+                  className="flex items-center space-x-2"
+                >
+                  <User className="h-4 w-4" />
+                  <span>Meu Perfil</span>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -176,52 +202,45 @@ const DriverDashboard = () => {
 
       {/* Stats Cards */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Fretes Ativos</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {statsLoading ? '...' : stats.activeFreights}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Disponíveis para aceitar
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Favoritos</CardTitle>
-              <Heart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {statsLoading ? '...' : stats.totalFavorites}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Fretes salvos
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Aceitos</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {statsLoading ? '...' : stats.acceptedFreights}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Fretes aceitos
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        {statsLoading ? (
+          <DashboardSkeleton />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <StatsCard
+                title="Fretes Disponíveis"
+                value={stats.activeFreights}
+                description="Disponíveis para aceitar"
+                icon={Package}
+                loading={statsLoading}
+              />
+              
+              <StatsCard
+                title="Meus Favoritos"
+                value={stats.totalFavorites}
+                description="Fretes salvos"
+                icon={Heart}
+                loading={statsLoading}
+              />
+              
+              <StatsCard
+                title="Fretes Aceitos"
+                value={stats.acceptedFreights}
+                description="Em andamento"
+                icon={Clock}
+                loading={statsLoading}
+              />
+              
+              <StatsCard
+                title="Concluídos"
+                value={stats.completedFreights}
+                description="Fretes finalizados"
+                icon={Truck}
+                loading={statsLoading}
+              />
+            </div>
+          </>
+        )}
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="freights" className="w-full">
