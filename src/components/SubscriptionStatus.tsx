@@ -110,6 +110,18 @@ export const SubscriptionStatus = () => {
               </Button>
             </div>
           )}
+
+          {subscription?.status === 'active' && (
+            <div className="pt-4">
+              <Button 
+                variant="outline"
+                className="w-full border-red-200 text-red-600 hover:bg-red-50" 
+                onClick={() => window.location.href = profile?.role === 'driver' ? '/driver/subscription' : '/company/subscription'}
+              >
+                Cancelar Assinatura
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
