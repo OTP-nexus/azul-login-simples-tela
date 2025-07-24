@@ -9,7 +9,8 @@ import {
   Settings,
   Shield,
   BarChart3,
-  Menu
+  Menu,
+  DollarSign
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -27,14 +28,45 @@ import {
 } from "@/components/ui/sidebar";
 
 const adminItems = [
-  { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
-  { title: "Usuários", url: "/admin/users", icon: Users },
-  { title: "Documentos", url: "/admin/documents", icon: FileCheck },
-  { title: "Fretes", url: "/admin/freights", icon: Truck },
-  { title: "Assinaturas", url: "/admin/subscriptions", icon: CreditCard },
-  { title: "Suporte", url: "/admin/support", icon: MessageSquare },
-  { title: "Relatórios", url: "/admin/reports", icon: BarChart3 },
-  { title: "Configurações", url: "/admin/settings", icon: Settings },
+  {
+    group: "Dashboard",
+    items: [
+      { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+    ]
+  },
+  {
+    group: "Usuários",
+    items: [
+      { title: "Usuários", url: "/admin/users", icon: Users },
+      { title: "Documentos", url: "/admin/documents", icon: FileCheck },
+    ]
+  },
+  {
+    group: "Operações",
+    items: [
+      { title: "Fretes", url: "/admin/freights", icon: Truck },
+      { title: "Assinaturas", url: "/admin/subscriptions", icon: CreditCard },
+      { title: "Pagamentos", url: "/admin/payments", icon: DollarSign },
+    ]
+  },
+  {
+    group: "Suporte",
+    items: [
+      { title: "Tickets", url: "/admin/support", icon: MessageSquare },
+    ]
+  },
+  {
+    group: "Relatórios",
+    items: [
+      { title: "Relatórios", url: "/admin/reports", icon: BarChart3 },
+    ]
+  },
+  {
+    group: "Configurações",
+    items: [
+      { title: "Sistema", url: "/admin/settings", icon: Settings },
+    ]
+  }
 ];
 
 export function AdminSidebar() {
@@ -56,31 +88,33 @@ export function AdminSidebar() {
   return (
     <Sidebar className={collapsed ? "w-14" : "w-60"}>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            {!collapsed && <span>Admin Panel</span>}
-          </SidebarGroupLabel>
+        {adminItems.map((group) => (
+          <SidebarGroup key={group.group}>
+            <SidebarGroupLabel className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              {!collapsed && <span>{group.group}</span>}
+            </SidebarGroupLabel>
 
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {adminItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      end={item.url === "/admin"}
-                      className={getNavCls(item.url)}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink 
+                        to={item.url} 
+                        end={item.url === "/admin"}
+                        className={getNavCls(item.url)}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
     </Sidebar>
   );

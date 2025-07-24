@@ -41,6 +41,11 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminUsers from "./pages/AdminUsers";
 import AdminDocuments from "./pages/AdminDocuments";
 import AdminFreights from "./pages/AdminFreights";
+import AdminSubscriptions from "./pages/AdminSubscriptions";
+import AdminSupport from "./pages/AdminSupport";
+import AdminReports from "./pages/AdminReports";
+import AdminSettings from "./pages/AdminSettings";
+import AdminPayments from "./pages/AdminPayments";
 import AdminRoute from "./components/AdminRoute";
 
 const queryClient = new QueryClient();
@@ -99,9 +104,14 @@ function App() {
               
               {/* Admin Routes */}
               <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-              <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
-              <Route path="/admin/documents" element={<AdminRoute><AdminDocuments /></AdminRoute>} />
-              <Route path="/admin/freights" element={<AdminRoute><AdminFreights /></AdminRoute>} />
+          <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+          <Route path="/admin/documents" element={<AdminRoute><AdminDocuments /></AdminRoute>} />
+          <Route path="/admin/freights" element={<AdminRoute><AdminFreights /></AdminRoute>} />
+          <Route path="/admin/subscriptions" element={<AdminRoute><AdminSubscriptions /></AdminRoute>} />
+          <Route path="/admin/support" element={<AdminRoute><AdminSupport /></AdminRoute>} />
+          <Route path="/admin/reports" element={<AdminRoute><AdminReports /></AdminRoute>} />
+          <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+          <Route path="/admin/payments" element={<AdminRoute><AdminPayments /></AdminRoute>} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>
