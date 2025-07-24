@@ -29,6 +29,13 @@ const LoginForm = () => {
         console.log('User profile:', profile);
         console.log('Document status:', documentStatus);
         
+        // Verificar se é admin primeiro
+        if (profile.role === 'admin') {
+          console.log('Admin user detected, redirecting to admin dashboard...');
+          navigate('/admin');
+          return;
+        }
+        
         if (profile.role === 'driver') {
           if (documentStatus.overall_status === 'approved') {
             console.log('Driver documents approved, redirecting to driver dashboard...');
