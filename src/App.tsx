@@ -37,6 +37,11 @@ import Dashboard from "./pages/Dashboard";
 import Plans from "./pages/Plans";
 import CompanySubscription from "./pages/CompanySubscription";
 import DriverSubscription from "./pages/DriverSubscription";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminUsers from "./pages/AdminUsers";
+import AdminDocuments from "./pages/AdminDocuments";
+import AdminFreights from "./pages/AdminFreights";
+import AdminRoute from "./components/AdminRoute";
 
 const queryClient = new QueryClient();
 
@@ -91,6 +96,12 @@ function App() {
                 <Route path="/payment-success" element={<PaymentSuccess />} />
                 <Route path="/payment-cancel" element={<PaymentCancel />} />
               </Route>
+              
+              {/* Admin Routes */}
+              <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+              <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+              <Route path="/admin/documents" element={<AdminRoute><AdminDocuments /></AdminRoute>} />
+              <Route path="/admin/freights" element={<AdminRoute><AdminFreights /></AdminRoute>} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>
