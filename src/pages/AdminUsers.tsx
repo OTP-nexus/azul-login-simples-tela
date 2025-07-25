@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Filter, MoreHorizontal, User, Building2 } from 'lucide-react';
+import { Search, Filter, User, Building2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -14,12 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { UserManagementActions } from '@/components/admin/UserManagementActions';
 
 interface User {
   id: string;
@@ -159,21 +154,7 @@ const AdminUsers = () => {
                     </TableCell>
                     <TableCell>{user.phone || '-'}</TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Ver perfil</DropdownMenuItem>
-                          <DropdownMenuItem>Editar</DropdownMenuItem>
-                          <DropdownMenuItem>Suspender</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <UserManagementActions user={user} onUpdate={fetchUsers} />
                     </TableCell>
                   </TableRow>
                 ))}

@@ -1,10 +1,10 @@
 import { AdminLayout } from '@/components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { FileCheck, FileX, Clock, Eye } from 'lucide-react';
+import { FileCheck, FileX, Clock } from 'lucide-react';
+import { DocumentManagementActions } from '@/components/admin/DocumentManagementActions';
 import {
   Table,
   TableBody,
@@ -14,7 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-interface DocumentVerification {
+interface DocumentVerificationPage {
   id: string;
   user_id: string;
   user_role: string;
@@ -28,7 +28,7 @@ interface DocumentVerification {
 }
 
 const AdminDocuments = () => {
-  const [documents, setDocuments] = useState<DocumentVerification[]>([]);
+  const [documents, setDocuments] = useState<DocumentVerificationPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
 
@@ -215,10 +215,7 @@ const AdminDocuments = () => {
                       {new Date(doc.created_at).toLocaleDateString('pt-BR')}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4 mr-1" />
-                        Analisar
-                      </Button>
+                      <DocumentManagementActions document={doc as any} onUpdate={fetchDocuments} />
                     </TableCell>
                   </TableRow>
                 ))}
