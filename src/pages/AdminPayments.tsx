@@ -35,16 +35,10 @@ export default function AdminPayments() {
 
   const fetchPayments = async () => {
     try {
-      // Buscar pagamentos reais com JOIN para dados do usuário (usando 'as any' para contornar limitações do schema)
+      // Buscar pagamentos reais sem JOIN complexo para evitar erros de relacionamento
       const { data: paymentsData, error } = await supabase
         .from('payments' as any)
-        .select(`
-          *,
-          subscription:subscriptions(
-            user_id,
-            user:profiles(email, full_name)
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -53,19 +47,51 @@ export default function AdminPayments() {
         return;
       }
 
-      // Mapear dados para o formato esperado
-      const formattedPayments: Payment[] = (paymentsData || []).map((payment: any) => ({
-        id: payment.id,
-        subscription_id: payment.subscription_id || '',
-        amount: payment.amount,
-        currency: payment.currency || 'BRL',
-        status: payment.status,
-        payment_method: payment.payment_method || 'card',
-        stripe_payment_intent_id: payment.stripe_payment_intent_id || '',
-        created_at: payment.created_at,
-        user_email: payment.subscription?.user?.email || '',
-        user_name: payment.subscription?.user?.full_name || ''
-      }));
+      // Buscar informações dos usuários separadamente se necessário
+      let formattedPayments: Payment[] = [];
+      
+      if (paymentsData && paymentsData.length > 0) {
+        // Para cada pagamento, tentar buscar informações do usuário
+        for (const payment of paymentsData as any[]) {
+          let userEmail = '';
+          let userName = '';
+          
+          if (payment.subscription_id) {
+            // Buscar subscription e depois o usuário
+            const { data: subscription } = await supabase
+              .from('subscriptions' as any)
+              .select('user_id')
+              .eq('id', payment.subscription_id)
+              .single();
+              
+            if ((subscription as any)?.user_id) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('email, full_name')
+                .eq('id', (subscription as any).user_id)
+                .single();
+                
+              if (profile) {
+                userEmail = profile.email || '';
+                userName = profile.full_name || '';
+              }
+            }
+          }
+          
+          formattedPayments.push({
+            id: payment.id,
+            subscription_id: payment.subscription_id || '',
+            amount: payment.amount || 0,
+            currency: payment.currency || 'BRL',
+            status: payment.status || 'pending',
+            payment_method: payment.payment_method || 'card',
+            stripe_payment_intent_id: payment.stripe_payment_intent_id || '',
+            created_at: payment.created_at,
+            user_email: userEmail,
+            user_name: userName
+          });
+        }
+      }
 
       setPayments(formattedPayments);
     } catch (error) {
@@ -78,7 +104,7 @@ export default function AdminPayments() {
   const filteredPayments = payments.filter(payment => {
     const matchesSearch = payment.user_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          payment.stripe_payment_intent_id?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === '' || payment.status === filterStatus;
+    const matchesStatus = filterStatus === 'all' || filterStatus === '' || payment.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
 
@@ -184,7 +210,7 @@ export default function AdminPayments() {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="succeeded">Sucesso</SelectItem>
               <SelectItem value="pending">Pendente</SelectItem>
               <SelectItem value="failed">Falhou</SelectItem>

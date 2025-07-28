@@ -78,7 +78,7 @@ export default function AdminSubscriptions() {
   const filteredSubscriptions = subscriptions.filter(sub => {
     const matchesSearch = sub.user_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          sub.user_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === '' || sub.status === filterStatus;
+    const matchesStatus = filterStatus === 'all' || filterStatus === '' || sub.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
 
@@ -158,7 +158,7 @@ export default function AdminSubscriptions() {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="active">Ativa</SelectItem>
               <SelectItem value="trialing">Trial</SelectItem>
               <SelectItem value="canceled">Cancelada</SelectItem>

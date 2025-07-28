@@ -80,8 +80,8 @@ export default function AdminSupport() {
   const filteredTickets = tickets.filter(ticket => {
     const matchesSearch = ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.user_email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === '' || ticket.status === filterStatus;
-    const matchesPriority = filterPriority === '' || ticket.priority === filterPriority;
+    const matchesStatus = filterStatus === 'all' || filterStatus === '' || ticket.status === filterStatus;
+    const matchesPriority = filterPriority === 'all' || filterPriority === '' || ticket.priority === filterPriority;
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
@@ -183,7 +183,7 @@ export default function AdminSupport() {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="open">Aberto</SelectItem>
               <SelectItem value="in_progress">Em Andamento</SelectItem>
               <SelectItem value="resolved">Resolvido</SelectItem>
@@ -195,7 +195,7 @@ export default function AdminSupport() {
               <SelectValue placeholder="Prioridade" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
               <SelectItem value="low">Baixa</SelectItem>
               <SelectItem value="medium">Média</SelectItem>
               <SelectItem value="high">Alta</SelectItem>
