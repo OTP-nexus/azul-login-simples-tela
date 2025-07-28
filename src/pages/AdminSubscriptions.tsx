@@ -36,23 +36,38 @@ export default function AdminSubscriptions() {
 
   const fetchSubscriptions = async () => {
     try {
-      // Dados mock para demonstração
-      const mockSubscriptions: Subscription[] = [
-        {
-          id: '1',
-          user_id: 'user1',
-          plan_id: 'plan1',
-          status: 'active',
-          created_at: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          stripe_customer_id: 'cus_123',
-          stripe_subscription_id: 'sub_123',
-          user_email: 'usuario1@example.com',
-          user_name: 'Usuário 1',
-          plan_name: 'Plano Premium'
-        }
-      ];
-      setSubscriptions(mockSubscriptions);
+      // Buscar assinaturas reais com JOIN para dados do usuário e plano (usando 'as any' para contornar limitações do schema)
+      const { data: subscriptionsData, error } = await supabase
+        .from('subscriptions' as any)
+        .select(`
+          *,
+          user:profiles(email, full_name),
+          plan:subscription_plans(name)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar assinaturas:', error);
+        setSubscriptions([]);
+        return;
+      }
+
+      // Mapear dados para o formato esperado
+      const formattedSubscriptions: Subscription[] = (subscriptionsData || []).map((sub: any) => ({
+        id: sub.id,
+        user_id: sub.user_id || '',
+        plan_id: sub.plan_id || '',
+        status: sub.status || 'active',
+        created_at: sub.created_at,
+        current_period_end: sub.current_period_end || '',
+        stripe_customer_id: sub.stripe_customer_id || '',
+        stripe_subscription_id: sub.stripe_subscription_id || '',
+        user_email: sub.user?.email || '',
+        user_name: sub.user?.full_name || '',
+        plan_name: sub.plan?.name || ''
+      }));
+
+      setSubscriptions(formattedSubscriptions);
     } catch (error) {
       console.error('Erro ao buscar assinaturas:', error);
     } finally {

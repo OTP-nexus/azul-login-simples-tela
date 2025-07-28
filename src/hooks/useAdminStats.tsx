@@ -66,9 +66,16 @@ export const useAdminStats = () => {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'ativo');
 
-      // Buscar assinaturas (temporariamente usando mock data)
-      const activeSubscriptions = 5; // Mock data até implementar tabela subscriptions
-      const trialSubscriptions = 3; // Mock data até implementar tabela subscriptions
+      // Buscar assinaturas reais (usando 'as any' para contornar limitações do schema)
+      const { count: activeSubscriptions } = await supabase
+        .from('subscriptions' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+
+      const { count: trialSubscriptions } = await supabase
+        .from('subscriptions' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'trialing');
 
       // Buscar documentos pendentes
       const { count: pendingDocuments } = await supabase
@@ -76,9 +83,30 @@ export const useAdminStats = () => {
         .select('*', { count: 'exact', head: true })
         .eq('overall_status', 'pending');
 
-      // Buscar receita (temporariamente usando mock data)
-      const totalRevenue = 250000; // Mock data - R$ 2.500,00 em centavos
-      const monthlyRevenue = 45000; // Mock data - R$ 450,00 em centavos
+      // Buscar receita real dos pagamentos (usando 'as any' para contornar limitações do schema)
+      const { data: revenueData, error: revenueError } = await supabase
+        .from('payments' as any)
+        .select('amount, created_at')
+        .eq('status', 'succeeded');
+
+      let totalRevenue = 0;
+      let monthlyRevenue = 0;
+      
+      if (!revenueError && revenueData) {
+        totalRevenue = (revenueData as any[]).reduce((sum: number, payment: any) => sum + payment.amount, 0);
+        
+        // Calcular receita do mês atual
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        
+        monthlyRevenue = (revenueData as any[])
+          .filter((payment: any) => {
+            const paymentDate = new Date(payment.created_at);
+            return paymentDate.getMonth() === currentMonth && 
+                   paymentDate.getFullYear() === currentYear;
+          })
+          .reduce((sum: number, payment: any) => sum + payment.amount, 0);
+      }
 
       setStats({
         totalUsers: totalUsers || 0,
@@ -88,8 +116,8 @@ export const useAdminStats = () => {
         activeFreights: activeFreights || 0,
         totalRevenue,
         monthlyRevenue,
-        activeSubscriptions,
-        trialSubscriptions,
+        activeSubscriptions: activeSubscriptions || 0,
+        trialSubscriptions: trialSubscriptions || 0,
         pendingDocuments: pendingDocuments || 0,
         loading: false,
         error: null

@@ -45,41 +45,41 @@ export default function AdminSettings() {
 
   const fetchData = async () => {
     try {
-      // Usando dados mock para demonstração
-      const mockPlans: SubscriptionPlan[] = [
-        {
-          id: '1',
-          name: 'Plano Básico',
-          slug: 'basic',
-          price_monthly: 29.99,
-          target_user_type: 'driver',
-          features: ['5 contatos por mês', 'Suporte básico'],
-          contact_views_limit: 5,
-          freight_limit: 10,
-          trial_days: 7,
-          is_active: true
-        },
-        {
-          id: '2',
-          name: 'Plano Premium',
-          slug: 'premium',
-          price_monthly: 49.99,
-          target_user_type: 'company',
-          features: ['Contatos ilimitados', 'Suporte prioritário'],
-          contact_views_limit: -1,
-          freight_limit: -1,
-          trial_days: 14,
-          is_active: true
-        }
-      ];
-      setPlans(mockPlans);
+      // Buscar planos reais (usando 'as any' para contornar limitações do schema)
+      const { data: plansData, error: plansError } = await supabase
+        .from('subscription_plans' as any)
+        .select('*')
+        .order('price_monthly', { ascending: true });
 
-      const mockSettings: SystemSetting[] = [
-        { key: 'platform_name', value: 'FreteFlow', description: 'Nome da plataforma' },
-        { key: 'support_email', value: 'suporte@freteflow.com', description: 'Email de suporte' },
-        { key: 'maintenance_mode', value: false, description: 'Modo de manutenção' }
-      ];
-      setSettings(mockSettings);
+      if (plansError) {
+        console.error('Erro ao buscar planos:', plansError);
+      } else {
+        setPlans((plansData as any) || []);
+      }
+
+      // Buscar configurações reais do sistema (usando 'as any' para contornar limitações do schema)
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('system_settings' as any)
+        .select('*');
+
+      if (settingsError) {
+        console.error('Erro ao buscar configurações:', settingsError);
+        // Se não encontrar configurações, criar algumas padrões
+        const defaultSettings: SystemSetting[] = [
+          { key: 'platform_name', value: 'FreteFlow', description: 'Nome da plataforma' },
+          { key: 'support_email', value: 'suporte@freteflow.com', description: 'Email de suporte' },
+          { key: 'maintenance_mode', value: false, description: 'Modo de manutenção' }
+        ];
+        setSettings(defaultSettings);
+      } else {
+        // Mapear dados para o formato esperado
+        const formattedSettings: SystemSetting[] = (settingsData || []).map((setting: any) => ({
+          key: setting.key,
+          value: setting.value,
+          description: setting.description || ''
+        }));
+        setSettings(formattedSettings);
+      }
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
     } finally {
@@ -88,12 +88,40 @@ export default function AdminSettings() {
   };
 
   const updateSetting = async (key: string, value: any) => {
-    // Usando apenas dados locais para demonstração
-    setSettings(prev => prev.map(s => s.key === key ? { ...s, value } : s));
-    toast({
-      title: "Configuração atualizada",
-      description: "A configuração foi salva localmente para demonstração.",
-    });
+    try {
+      // Tentar atualizar no banco (usando 'as any' para contornar limitações do schema)
+      const { error } = await supabase
+        .from('system_settings' as any)
+        .upsert({ 
+          key, 
+          value: typeof value === 'object' ? value : { value },
+          description: settings.find(s => s.key === key)?.description || ''
+        });
+
+      if (error) {
+        console.error('Erro ao atualizar configuração:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao salvar configuração no banco de dados.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Atualizar estado local
+      setSettings(prev => prev.map(s => s.key === key ? { ...s, value } : s));
+      toast({
+        title: "Configuração atualizada",
+        description: "A configuração foi salva com sucesso.",
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar configuração:', error);
+      toast({
+        title: "Erro",
+        description: "Erro inesperado ao salvar configuração.",
+        variant: "destructive"
+      });
+    }
   };
 
   if (loading) {

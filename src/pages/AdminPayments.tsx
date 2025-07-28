@@ -35,34 +35,39 @@ export default function AdminPayments() {
 
   const fetchPayments = async () => {
     try {
-      // Usando dados mock para demonstração
-      const mockPayments: Payment[] = [
-        {
-          id: '1',
-          subscription_id: 'sub_1',
-          amount: 2999,
-          currency: 'BRL',
-          status: 'succeeded',
-          payment_method: 'card',
-          stripe_payment_intent_id: 'pi_1234567890',
-          created_at: new Date().toISOString(),
-          user_email: 'usuario1@example.com',
-          user_name: 'Usuário 1'
-        },
-        {
-          id: '2',
-          subscription_id: 'sub_2',
-          amount: 4999,
-          currency: 'BRL',
-          status: 'pending',
-          payment_method: 'card',
-          stripe_payment_intent_id: 'pi_0987654321',
-          created_at: new Date().toISOString(),
-          user_email: 'usuario2@example.com',
-          user_name: 'Usuário 2'
-        }
-      ];
-      setPayments(mockPayments);
+      // Buscar pagamentos reais com JOIN para dados do usuário (usando 'as any' para contornar limitações do schema)
+      const { data: paymentsData, error } = await supabase
+        .from('payments' as any)
+        .select(`
+          *,
+          subscription:subscriptions(
+            user_id,
+            user:profiles(email, full_name)
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar pagamentos:', error);
+        setPayments([]);
+        return;
+      }
+
+      // Mapear dados para o formato esperado
+      const formattedPayments: Payment[] = (paymentsData || []).map((payment: any) => ({
+        id: payment.id,
+        subscription_id: payment.subscription_id || '',
+        amount: payment.amount,
+        currency: payment.currency || 'BRL',
+        status: payment.status,
+        payment_method: payment.payment_method || 'card',
+        stripe_payment_intent_id: payment.stripe_payment_intent_id || '',
+        created_at: payment.created_at,
+        user_email: payment.subscription?.user?.email || '',
+        user_name: payment.subscription?.user?.full_name || ''
+      }));
+
+      setPayments(formattedPayments);
     } catch (error) {
       console.error('Erro ao buscar pagamentos:', error);
     } finally {

@@ -38,23 +38,38 @@ export default function AdminSupport() {
 
   const fetchTickets = async () => {
     try {
-      // Dados mock para demonstração
-      const mockTickets: SupportTicket[] = [
-        {
-          id: '1',
-          user_id: 'user1',
-          title: 'Problema com pagamento',
-          description: 'Não consigo finalizar o pagamento da assinatura',
-          status: 'open',
-          priority: 'high',
-          category: 'payment',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          user_email: 'usuario1@example.com',
-          user_name: 'Usuário 1'
-        }
-      ];
-      setTickets(mockTickets);
+      // Buscar tickets reais com JOIN para dados do usuário (usando 'as any' para contornar limitações do schema)
+      const { data: ticketsData, error } = await supabase
+        .from('support_tickets' as any)
+        .select(`
+          *,
+          user:profiles(email, full_name)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar tickets:', error);
+        setTickets([]);
+        return;
+      }
+
+      // Mapear dados para o formato esperado
+      const formattedTickets: SupportTicket[] = (ticketsData || []).map((ticket: any) => ({
+        id: ticket.id,
+        user_id: ticket.user_id || '',
+        title: ticket.title,
+        description: ticket.description,
+        status: ticket.status,
+        priority: ticket.priority,
+        category: ticket.category,
+        created_at: ticket.created_at,
+        updated_at: ticket.updated_at,
+        assigned_to: ticket.assigned_to || '',
+        user_email: ticket.user?.email || '',
+        user_name: ticket.user?.full_name || ''
+      }));
+
+      setTickets(formattedTickets);
     } catch (error) {
       console.error('Erro ao buscar tickets:', error);
     } finally {
