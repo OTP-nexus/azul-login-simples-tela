@@ -20,7 +20,7 @@ interface DocumentVerification {
   profiles: {
     full_name: string;
     email: string;
-  };
+  } | null;
   address_proof_url?: string;
   cnpj_card_url?: string;
   responsible_document_url?: string;
@@ -189,10 +189,10 @@ export function DocumentViewDialog({ document, open, onOpenChange, onUpdate }: D
             <h3 className="font-medium">Informações do Usuário</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="font-medium">Nome:</span> {document.profiles.full_name}
+                <span className="font-medium">Nome:</span> {document.profiles?.full_name || 'N/A'}
               </div>
               <div>
-                <span className="font-medium">Email:</span> {document.profiles.email}
+                <span className="font-medium">Email:</span> {document.profiles?.email || 'N/A'}
               </div>
               <div>
                 <span className="font-medium">Tipo:</span> {document.user_role === 'company' ? 'Empresa' : 'Motorista'}

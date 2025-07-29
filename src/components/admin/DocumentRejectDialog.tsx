@@ -18,7 +18,7 @@ interface DocumentVerification {
   profiles: {
     full_name: string;
     email: string;
-  };
+  } | null;
 }
 
 interface DocumentRejectDialogProps {
@@ -94,7 +94,7 @@ export function DocumentRejectDialog({ document, open, onOpenChange, onUpdate }:
         
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Você está rejeitando os documentos de <strong>{document.profiles.full_name}</strong>.
+            Você está rejeitando os documentos de <strong>{document.profiles?.full_name || 'usuário'}</strong>.
             Por favor, informe o motivo da rejeição.
           </p>
 
