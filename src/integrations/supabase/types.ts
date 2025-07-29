@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_actions: {
+        Row: {
+          action_type: string
+          admin_id: string
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          target_id: string | null
+          target_type: string
+          user_agent: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_id: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          target_id?: string | null
+          target_type: string
+          user_agent?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          target_id?: string | null
+          target_type?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       collaborators: {
         Row: {
           company_id: string
@@ -280,6 +322,55 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_contact_views: {
+        Row: {
+          company_id: string | null
+          driver_id: string | null
+          freight_id: string | null
+          id: string
+          month_year: string | null
+          viewed_at: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          driver_id?: string | null
+          freight_id?: string | null
+          id?: string
+          month_year?: string | null
+          viewed_at?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          driver_id?: string | null
+          freight_id?: string | null
+          id?: string
+          month_year?: string | null
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_contact_views_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_contact_views_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_contact_views_freight_id_fkey"
+            columns: ["freight_id"]
+            isOneToOne: false
+            referencedRelation: "fretes"
             referencedColumns: ["id"]
           },
         ]
@@ -677,6 +768,86 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          action_label: string | null
+          action_url: string | null
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_label?: string | null
+          action_url?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_label?: string | null
+          action_url?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          currency: string | null
+          id: string
+          payment_method: string | null
+          status: string
+          stripe_payment_intent_id: string | null
+          subscription_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          payment_method?: string | null
+          status: string
+          stripe_payment_intent_id?: string | null
+          subscription_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          payment_method?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -704,6 +875,158 @@ export type Database = {
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      subscription_plans: {
+        Row: {
+          contact_views_limit: number | null
+          features: Json
+          freight_limit: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price_monthly: number | null
+          slug: string
+          target_user_type: string
+          trial_days: number | null
+        }
+        Insert: {
+          contact_views_limit?: number | null
+          features?: Json
+          freight_limit?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price_monthly?: number | null
+          slug: string
+          target_user_type: string
+          trial_days?: number | null
+        }
+        Update: {
+          contact_views_limit?: number | null
+          features?: Json
+          freight_limit?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price_monthly?: number | null
+          slug?: string
+          target_user_type?: string
+          trial_days?: number | null
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          plan_id: string | null
+          status: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          trial_ends_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan_id?: string | null
+          status?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_ends_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan_id?: string | null
+          status?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_ends_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          created_at: string
+          description: string
+          id: string
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          category?: string
+          created_at?: string
+          description: string
+          id?: string
+          priority?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json
         }
         Relationships: []
       }
@@ -735,6 +1058,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_driver_contact_limit: {
+        Args: { driver_user_id: string }
+        Returns: number
+      }
       check_email_exists: {
         Args: { email_param: string }
         Returns: boolean
@@ -753,6 +1080,28 @@ export type Database = {
       }
       generate_return_freight_code: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_admin_dashboard_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_company_in_trial: {
+        Args: { company_user_id: string }
+        Returns: boolean
+      }
+      log_admin_action: {
+        Args: {
+          p_action_type: string
+          p_target_type: string
+          p_target_id?: string
+          p_description?: string
+          p_metadata?: Json
+        }
         Returns: string
       }
       search_body_types: {
