@@ -232,24 +232,47 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
   const flattenNestedArrays = (data: any): any[] => {
     if (!data) return [];
     
-    if (Array.isArray(data)) {
-      if (data.length === 1 && Array.isArray(data[0])) {
-        return data[0];
-      }
-      if (data.length === 1 && typeof data[0] === 'string' && data[0].startsWith('[')) {
-        try {
-          return JSON.parse(data[0]);
-        } catch {
-          return data;
+    // Função recursiva para processar arrays profundamente aninhados
+    const processNestedArray = (item: any): any[] => {
+      if (!item) return [];
+      
+      if (Array.isArray(item)) {
+        const result: any[] = [];
+        for (const subItem of item) {
+          if (Array.isArray(subItem)) {
+            result.push(...processNestedArray(subItem));
+          } else {
+            result.push(subItem);
+          }
         }
+        return result;
       }
-      return data;
+      
+      return [item];
+    };
+    
+    if (Array.isArray(data)) {
+      // Processar arrays aninhados profundamente
+      const flattened = processNestedArray(data);
+      
+      // Tentar parsear strings JSON se necessário
+      return flattened.map(item => {
+        if (typeof item === 'string' && (item.startsWith('[') || item.startsWith('{'))) {
+          try {
+            const parsed = JSON.parse(item);
+            return Array.isArray(parsed) ? parsed : [parsed];
+          } catch {
+            return item;
+          }
+        }
+        return item;
+      }).flat();
     }
 
-    if (typeof data === 'string' && data.startsWith('[')) {
+    if (typeof data === 'string' && (data.startsWith('[') || data.startsWith('{'))) {
       try {
         const parsed = JSON.parse(data);
-        return Array.isArray(parsed) ? parsed : [parsed];
+        return Array.isArray(parsed) ? processNestedArray(parsed) : [parsed];
       } catch {
         return [data];
       }
@@ -271,7 +294,8 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
       const textFields = [
         'nome', 'name', 'tipo', 'type', 'descricao', 'description', 
         'label', 'title', 'categoria', 'category', 'modelo', 'model',
-        'cidade', 'city', 'estado', 'state'
+        'cidade', 'city', 'estado', 'state', 'value', 'text', 'displayName',
+        'id', 'key', 'beneficio', 'regra', 'benefit', 'rule'
       ];
       
       for (const field of textFields) {
@@ -280,9 +304,19 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
         }
       }
       
+      // Se tem propriedade 'selected' true, extrair o tipo/nome
+      if (item.selected === true && item.type) {
+        return item.type;
+      }
+      
       const firstStringValue = Object.values(item).find(value => typeof value === 'string');
       if (firstStringValue) {
         return firstStringValue;
+      }
+      
+      // Para objetos complexos, tentar extrair informação útil
+      if (item.vehicleType && item.ranges) {
+        return `${item.vehicleType} (${item.ranges?.length || 0} faixas)`;
       }
     }
     
@@ -319,6 +353,18 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
 
   const renderDestinations = () => {
     const flattenedDestinations = flattenNestedArrays(freight.destinos);
+    const hasDirectDestination = freight.destino_cidade && freight.destino_estado;
+    
+    // Se não há destinos no array mas há destino direto, usar o destino direto
+    if ((!Array.isArray(flattenedDestinations) || flattenedDestinations.length === 0) && hasDirectDestination) {
+      return (
+        <div className="space-y-2">
+          <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+            <p className="font-medium text-green-900">{freight.destino_cidade}, {freight.destino_estado}</p>
+          </div>
+        </div>
+      );
+    }
     
     if (!Array.isArray(flattenedDestinations) || flattenedDestinations.length === 0) {
       return <p className="text-gray-500 italic">Nenhum destino definido</p>;
@@ -326,6 +372,14 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
 
     return (
       <div className="space-y-2">
+        {/* Exibir destino direto primeiro se existir */}
+        {hasDirectDestination && (
+          <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+            <p className="font-medium text-green-900">{freight.destino_cidade}, {freight.destino_estado}</p>
+            <p className="text-xs text-green-600 mt-1">Destino Principal</p>
+          </div>
+        )}
+        
         {flattenedDestinations.map((destino: any, index: number) => {
           if (typeof destino === 'string') {
             return (
@@ -341,6 +395,7 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
             const cep = destino.cep || '';
             const bairro = destino.bairro || destino.neighborhood || '';
             const endereco = destino.endereco || destino.address || '';
+            const id = destino.id || '';
 
             return (
               <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
@@ -348,7 +403,8 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
                   <p className="font-medium text-green-900">
                     {cidade && estado ? `${cidade}, ${estado}` : extractDisplayText(destino)}
                   </p>
-                  {cep && <p className="text-green-700 text-xs mt-1">CEP: {cep}</p>}
+                  {id && <p className="text-green-600 text-xs mt-1">ID: {id}</p>}
+                  {cep && <p className="text-green-700 text-xs">CEP: {cep}</p>}
                   {bairro && <p className="text-green-700 text-xs">Bairro: {bairro}</p>}
                   {endereco && <p className="text-green-700 text-xs">Endereço: {endereco}</p>}
                 </div>
@@ -420,18 +476,27 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {flattenedItems.map((item: any, index: number) => {
+          // Filtrar apenas itens selecionados se a propriedade 'selected' existir
+          if (typeof item === 'object' && item !== null && 'selected' in item && !item.selected) {
+            return null;
+          }
+
           const displayText = extractDisplayText(item);
           const subtitle = extractSubtitle(item);
+          const category = item.category || item.categoria || '';
 
           return (
             <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <div className="text-sm font-medium text-blue-900">{displayText}</div>
+              {category && (
+                <div className="text-xs text-blue-500 mt-1">Categoria: {category}</div>
+              )}
               {subtitle && (
                 <div className="text-xs text-blue-600 mt-1">{subtitle}</div>
               )}
             </div>
           );
-        })}
+        }).filter(Boolean)}
       </div>
     );
   };
@@ -465,24 +530,58 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
       return <p className="text-gray-500 italic">Nenhuma tabela de preços definida</p>;
     }
 
-    return flattenedTables.map((tabela: any, index: number) => (
-      <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
-        <div className="grid grid-cols-3 gap-2 text-sm">
-          <div>
-            <p className="text-gray-600">Tipo de Veículo</p>
-            <p className="font-medium">{tabela.vehicle_type || tabela.tipo_veiculo || 'Não especificado'}</p>
+    return flattenedTables.map((tabela: any, index: number) => {
+      // Se a tabela tem estrutura complexa com vehicleType e ranges
+      if (tabela.vehicleType && Array.isArray(tabela.ranges)) {
+        return (
+          <div key={index} className="bg-green-50 p-4 rounded-lg border border-green-200">
+            <h4 className="font-medium text-green-800 mb-3">
+              {tabela.vehicleType}
+            </h4>
+            <div className="space-y-2">
+              {tabela.ranges.map((range: any, rangeIndex: number) => (
+                <div key={rangeIndex} className="bg-white p-3 rounded border">
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <p className="text-gray-600">Distância</p>
+                      <p className="font-medium">{range.kmStart || range.km_start || 0} - {range.kmEnd || range.km_end || 0} km</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Valor por KM</p>
+                      <p className="font-medium text-green-600">{formatValue(range.pricePerKm || range.price_per_km)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Valor Fixo</p>
+                      <p className="font-medium text-green-600">{formatValue(range.fixedPrice || range.fixed_price)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div>
-            <p className="text-gray-600">Distância (km)</p>
-            <p className="font-medium">{tabela.km_start || tabela.km_inicio || 0} - {tabela.km_end || tabela.km_fim || 0} km</p>
-          </div>
-          <div>
-            <p className="text-gray-600">Valor</p>
-            <p className="font-medium text-green-600">{formatValue(tabela.price || tabela.preco)}</p>
+        );
+      }
+
+      // Estrutura simples de tabela
+      return (
+        <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-200">
+          <div className="grid grid-cols-3 gap-2 text-sm">
+            <div>
+              <p className="text-gray-600">Tipo de Veículo</p>
+              <p className="font-medium">{tabela.vehicle_type || tabela.vehicleType || tabela.tipo_veiculo || 'Não especificado'}</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Distância (km)</p>
+              <p className="font-medium">{tabela.km_start || tabela.kmStart || tabela.km_inicio || 0} - {tabela.km_end || tabela.kmEnd || tabela.km_fim || 0} km</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Valor</p>
+              <p className="font-medium text-green-600">{formatValue(tabela.price || tabela.preco || tabela.pricePerKm || tabela.fixedPrice)}</p>
+            </div>
           </div>
         </div>
-      </div>
-    ));
+      );
+    });
   };
 
   const renderBenefits = () => {
@@ -505,6 +604,54 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
         </div>
       );
     });
+  };
+
+  const renderCadasteredItems = () => {
+    // Verificar se há itens detalhados ou descrição livre
+    const hasDetailedItems = freight.itens_detalhados && Array.isArray(freight.itens_detalhados) && freight.itens_detalhados.length > 0;
+    const hasDescricaoLivre = freight.descricao_livre_itens && freight.descricao_livre_itens.trim();
+    
+    if (!hasDetailedItems && !hasDescricaoLivre) {
+      return <p className="text-gray-500 italic">Nenhum item cadastrado</p>;
+    }
+
+    return (
+      <div className="space-y-3">
+        {hasDetailedItems && (
+          <div>
+            <p className="text-sm text-gray-600 mb-2">Itens Detalhados:</p>
+            <div className="space-y-2">
+              {freight.itens_detalhados.map((item: any, index: number) => (
+                <div key={index} className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-purple-900">
+                      {item.nome || item.name || extractDisplayText(item)}
+                    </span>
+                    {item.quantidade && (
+                      <span className="text-sm text-purple-600 bg-purple-100 px-2 py-1 rounded">
+                        Qtd: {item.quantidade}
+                      </span>
+                    )}
+                  </div>
+                  {item.descricao && (
+                    <p className="text-sm text-purple-700 mt-1">{item.descricao}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {hasDescricaoLivre && (
+          <div>
+            <p className="text-sm text-gray-600 mb-2">Descrição Livre:</p>
+            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+              <p className="text-sm text-gray-800">{freight.descricao_livre_itens}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const renderCollaborators = () => {
@@ -844,21 +991,45 @@ const FreightDetailsModal = ({ freight, isOpen, onClose }: FreightDetailsModalPr
                   <span>Detalhes da Carga</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Tipo de Mercadoria</p>
-                  <p className="font-medium">{freight.tipo_mercadoria || 'Não especificado'}</p>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Tipo de Mercadoria</p>
+                    <p className="font-medium">{freight.tipo_mercadoria || 'Não especificado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Peso da Carga</p>
+                    <p className="font-medium">
+                      {freight.peso_carga ? `${Number(freight.peso_carga).toLocaleString('pt-BR')} kg` : 'Não especificado'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Valor da Carga</p>
+                    <p className="font-medium">
+                      {freight.valor_carga ? formatValue(Number(freight.valor_carga)) : 'Não especificado'}
+                    </p>
+                  </div>
+                  {(freight.altura_carga || freight.largura_carga || freight.comprimento_carga) && (
+                    <div className="col-span-2">
+                      <p className="text-sm text-gray-500">Dimensões da Carga</p>
+                      <p className="font-medium">
+                        {[
+                          freight.altura_carga && `Altura: ${freight.altura_carga}cm`,
+                          freight.largura_carga && `Largura: ${freight.largura_carga}cm`, 
+                          freight.comprimento_carga && `Comprimento: ${freight.comprimento_carga}cm`
+                        ].filter(Boolean).join(' | ') || 'Não especificadas'}
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <p className="text-sm text-gray-500">Peso da Carga</p>
-                  <p className="font-medium">
-                    {freight.peso_carga ? `${freight.peso_carga} kg` : 'Não especificado'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Valor da Carga</p>
-                  <p className="font-medium">{formatValue(freight.valor_carga)}</p>
-                </div>
+
+                {/* Itens Cadastrados para fretes tipo "comum" */}
+                {freight.tipo_frete === 'comum' && (
+                  <div>
+                    <p className="text-sm text-gray-500 mb-3">Itens Cadastrados</p>
+                    {renderCadasteredItems()}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

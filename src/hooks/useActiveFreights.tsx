@@ -11,12 +11,17 @@ export interface ActiveFreight {
   status: string;
   origem_cidade: string;
   origem_estado: string;
+  destino_cidade?: string;
+  destino_estado?: string;
   destinos: any[];
   data_coleta: string;
   data_entrega: string;
   tipo_mercadoria: string;
   peso_carga: number;
   valor_carga: number;
+  altura_carga?: number;
+  largura_carga?: number;
+  comprimento_carga?: number;
   valores_definidos: any;
   tipos_veiculos: any[];
   tipos_carrocerias: any[];
@@ -35,6 +40,9 @@ export interface ActiveFreight {
   beneficios: any[];
   regras_agendamento: any[];
   tabelas_preco: any[];
+  itens_detalhados?: any[];
+  descricao_livre_itens?: string;
+  tipo_listagem_itens?: string;
 }
 
 export const useActiveFreights = () => {
@@ -72,12 +80,17 @@ export const useActiveFreights = () => {
         status: freight.status || 'ativo', // Mudança aqui: padrão é "ativo" ao invés de "pendente"
         origem_cidade: freight.origem_cidade,
         origem_estado: freight.origem_estado,
+        destino_cidade: freight.destino_cidade,
+        destino_estado: freight.destino_estado,
         destinos: Array.isArray(freight.destinos) ? freight.destinos : [],
         data_coleta: freight.data_coleta,
         data_entrega: freight.data_entrega,
         tipo_mercadoria: freight.tipo_mercadoria,
         peso_carga: freight.peso_carga,
         valor_carga: freight.valor_carga,
+        altura_carga: freight.altura_carga,
+        largura_carga: freight.largura_carga,
+        comprimento_carga: freight.comprimento_carga,
         valores_definidos: freight.valores_definidos,
         tipos_veiculos: Array.isArray(freight.tipos_veiculos) ? freight.tipos_veiculos : [],
         tipos_carrocerias: Array.isArray(freight.tipos_carrocerias) ? freight.tipos_carrocerias : [],
@@ -95,7 +108,10 @@ export const useActiveFreights = () => {
         paradas: Array.isArray(freight.paradas) ? freight.paradas : [],
         beneficios: Array.isArray(freight.beneficios) ? freight.beneficios : [],
         regras_agendamento: Array.isArray(freight.regras_agendamento) ? freight.regras_agendamento : [],
-        tabelas_preco: Array.isArray(freight.tabelas_preco) ? freight.tabelas_preco : []
+        tabelas_preco: Array.isArray(freight.tabelas_preco) ? freight.tabelas_preco : [],
+        itens_detalhados: Array.isArray(freight.itens_detalhados) ? freight.itens_detalhados : [],
+        descricao_livre_itens: freight.descricao_livre_itens,
+        tipo_listagem_itens: freight.tipo_listagem_itens
       }));
 
       setFreights(formattedFreights);
